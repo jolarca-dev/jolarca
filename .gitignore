@@ -1,0 +1,50 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- Virtual environments ---
+.venv/
+venv/
+
+# --- Django ---
+local/
+*.log
+media/
+staticfiles/
+
+# --- Secrets: NEVER commit. CI enforces scripts/check_no_secrets.sh ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+service-account*.json
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+frontend/src/lib/api/generated/
+playwright-report/
+test-results/
+
+# --- Docker volumes (local bind mounts) ---
+data/
+pgdata/
+minio-data/
+
+# --- IDE / OS ---
+/.idea/
+.vscode/
+.DS_Store
+frontend/tsconfig.tsbuildinfo

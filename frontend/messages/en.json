@@ -1,0 +1,14 @@
+{
+  "common": {
+    "appName": "JOL Marketplace",
+    "addToCart": "Add to cart",
+    "checkout": "Checkout",
+    "consentBannerText": "We use only essential cookies. Optional analytics require your explicit consent.",
+    "consentAccept": "Accept",
+    "consentDecline": "Decline"
+  },
+  "home": {
+    "title": "Marketplace for the Baltics",
+    "subtitle": "Buy and sell across Lithuania, Latvia and Estonia."
+  }
+}

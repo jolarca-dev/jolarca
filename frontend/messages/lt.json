@@ -1,0 +1,14 @@
+{
+  "common": {
+    "appName": "JOL turgavietė",
+    "addToCart": "Į krepšelį",
+    "checkout": "Apmokėti",
+    "consentBannerText": "Naudojame tik būtinuosius slapukus. Pasirenkama analitika reikalauja jūsų aiškaus sutikimo.",
+    "consentAccept": "Sutinku",
+    "consentDecline": "Nesutinku"
+  },
+  "home": {
+    "title": "Turgavietė Baltijos šalims",
+    "subtitle": "Pirkite ir parduokite Lietuvoje, Latvijoje ir Estijoje."
+  }
+}

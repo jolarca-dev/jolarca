@@ -1,0 +1,51 @@
+# CI-parity topology for integration tests: same images and env shape as dev,
+# ephemeral data, no ports exposed to the host, test runner included.
+name: jol-marketplace-test
+
+services:
+  db:
+    build: ./backend/db
+    environment:
+      POSTGRES_DB: jol_test
+      POSTGRES_USER: jol_test
+      POSTGRES_PASSWORD: jol_test_insecure_ci_only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jol_test -d jol_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend-test:
+    build:
+      context: ./backend
+      target: test
+    command: >
+      sh -c "bash ../scripts/wait_for_services.sh test &&
+             python -m pytest tests/integration -q"
+    environment:
+      DJANGO_SETTINGS_MODULE: project.settings.test
+      DATABASE_URL: postgres://jol_test:jol_test_insecure_ci_only@db:5432/jol_test
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_TASK_ALWAYS_EAGER: "1"
+      FIELD_ENCRYPTION_KEY: ${CI_FIELD_ENCRYPTION_KEY:?set a Fernet key in CI secrets}
+      GDPR_PROCESSING_HALTED: "0"
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+      - ./scripts:/scripts:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy

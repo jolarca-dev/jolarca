@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install system deps (GDAL for PostGIS)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gdal-bin libgdal35
+      - name: Install pinned deps
+        run: pip install --require-hashes -r requirements/dev.txt
+      - name: Lint (ruff)
+        run: ruff check .
+      - name: Typecheck (mypy)
+        run: mypy project apps
+      - name: Unit + security tests (coverage gate 80%)
+        env:
+          DJANGO_SETTINGS_MODULE: project.settings.test
+        run: |
+          pytest tests/unit tests/security --cov=. --cov-report=xml --cov-fail-under=80
+      - name: Integration tests (compose parity topology)
+        run: |
+          docker compose -f ../docker-compose.test.yml up -d --build
+          bash ../scripts/wait_for_services.sh test
+          docker compose -f ../docker-compose.test.yml run --rm backend-test
+          docker compose -f ../docker-compose.test.yml down
+      - name: OpenAPI drift check
+        run: |
+          python manage.py spectacular --file /tmp/openapi.yaml --validate
+          diff /tmp/openapi.yaml ../docs/api/openapi.yaml || \
+            (echo "::error::OpenAPI snapshot stale — run 'make api-schema'" && exit 1)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: backend/coverage.xml
+
+  frontend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Build
+        run: npm run build
+      - name: E2E (Playwright checkout journey)
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test
+
+  secrets:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: check_no_secrets.sh
+        run: bash scripts/check_no_secrets.sh
