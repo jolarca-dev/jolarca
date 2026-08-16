@@ -43,6 +43,8 @@ jobs:
   codeql:
     runs-on: ubuntu-24.04
     permissions:
+      contents: read          # checkout with a job-scoped token
+      actions: read           # codeql/analyze fetches workflow-run metadata
       security-events: write
     steps:
       - uses: actions/checkout@v4
