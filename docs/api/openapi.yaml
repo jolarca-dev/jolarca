@@ -1,0 +1,161 @@
+openapi: 3.0.3
+info:
+  title: JOL Marketplace API
+  version: 1.0.0
+paths:
+  /api/v1/auth/register/:
+    post:
+      operationId: auth_register_create
+      description: POST /api/v1/auth/register/ — creates a buyer account.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/orders/checkout/:
+    post:
+      operationId: orders_checkout_create
+      description: POST /api/v1/orders/checkout/ — requires the Idempotency-Key header.
+      tags:
+      - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutResponse'
+          description: ''
+components:
+  schemas:
+    CheckoutRequest:
+      type: object
+      properties:
+        cart_id:
+          type: string
+          format: uuid
+        shipping_country:
+          allOf:
+          - $ref: '#/components/schemas/ShippingCountryEnum'
+          default: ''
+      required:
+      - cart_id
+    CheckoutResponse:
+      type: object
+      properties:
+        order_id:
+          type: string
+          format: uuid
+        order_number:
+          type: string
+        status:
+          type: string
+        total_gross:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+      required:
+      - currency
+      - order_id
+      - order_number
+      - status
+      - total_gross
+    LanguageEnum:
+      enum:
+      - lt
+      - lv
+      - et
+      - en
+      type: string
+      description: |-
+        * `lt` - lt
+        * `lv` - lv
+        * `et` - et
+        * `en` - en
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 12
+        language:
+          allOf:
+          - $ref: '#/components/schemas/LanguageEnum'
+          default: en
+      required:
+      - email
+      - password
+    ShippingCountryEnum:
+      enum:
+      - LT
+      - LV
+      - EE
+      type: string
+      description: |-
+        * `LT` - LT
+        * `LV` - LV
+        * `EE` - EE
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Email address
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - date_joined
+      - email
+      - id
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

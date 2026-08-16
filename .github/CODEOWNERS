@@ -1,0 +1,15 @@
+# Compliance-sensitive paths require the compliance owners' review.
+# GitHub enforces this via branch protection "require review from Code Owners".
+
+/backend/apps/payments_app/        @jol-infrastructure/payments-owners
+/backend/apps/compliance_app/      @jol-infrastructure/compliance-owners
+/backend/apps/users_app/           @jol-infrastructure/compliance-owners
+/backend/project/settings/         @jol-infrastructure/compliance-owners
+/backend/project/middleware/       @jol-infrastructure/compliance-owners
+/backend/apps/core/encryption.py   @jol-infrastructure/compliance-owners
+/.github/workflows/                @jol-infrastructure/platform-owners
+/.env.example                      @jol-infrastructure/compliance-owners
+/docker-compose.dev.yml            @jol-infrastructure/platform-owners
+/docker-compose.test.yml           @jol-infrastructure/platform-owners
+/docs/COMPLIANCE_MATRIX.md         @jol-infrastructure/compliance-owners
+/LICENSE                           @jol-infrastructure/compliance-owners

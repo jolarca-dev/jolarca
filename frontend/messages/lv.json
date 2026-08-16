@@ -1,0 +1,14 @@
+{
+  "common": {
+    "appName": "JOL tirgus",
+    "addToCart": "Pievienot grozam",
+    "checkout": "Apmaksāt",
+    "consentBannerText": "Mēs izmantojam tikai nepieciešamās sīkdatnes. Izvēles analītikai ir vajadzīga jūsu skaidra piekrišana.",
+    "consentAccept": "Piekrītu",
+    "consentDecline": "Nepiekrītu"
+  },
+  "home": {
+    "title": "Tirgus Baltijas valstīm",
+    "subtitle": "Pērciet un pārdodiet Lietuvā, Latvijā un Igaunijā."
+  }
+}

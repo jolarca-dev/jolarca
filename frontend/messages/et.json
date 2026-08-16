@@ -1,0 +1,14 @@
+{
+  "common": {
+    "appName": "JOL turg",
+    "addToCart": "Lisa ostukorvi",
+    "checkout": "Vormi ost",
+    "consentBannerText": "Kasutame ainult hädavajalikke küpsiseid. Valikuline analüütika nõuab teie selget nõusolekut.",
+    "consentAccept": "Nõustun",
+    "consentDecline": "Ei nõustu"
+  },
+  "home": {
+    "title": "Turg Balti riikidele",
+    "subtitle": "Osta ja müü Leedus, Lätis ja Eestis."
+  }
+}

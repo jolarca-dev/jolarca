@@ -1,0 +1,5 @@
+node_modules/
+.next/
+out/
+# GENERATED from docs/api/openapi.yaml via `make api-schema` — never hand-edit.
+generated/

@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jol-marketplace-backend"
+version = "0.1.0"
+description = "Baltic marketplace backend — GDPR / ISO 27001 / SOC 2 aligned"
+requires-python = ">=3.12"
+license = "AGPL-3.0-only"
+dependencies = [
+    "Django>=5.2,<5.3",
+    "djangorestframework>=3.15",
+    "drf-spectacular>=0.28",
+    "celery[redis]>=5.4",
+    "redis>=5.0",
+    "django-redis>=5.4",
+    "django-axes>=7.0",
+    "django-cors-headers>=4.4",
+    "django-modeltranslation>=0.19",
+    "django-storages[s3]>=1.14",
+    "psycopg[binary]>=3.1",
+    "cryptography>=43.0",
+    "structlog>=24.1",
+    "whitenoise>=6.7",
+    "requests>=2.32",
+    "stripe>=10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-django>=4.8",
+    "pytest-cov>=5.0",
+    "factory-boy>=3.3",
+    "ruff>=0.9",
+    "mypy>=1.11",
+    "django-stubs>=5.0",
+    "pip-tools>=7.4",
+    "pre-commit>=4.0",
+]
+prod = [
+    "gunicorn>=22.0",
+]
+
+[tool.setuptools]
+packages = ["project", "apps"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # pyflakes
+    "I",         # isort
+    "B",         # bugbear
+    "S",         # bandit (security)
+    "C4",        # comprehensions
+    "UP",        # pyupgrade
+    "DJ",        # django-specific
+]
+ignore = [
+    "S101",  # assert used in tests
+    "S311",  # pseudo-random OK for non-crypto uses; crypto paths use secrets
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "DJ"]
+"**/settings/**" = ["S105", "S106"]  # settings legitimately name secret vars
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+strict_optional = true
+ignore_missing_imports = true
+exclude = ["migrations"]
+
+[tool.django-stubs]
+django_settings_module = "project.settings.dev"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "project.settings.test"
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+omit = ["*/migrations/*", "*/tests/*", "manage.py"]

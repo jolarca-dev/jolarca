@@ -1,0 +1,53 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-24.04
+    environment: staging          # GitHub environment: audit log of every deploy (SOC 2 CC8.1)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: ghcr.io/${{ github.repository }}/backend:staging-${{ github.sha }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          push: true
+          tags: ghcr.io/${{ github.repository }}/frontend:staging-${{ github.sha }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-24.04
+    environment: staging
+    steps:
+      # TARGET RUNTIME DECISION PENDING (see docs/ASSUMPTIONS.md §A-07):
+      # GKE Autopilot is the candidate. This step is intentionally a sanctioned
+      # stub — deploying to an undecided target would be worse than no deploy.
+      - name: Rollout (sanctioned stub)
+        run: |
+          echo "Image tags pinned for staging:"
+          echo "  ghcr.io/${{ github.repository }}/backend:staging-${{ github.sha }}"
+          echo "  ghcr.io/${{ github.repository }}/frontend:staging-${{ github.sha }}"
+          echo "TODO(A-07): kubectl set image / helm upgrade once target runtime is ratified."
+          exit 1   # fail loudly until the deploy target is implemented — no silent no-ops
