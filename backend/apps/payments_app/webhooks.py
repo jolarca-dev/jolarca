@@ -9,6 +9,8 @@ Processing contract:
 
 from __future__ import annotations
 
+import json
+
 import structlog
 from django.conf import settings
 from django.http import HttpResponseBadRequest, JsonResponse
@@ -32,6 +34,15 @@ def _verify_and_parse(body: bytes, signature: str):
     return stripe.Webhook.construct_event(body, signature, settings.STRIPE_WEBHOOK_SECRET)
 
 
+def _is_signature_error(exc: Exception) -> bool:
+    """C4 fix (STEP 20): Stripe raises SignatureVerificationError, which is
+    NOT a ValueError subclass — forged webhooks must yield 400, not 500."""
+    for klass in type(exc).__mro__:
+        if klass.__name__ in ("SignatureVerificationError", "InvalidRequestError"):
+            return True
+    return False
+
+
 HANDLERS: dict[str, str] = {
     # event type → dotted task path (processed async for throughput + retries)
     "payment_intent.succeeded": "apps.payments_app.tasks.handle_payment_succeeded",
@@ -50,19 +61,28 @@ def stripe_webhook(request):
     except ValueError:
         audit.warning("stripe_webhook_rejected", reason="signature_invalid")
         return HttpResponseBadRequest("invalid signature")
+    except Exception as exc:  # C4: SDK signature errors -> 400, never 500
+        if _is_signature_error(exc):
+            audit.warning("stripe_webhook_rejected", reason="signature_invalid")
+            return HttpResponseBadRequest("invalid signature")
+        raise
 
     record, created = StripeWebhookEvent.objects.get_or_create(
         event_id=event["id"],
-        defaults={"event_type": event["type"], "payload": event},
+        defaults={"event_type": event["type"], "payload": json.loads(str(event))},
     )
     if not created and record.is_processed:
         return JsonResponse({"status": "duplicate_ignored"})
 
     task_path = HANDLERS.get(event["type"])
     if task_path:
-        from celery import current_app
+        # Resolve to the task object and use .delay(): unlike send_task it
+        # honors CELERY_TASK_ALWAYS_EAGER (tests) and enqueues normally in
+        # production.
+        from importlib import import_module
 
-        current_app.send_task(task_path, args=[str(record.pk)], queue="default")
+        module_name, _, attr_name = task_path.rpartition(".")
+        getattr(import_module(module_name), attr_name).delay(str(record.pk))
 
     record.processed_at = timezone.now()
     record.save(update_fields=["processed_at"])

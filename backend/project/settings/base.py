@@ -302,6 +302,30 @@ STRIPE_WEBHOOK_SECRET = env_str("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_CONNECT_CLIENT_ID = env_str("STRIPE_CONNECT_CLIENT_ID", "")
 STRIPE_TAX_ENABLED = env_bool("STRIPE_TAX_ENABLED", default=False)
 
+# --------------------------------------------------------------------------
+# Internal payment API — Model A (ADR-0005). Fail-closed: a caller with an
+# empty key is rejected by payments_app.internal_auth. Keys come from the
+# secret store (never git); TEST mode keys only under test settings.
+# --------------------------------------------------------------------------
+INTERNAL_CALLERS = {
+    "hub-payments": {
+        "product": "hub",
+        "key": env_str("INTERNAL_CALLER_HUB_KEY", ""),
+    },
+    "marketplace-internal": {
+        "product": "marketplace",
+        "key": env_str("INTERNAL_CALLER_MARKETPLACE_KEY", ""),
+    },
+}
+INTERNAL_WEBHOOK_TARGETS = {
+    "hub": env_str("INTERNAL_WEBHOOK_HUB_URL", ""),
+}
+INTERNAL_WEBHOOK_KEYS = {
+    "hub": env_str("INTERNAL_WEBHOOK_HUB_KEY", ""),
+}
+# Drill switch (contract §9 degraded mode); never enabled outside drills.
+INTERNAL_PAYMENTS_SIMULATE_OUTAGE = env_bool("INTERNAL_PAYMENTS_SIMULATE_OUTAGE", default=False)
+
 AI_DEFAULT_PROVIDER = env_str("AI_DEFAULT_PROVIDER", "selfhosted")
 AI_SELFHOSTED_BASE_URL = env_str("AI_SELFHOSTED_BASE_URL", "")
 AI_SELFHOSTED_API_KEY = env_str("AI_SELFHOSTED_API_KEY", "")
