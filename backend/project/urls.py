@@ -21,6 +21,10 @@ urlpatterns = [
     path("api/v1/auth/", include("apps.users_app.urls")),
     path("api/v1/orders/", include("apps.orders_app.urls")),
     path("api/v1/payments/webhooks/", include("apps.payments_app.urls")),
+    # Internal payment API — Model A (ADR-0005): the sole sanctioned
+    # cross-program interface (hub consumes this boundary; network-
+    # restricted, never on the public ingress).
+    path("internal/v1/", include("apps.payments_app.urls_internal")),
     path("api/v1/shipping/webhooks/", include("apps.shipping_app.urls")),
     # OpenAPI contract
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

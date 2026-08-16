@@ -30,3 +30,18 @@ SILENCED_SYSTEM_CHECKS = ["axes.W001"]
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
+# Internal payment API contract-test keys (tests only — never production).
+INTERNAL_CALLERS = {
+    "hub-payments": {
+        "product": "hub",
+        "key": "internal-test-key-hub-0123456789abcdef",  # gitleaks:allow
+    },
+    "marketplace-internal": {
+        "product": "marketplace",
+        "key": "internal-test-key-marketplace-0123456789abcdef",  # gitleaks:allow
+    },
+}
+INTERNAL_WEBHOOK_TARGETS = {"hub": "http://hub.internal.invalid/internal/v1/payment-events"}
+INTERNAL_WEBHOOK_KEYS = {"hub": "internal-test-delivery-key-hub-fedcba9876543210"}  # gitleaks:allow
+INTERNAL_PAYMENTS_SIMULATE_OUTAGE = False
