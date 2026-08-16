@@ -20,7 +20,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: backend
           push: true
@@ -29,7 +29,7 @@ jobs:
             ghcr.io/${{ github.repository }}/backend:latest
           provenance: true          # SLSA provenance attestation (supply-chain evidence)
           sbom: true                # SBOM artifact (SOC 2 supply-chain evidence)
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: frontend
           push: true
