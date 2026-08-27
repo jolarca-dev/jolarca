@@ -26,15 +26,21 @@ staticfiles/
 .env
 .env.*
 !.env.example
+!.env.prod.example
 *.pem
 *.key
 service-account*.json
 
+# --- Runtime artifacts (TLS bootstrap, edge logs) ---
+certbot-webroot/
+logs/
+ssl/
+
 # --- Node / Next.js ---
 node_modules/
 .next/
+.next-dev/
 out/
-frontend/src/lib/api/generated/
 playwright-report/
 test-results/
 
@@ -48,3 +54,7 @@ minio-data/
 .vscode/
 .DS_Store
 frontend/tsconfig.tsbuildinfo
+
+# --- Triage class-(b) dispositions (hub report 7894ba53) ---
+.state/
+frontend/coverage/

@@ -1,0 +1,17 @@
+# Never let these reach an image layer or build context.
+.env
+.env.*
+!.env.example
+node_modules
+.next
+.next-dev
+.git
+.gitignore
+coverage
+.lighthouseci
+playwright-report
+test-results
+tsconfig.tsbuildinfo
+*.log
+Dockerfile
+.dockerignore
