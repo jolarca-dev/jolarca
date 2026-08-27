@@ -59,3 +59,14 @@ frontend/tsconfig.tsbuildinfo
 .state/
 frontend/coverage/
 backups/
+
+# Standing rule D-028 (2026-08-27): no transcript exports into any repo
+*qoder-history*/
+
+# Env posture (c) per D-029/D-030 (2026-08-27): Vaultwarden-only + env injection;
+# templates only in git — real values never on disk.
+.env
+.env.*
+!.env.example
+!.env.prod.example
+!frontend/.env.example
