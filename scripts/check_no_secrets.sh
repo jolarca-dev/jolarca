@@ -15,9 +15,10 @@ PATTERNS=(
   'xox[baprs]-[A-Za-z0-9-]{10,}'       # Slack tokens
 )
 
-# .env.example is the documented template; LICENSE is legal text.
+# .env.example / .env.prod.example are documented templates; LICENSE is legal text.
 EXCLUDES=(--exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.next
-          --exclude-dir=.venv --exclude=.env.example --exclude=LICENSE
+          --exclude-dir=.venv --exclude=.env.example --exclude=.env.prod.example
+          --exclude=LICENSE
           --exclude=check_no_secrets.sh)
 
 FOUND=0
