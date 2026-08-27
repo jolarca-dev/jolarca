@@ -20,7 +20,7 @@ bootstrap: ## Create venv, install tooling + dev deps
 	@echo "Now: cp .env.example .env && make dev-up"
 
 sysdeps: ## OS packages needed on the HOST (GDAL for PostGIS models). Needs sudo.
-	sudo apt-get update && sudo apt-get install -y --no-install-recommends gdal-bin libgdal35
+	sudo apt-get update && sudo apt-get install -y --no-install-recommends gdal-bin libgdal-dev
 
 dev-up: ## Start full local stack (postgis, redis, minio, mailpit, stripe-mock, web, worker, beat, frontend)
 	$(COMPOSE_DEV) up --build -d

@@ -1,1 +1,126 @@
 @import "tailwindcss";
+@import "./tokens.css";
+
+/* Cart badge add-to-cart pulse — one subtle 200ms beat (spec: GAP-O01). */
+@keyframes cart-badge-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.cart-badge-pulse {
+  animation: cart-badge-pulse 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cart-badge-pulse {
+    animation: none;
+  }
+}
+
+/*
+ * Base layer — sacred-modern defaults (tokens live in tokens.css; ADR-0009).
+ * Rules of the house:
+ *  - 8px spacing grid: use even Tailwind steps (p-2 = 8px, gap-4 = 16px…).
+ *  - Prefer 1px `border-line` over shadows; shadows only for overlays.
+ *  - Motion: ease-dignified, duration-micro/page; never bounce/spring.
+ *  - Logical properties only (ms-/me-/text-start) for RTL-readiness.
+ */
+@layer base {
+  html {
+    font-size: 100%; /* rem anchor; body floor is --tok-text-base (18px) */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-surface text-ink antialiased;
+    font-family: var(--tok-font-body);
+    font-size: var(--tok-text-base);
+    line-height: var(--tok-leading);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--tok-font-display);
+    font-weight: 600; /* serif display reads calmer at semibold, not bold */
+    line-height: var(--tok-leading-tight);
+    @apply text-primary-deep;
+  }
+
+  h1 {
+    @apply text-4xl;
+  }
+  h2 {
+    @apply text-3xl;
+  }
+  h3 {
+    @apply text-2xl;
+  }
+  h4 {
+    @apply text-xl;
+  }
+  h5 {
+    @apply text-lg;
+  }
+  h6 {
+    @apply text-base font-semibold;
+  }
+
+  a {
+    @apply text-info underline decoration-line-strong underline-offset-4;
+    transition: color var(--tok-duration-micro) var(--tok-ease);
+  }
+  a:hover {
+    @apply text-primary;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--tok-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* Generous macro whitespace for marketing/content sections (80–120px). */
+@utility section-pad {
+  padding-block: clamp(
+    var(--tok-space-section-sm),
+    8vw,
+    var(--tok-space-section-lg)
+  );
+}
+
+/* Card surface convention: 1px border first, shadow only when elevated. */
+@utility card {
+  @apply rounded-lg border border-line bg-surface-raised;
+}
+
+/* Dignified interaction transition (micro). */
+@utility transition-dignified {
+  transition:
+    color,
+    background-color,
+    border-color,
+    box-shadow var(--tok-duration-micro) var(--tok-ease);
+}
+
+/* Respect prefers-reduced-motion globally — dignity includes stillness. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

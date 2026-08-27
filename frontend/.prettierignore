@@ -1,0 +1,13 @@
+.next
+.next-dev
+.next.bak*
+.lighthouseci
+node_modules
+coverage
+playwright-report
+test-results
+package-lock.json
+tsconfig.tsbuildinfo
+next-env.d.ts
+messages
+src/generated
