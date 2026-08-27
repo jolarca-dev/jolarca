@@ -18,6 +18,9 @@ class Category(UUIDModel, TimeStampedModel):
     parent = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.PROTECT, related_name="children"
     )
+    # Editorial curation for the storefront home (GAP-P01): NULL = not on
+    # the home rail; lower rank renders first. Admin-managed, not seller-facing.
+    homepage_rank = models.PositiveSmallIntegerField(null=True, blank=True)
 
     class Meta:
         verbose_name_plural = "categories"
@@ -51,9 +54,32 @@ class ProductListing(UUIDModel, TimeStampedModel):
     )
     image_keys = models.JSONField(default=list, blank=True, help_text="S3 keys of processed images")
     published_at = models.DateTimeField(null=True, blank=True)
+    # Editorial curation for the storefront home (GAP-P01). False keeps the
+    # listing published and searchable but off the home rail.
+    is_featured = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         indexes = [models.Index(fields=["status", "published_at"])]
+
+    def __str__(self) -> str:
+        return self.title
+
+
+class HomeHeroContent(UUIDModel, TimeStampedModel):
+    """Editorial home hero — the micro-CMS surface (Django admin only).
+
+    No public write API exists: content is managed by operations staff in
+    the admin (ADR-0006). The most recently modified ACTIVE row is served;
+    with none active the API returns hero=null and the frontend renders
+    nothing (ADR-0007). Title/subtitle are translated (translations.py).
+    """
+
+    title = models.CharField(max_length=160)
+    subtitle = models.CharField(max_length=400, blank=True, default="")
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name_plural = "home hero content"
 
     def __str__(self) -> str:
         return self.title

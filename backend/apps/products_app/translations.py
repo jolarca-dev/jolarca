@@ -2,7 +2,7 @@
 
 from modeltranslation.translator import TranslationOptions, register
 
-from .models import Category, ProductListing
+from .models import Category, HomeHeroContent, ProductListing
 
 
 @register(Category)
@@ -13,3 +13,8 @@ class CategoryTranslationOptions(TranslationOptions):
 @register(ProductListing)
 class ProductListingTranslationOptions(TranslationOptions):
     fields = ("title", "description")
+
+
+@register(HomeHeroContent)
+class HomeHeroContentTranslationOptions(TranslationOptions):
+    fields = ("title", "subtitle")

@@ -7,15 +7,17 @@ PII fields live on UserProfile behind EncryptedTextField with RoPA
 classification; the User table itself carries only what auth requires.
 """
 
-from django.contrib.auth.base_user import BaseUserManager
+from typing import ClassVar
+
 from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import UserManager as DjangoUserManager
 from django.db import models
 
 from apps.core.encryption import EncryptedTextField
 from apps.core.models import TimeStampedModel, UUIDModel
 
 
-class UserManager(BaseUserManager):
+class UserManager(DjangoUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError("email is required")
@@ -32,13 +34,13 @@ class UserManager(BaseUserManager):
 
 
 class User(UUIDModel, AbstractUser):
-    username = None
+    username = None  # type: ignore[assignment]  # email-login user
     email = models.EmailField("email address", unique=True)
 
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS: list[str] = []
+    REQUIRED_FIELDS: ClassVar[list[str]] = []
 
-    objects = UserManager()
+    objects: ClassVar[UserManager] = UserManager()
 
     def __str__(self) -> str:
         return self.email
@@ -82,6 +84,8 @@ class ConsentRecord(UUIDModel, TimeStampedModel):
         indexes = [models.Index(fields=["user", "purpose"])]
 
     def save(self, *args, **kwargs):
-        if self.pk is not None:
+        # UUID defaults are assigned at instantiation, so pk is ALWAYS set —
+        # _state.adding is the correct insert-vs-update discriminator.
+        if not self._state.adding:
             raise ValueError("ConsentRecord is append-only; create a new record instead.")
         super().save(*args, **kwargs)
