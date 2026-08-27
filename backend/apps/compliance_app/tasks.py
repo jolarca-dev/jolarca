@@ -20,13 +20,26 @@ def run_erasure_fanout(erasure_request_id: str) -> None:
 
 @shared_task(queue="compliance")
 def nightly_retention_sweep() -> None:
-    """Beat-driven: retention decisions are logged, never silent."""
-    from .models import AuditLog
+    """Beat-driven: retention decisions are logged, never silent.
+
+    Anonymizes retention-bound orders for users whose erasure has completed:
+    the financial evidence survives, the buyer linkage does not (MVP-C2).
+    """
+    from .models import AuditLog, ErasureRequest, ErasureStatus
+    from .retention import anonymize_order_history
+
+    orders_anonymized = 0
+    completed = ErasureRequest.objects.filter(status=ErasureStatus.COMPLETED).select_related("user")
+    for request in completed.iterator():
+        orders_anonymized += anonymize_order_history(request.user)
 
     AuditLog.objects.create(
-        action="retention_sweep_executed", data={"policy_years": settings.RETENTION_FINANCIAL_YEARS}
+        action="retention_sweep_executed",
+        data={
+            "policy_years": settings.RETENTION_FINANCIAL_YEARS,
+            "orders_anonymized": orders_anonymized,
+        },
     )
-    # MVP-C2: iterate anonymization candidates per retention.anonymize_order_history.
 
 
 @shared_task(queue="compliance")

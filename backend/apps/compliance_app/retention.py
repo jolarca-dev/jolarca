@@ -26,7 +26,10 @@ def anonymize_order_history(user) -> int:
     """Replace buyer linkage on retention-bound orders with a pseudonym.
 
     Called by the retention sweep for users whose data is no longer needed
-    for the original purpose AND past all appeal windows.
+    for the original purpose AND past all appeal windows. The financial fact
+    survives as tax evidence, keyed by an irreversible per-user token; the
+    direct buyer link is dropped. Idempotent: anonymized orders carry no
+    buyer, so a repeat run matches nothing.
     """
     import hashlib
 
@@ -34,10 +37,8 @@ def anonymize_order_history(user) -> int:
 
     pseudonym = hashlib.sha256(f"jol-retention:{user.pk}".encode()).hexdigest()[:32]
     cutoff = financial_cutoff()
-    qs = Order.objects.filter(buyer=user, created_at__lt=cutoff)
-    count = qs.count()
-    for order in qs.iterator():
-        order.buyer = None  # requires nullable buyer — see MVP-C2 migration note
-        order.save(update_fields=["buyer"])
+    count = Order.objects.filter(buyer=user, created_at__lt=cutoff).update(
+        buyer=None, anonymized_ref=pseudonym
+    )
     audit.info("order_history_anonymized", pseudonym=pseudonym, orders=count)
     return count
