@@ -24,8 +24,12 @@ EXCLUDES=(--exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.next
 FOUND=0
 for pattern in "${PATTERNS[@]}"; do
   # -e: patterns may begin with '-' (e.g. PEM headers) and must not be
-  # interpreted as options — a silently-skipped pattern is a false clean.
-  if grep -rInE "${EXCLUDES[@]}" -e "$pattern" . ; then
+  # interpreted as options. CRITICAL: grep exits 2 on any read error (e.g. a
+  # permission-denied directory) even when it FOUND matches — keying the
+  # verdict on grep's exit code therefore produced false "clean" verdicts.
+  # Decide on OUTPUT, never on exit status; suppress stderr noise only.
+  if matches="$(grep -rInE "${EXCLUDES[@]}" -e "$pattern" . 2>/dev/null)"; [ -n "$matches" ]; then
+    printf '%s\n' "$matches"
     echo "^^^ potential secret matched: ${pattern}" >&2
     FOUND=1
   fi
