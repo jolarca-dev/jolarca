@@ -19,7 +19,14 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # API v1
     path("api/v1/auth/", include("apps.users_app.urls")),
+    # Public storefront catalog (read-only browse; writes never land here).
+    path("api/v1/", include("apps.products_app.urls")),
+    path("api/v1/", include("apps.sellers_app.urls")),
+    path("api/v1/", include("apps.search_app.urls")),
     path("api/v1/orders/", include("apps.orders_app.urls")),
+    path("api/v1/", include("apps.orders_app.urls_cart")),
+    path("api/v1/", include("apps.shipping_app.urls_public")),
+    path("api/v1/", include("apps.tax_app.urls")),
     path("api/v1/payments/webhooks/", include("apps.payments_app.urls")),
     # Internal payment API — Model A (ADR-0005): the sole sanctioned
     # cross-program interface (hub consumes this boundary; network-
