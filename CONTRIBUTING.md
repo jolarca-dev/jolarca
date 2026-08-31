@@ -3,7 +3,7 @@
 ## Development setup
 
 ```bash
-git clone <repo> && cd jol-m-marketplace
+git clone <repo> && cd jolarca
 cp .env.example .env            # fill in CHANGE_ME values
 make bootstrap                  # venv + pinned dev dependencies
 make sysdeps                    # one-time: GDAL libraries (PostGIS model support)

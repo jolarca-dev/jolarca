@@ -1,4 +1,4 @@
-# jol-m-marketplace — developer task runner
+# jolarca — developer task runner
 # All targets are non-interactive; CI uses the same targets (parity by design).
 
 SHELL := /bin/bash

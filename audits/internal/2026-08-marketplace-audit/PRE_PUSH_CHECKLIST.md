@@ -12,16 +12,16 @@ a red exit criterion blocks all later steps. Finding IDs refer to
 ## Step 1 — Canonical name: `jol-marketplace` (AUD-26)
 
 The public repo already exists under **JourneyOfLife/jol-marketplace**. This working
-copy lives in a dir named `jol-m-marketplace` and the README H1 regressed to the
+copy lives in a dir named `jolarca` and the README H1 regressed to the
 non-canonical name.
 
 Rename/merge runbook:
-1. Rename the working directory: `mv jol-m-marketplace jol-marketplace`.
+1. Rename the working directory: `mv jolarca jol-marketplace`.
 2. Fix name-bearing artifacts:
    - `README.md` H1 → `# jol-marketplace` (extend the original public README —
      **do not replace** the existing vision/architecture content; append/merge).
-   - `CONTRIBUTING.md` clone path (`cd jol-m-marketplace` → `cd jol-marketplace`).
-   - `.idea/jol-m-marketplace.iml` → delete (see Step 3 hygiene).
+   - `CONTRIBUTING.md` clone path (`cd jolarca` → `cd jol-marketplace`).
+   - `.idea/jolarca.iml` → delete (see Step 3 hygiene).
 3. Verify canonical names already correct elsewhere (no action): `backend/pyproject.toml`
    (`jol-marketplace-backend`), `frontend/package.json` (`jol-marketplace-frontend`),
    compose `name: jol-marketplace-dev|test`, deploy images `…/backend|frontend`.
@@ -30,7 +30,7 @@ Rename/merge runbook:
    original README/vision content is preserved (`git fetch origin && git rebase origin/main`
    or a merge commit). Never force-push over the public history.
 
-**Exit criteria:** `grep -rn "jol-m-marketplace" --exclude-dir=.git --exclude-dir=.venv .` → no hits.
+**Exit criteria:** `grep -rn "jolarca" --exclude-dir=.git --exclude-dir=.venv .` → no hits.
 
 ## Step 2 — Real CODEOWNERS teams (AUD-33, CRITICAL)
 

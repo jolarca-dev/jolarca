@@ -1,0 +1,278 @@
+# =============================================================================
+# JOL Marketplace — PRODUCTION deployment (Proxmox 9.2 VM, Docker + nginx).
+#
+# Canonical production topology; docker-compose.yml remains the internal
+# CI/review topology (HTTP-only, no TLS mounts). Deploy via scripts/deploy.sh
+# which handles image tagging, migrations-before-traffic, health gating,
+# and rollback.
+#
+# Networks (tiered isolation — nothing publishes ports except nginx):
+#   frontend — nginx ⇄ app ⇄ backend web (edge-reachable internals only)
+#   backend  — Django web/worker/beat ⇄ postgres/redis/elasticsearch
+#              (internal: true — never reachable from the edge)
+#
+# Secrets: .env.prod (git-ignored; template in .env.prod.example).
+# SSL: nginx terminates TLS (certs mounted from ./ssl); the app never
+# sees plaintext TLS material. First-issue via the ACME webroot mount
+# (./certbot-webroot) — see docs/DEPLOYMENT.md.
+# =============================================================================
+
+name: jol-marketplace-prod
+
+# Bounded container logs (json-file driver): 10MB per file, keep 5 files —
+# a chatty worker can never fill the VM's disk. Applied to every service;
+# scripts/log-rotate.sh verifies this config and handles host-side files.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  app:
+    build:
+      context: ./frontend
+      target: runner
+      # NEXT_PUBLIC_* are baked into the client bundle at BUILD time —
+      # they must arrive as build args, not runtime env.
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+        NEXT_PUBLIC_MEDIA_HOSTNAME: ${NEXT_PUBLIC_MEDIA_HOSTNAME:-}
+        NEXT_PUBLIC_OTEL_ENDPOINT: ${NEXT_PUBLIC_OTEL_ENDPOINT:-}
+        NEXT_PUBLIC_PLAUSIBLE_API: ${NEXT_PUBLIC_PLAUSIBLE_API:-}
+    image: jol-marketplace/frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    logging: *default-logging
+    env_file:
+      - .env.prod
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      # RSC fetches use the compose-internal API, not the public edge.
+      INTERNAL_API_URL: http://backend:8000
+    expose:
+      - "3000" # never published — nginx is the only ingress
+    networks: [frontend]
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  backend:
+    build:
+      context: ./backend
+      target: runtime
+    image: jol-marketplace/backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    logging: *default-logging
+    env_file:
+      - .env.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: project.settings.production
+      # Compose-internal endpoints override any host-oriented .env values.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+    expose:
+      - "8000" # nginx /api/ passthrough only — never published
+    networks: [frontend, backend]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # Host header must match ALLOWED_HOSTS (prod validation forbids
+      # loopback entries) and X-Forwarded-Proto satisfies SECURE_SSL_REDIRECT
+      # — the backend sits behind the nginx TLS terminator. $$ passes the
+      # literal $ through compose interpolation to the container shell.
+      test: ["CMD-SHELL", "curl -fsS -H \"Host: $${DOMAIN:-localhost}\" -H \"X-Forwarded-Proto: https\" http://127.0.0.1:8000/healthz/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  worker:
+    build:
+      context: ./backend
+      target: runtime
+    image: jol-marketplace/backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    logging: *default-logging
+    env_file:
+      - .env.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: project.settings.production
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+    command: celery -A project worker --loglevel=INFO
+    networks: [backend]
+    # No HTTP listener in a celery process — the image's /healthz probe can
+    # never pass here; liveness is restart-policy + log-gated instead.
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  beat:
+    build:
+      context: ./backend
+      target: runtime
+    image: jol-marketplace/backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    logging: *default-logging
+    env_file:
+      - .env.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: project.settings.production
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+    command: >
+      celery -A project beat --loglevel=INFO
+      --schedule=/tmp/celerybeat-schedule --pidfile=/tmp/celerybeat.pid
+    networks: [backend]
+    # Same as worker: no HTTP listener, image probe can never pass.
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      # Rendered into nginx.prod.conf by the entrypoint envsubst pass.
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env.prod}
+      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:?set BACKEND_UPSTREAM in .env.prod}
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/templates/nginx.conf.template:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      # Let's Encrypt HTTP-01 webroot (certbot runs on the VM host).
+      - ./certbot-webroot:/var/www/certbot
+      - ./logs/nginx:/var/log/nginx
+    networks: [frontend]
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  postgres:
+    # Same PostGIS+pgvector image as the dev stack (backend/db/Dockerfile):
+    # migrations require postgis, and the entrypoint init creates the
+    # extensions as superuser on first init. Stock postgres:16-alpine lacks
+    # them — verified by boot smoke (NotSupportedError on migrate).
+    build: ./backend/db
+    image: jol-marketplace/postgres:16-postgis
+    restart: unless-stopped
+    logging: *default-logging
+    env_file:
+      - .env.prod
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-jol_marketplace}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env.prod}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jol} -d ${POSTGRES_DB:-jol_marketplace}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redisdata:/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  elasticsearch:
+    # search_app backend. xpack security stays DISABLED: the `data` network
+    # is internal-only and the VM sits behind the Proxmox firewall. 9200 is
+    # never published. Single-node per the self-hosted topology.
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.5
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+      cluster.name: jol-marketplace
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    networks: [backend]
+    healthcheck:
+      # The ES 8.15 image ships curl but NOT wget (verified: healthcheck
+      # log "wget: command not found" while curl probes succeeded).
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 40s
+
+  # --- OPTIONAL: self-hosted Plausible analytics -----------------------------
+  # Uncomment once consent infra v2 routes analytics here (GAP-free field
+  # data for web-vitals). Requires plausible_db + clickhouse; see
+  # https://plausible.io/docs/self-hosting. Kept commented so `up -d`
+  # never starts an unconfigured analytics stack.
+  #
+  # plausible:
+  #   image: ghcr.io/plausible/community-edition:latest
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env.prod
+  #   command: server
+  #   depends_on:
+  #     - plausible_db
+  #   networks: [backend, data]
+  # plausible_db:
+  #   image: postgres:16-alpine
+  #   restart: unless-stopped
+  #   volumes:
+  #     - plausibledata:/var/lib/postgresql/data
+  #   networks: [data]
+
+networks:
+  frontend:
+  backend:
+    internal: true # no external routes into the app/data tier
+
+volumes:
+  pgdata:
+  redisdata:
+  esdata:
+  # plausibledata:

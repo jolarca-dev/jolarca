@@ -13,7 +13,7 @@ Companion documents:
 - [DEPLOYMENT.md](./DEPLOYMENT.md) — first-boot + release procedure.
 
 All commands assume the repo checkout directory on the VM
-(`/opt/jol-m/repos/jol-m-marketplace`) as working directory.
+(`/opt/jol-m/repos/jolarca`) as working directory.
 
 ---
 
@@ -178,12 +178,12 @@ containerized because the host has no certbot binary; it also copies the
 renewed cert into `./ssl/` before reloading nginx):
 
 ```cron
-*/5 * * * * cd /opt/jol-m/repos/jol-m-marketplace && scripts/health-check.sh >/dev/null 2>>logs/cron.log
-*/15 * * * * cd /opt/jol-m/repos/jol-m-marketplace && scripts/monitoring.sh >/dev/null 2>>logs/cron.log
-30 2 * * * cd /opt/jol-m/repos/jol-m-marketplace && scripts/log-rotate.sh >>logs/cron.log 2>&1
-0 3 * * * cd /opt/jol-m/repos/jol-m-marketplace && scripts/backup.sh >>logs/cron.log 2>&1
-0 4 1 * * cd /opt/jol-m/repos/jol-m-marketplace && VERIFY_RESTORE=1 scripts/backup.sh >>logs/cron.log 2>&1
-15 3,15 * * * cd /opt/jol-m/repos/jol-m-marketplace && docker run --rm -v $PWD/certbot-webroot:/var/www/certbot -v $PWD/certbot-webroot/conf:/etc/letsencrypt -v $PWD/certbot-webroot/logs:/var/log/letsencrypt certbot/certbot renew --webroot -w /var/www/certbot --quiet && cp -L certbot-webroot/conf/live/marketplace.gyvenimo-kelias.lt/fullchain.pem ssl/fullchain.pem && cp -L certbot-webroot/conf/live/marketplace.gyvenimo-kelias.lt/privkey.pem ssl/privkey.pem && docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T nginx nginx -s reload
+*/5 * * * * cd /opt/jol-m/repos/jolarca && scripts/health-check.sh >/dev/null 2>>logs/cron.log
+*/15 * * * * cd /opt/jol-m/repos/jolarca && scripts/monitoring.sh >/dev/null 2>>logs/cron.log
+30 2 * * * cd /opt/jol-m/repos/jolarca && scripts/log-rotate.sh >>logs/cron.log 2>&1
+0 3 * * * cd /opt/jol-m/repos/jolarca && scripts/backup.sh >>logs/cron.log 2>&1
+0 4 1 * * cd /opt/jol-m/repos/jolarca && VERIFY_RESTORE=1 scripts/backup.sh >>logs/cron.log 2>&1
+15 3,15 * * * cd /opt/jol-m/repos/jolarca && docker run --rm -v $PWD/certbot-webroot:/var/www/certbot -v $PWD/certbot-webroot/conf:/etc/letsencrypt -v $PWD/certbot-webroot/logs:/var/log/letsencrypt certbot/certbot renew --webroot -w /var/www/certbot --quiet && cp -L certbot-webroot/conf/live/marketplace.gyvenimo-kelias.lt/fullchain.pem ssl/fullchain.pem && cp -L certbot-webroot/conf/live/marketplace.gyvenimo-kelias.lt/privkey.pem ssl/privkey.pem && docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T nginx nginx -s reload
 ```
 
 ---
@@ -214,7 +214,7 @@ risk, it is P1. Everything that merely looks broken is P2 or P3.
 | ---- | ----- |
 | Server | Proxmox guest VM, public IP `188.69.147.82` |
 | Domain | `marketplace.gyvenimo-kelias.lt` |
-| Repo checkout | `/opt/jol-m/repos/jol-m-marketplace` |
+| Repo checkout | `/opt/jol-m/repos/jolarca` |
 | TLS certificate | **bootstrap self-signed** (`issuer CN = domain`), expires **2026-11-20 15:40 UTC**. NOT Let's Encrypt yet — see Known issues. Once inbound 80/443 are open, issue the real cert with `bash scripts/tls-issue.sh` (renewal cron already installed). |
 | Django superuser | username `jol_ops`, email **ops@gyvenimo-kelias.lt** (password is in Vaultwarden, never in this doc) |
 | Stripe account ID | **PENDING — fill from Stripe Dashboard → Developers**. Never recorded on the VM. `.env.prod` `STRIPE_CONNECT_CLIENT_ID` is also still empty. |
