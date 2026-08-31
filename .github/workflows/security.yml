@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:   # manual re-run (e.g. verifying infra/billing recovery)
   schedule:
     # Weekly full-scan regardless of new commits (ISO 27001 A.8.16 monitoring).
     - cron: "30 4 * * 1"
