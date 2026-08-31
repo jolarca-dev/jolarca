@@ -27,7 +27,9 @@ class AuditLog(UUIDModel):
         indexes = [models.Index(fields=["action", "created_at"])]
 
     def save(self, *args, **kwargs):
-        if self.pk is not None:
+        # UUID defaults are assigned at instantiation, so pk is ALWAYS set —
+        # _state.adding is the correct insert-vs-update discriminator.
+        if not self._state.adding:
             raise ValueError("AuditLog is append-only; updates are forbidden.")
         super().save(*args, **kwargs)
 

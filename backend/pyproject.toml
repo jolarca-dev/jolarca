@@ -81,6 +81,14 @@ exclude = ["migrations"]
 [tool.django-stubs]
 django_settings_module = "project.settings.dev"
 
+# django-stubs cannot resolve managers on models that modeltranslation
+# mutates at runtime (fields are injected during django.setup(), after the
+# plugin snapshots manager types). Runtime behavior is contract-tested;
+# scoped narrowly so genuine manager errors elsewhere still surface.
+[[tool.mypy.overrides]]
+module = ["apps.products_app.models", "apps.sellers_app.models"]
+disable_error_code = ["django-manager-missing"]
+
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "project.settings.test"
 pythonpath = ["."]

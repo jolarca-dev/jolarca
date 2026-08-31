@@ -7,6 +7,7 @@ Decision order at checkout:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -73,6 +74,31 @@ def reverse_charge_check(*, seller_vat: str, buyer_vat: str) -> bool:
     if seller_vat[:2] == buyer_vat[:2]:
         return False  # domestic: reverse charge does not apply
     raise NotImplementedError("MVP-T3: VIES-evidenced reverse charge not yet wired")
+
+
+# Baltic VAT ID formats (EU VIES structure, national digit rules):
+# LT — 9 digits (legal persons) or 12 digits (temporarily registered);
+# LV — 11 digits; EE — 9 digits. Country prefix mandatory.
+VAT_ID_PATTERNS = {
+    "LT": re.compile(r"^LT(\d{9}|\d{12})$"),
+    "LV": re.compile(r"^LV\d{11}$"),
+    "EE": re.compile(r"^EE\d{9}$"),
+}
+
+
+def vat_id_format_valid(vat_id: str) -> tuple[bool, str]:
+    """Format-check a VAT ID. Returns (valid, country_prefix).
+
+    FORMAT ONLY — a live VIES confirmation is NOT performed (the VIES
+    gateway is unwired, MVP-T3); callers must treat the result as
+    "structurally plausible", never as "VIES-verified".
+    """
+    normalized = re.sub(r"[\s.-]", "", vat_id or "").upper()
+    prefix = normalized[:2]
+    pattern = VAT_ID_PATTERNS.get(prefix)
+    if pattern is None or not pattern.match(normalized):
+        return False, prefix
+    return True, prefix
 
 
 def issue_invoice(order) -> str:

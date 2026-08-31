@@ -1,7 +1,7 @@
 """Contract tests for the internal payment API — Model A (ADR-0005).
 
 These tests are the CONSUMER-DRIVEN CONTRACT SUITE for
-jol-m-infrastructure/docs/payment-api-contract.md. Written FIRST (Step 20):
+jolarca-infrastructure/docs/payment-api-contract.md. Written FIRST (Step 20):
 they fail until the boundary implements /internal/v1. They run against the
 live local boundary (docker compose test stack: real Postgres + Redis).
 

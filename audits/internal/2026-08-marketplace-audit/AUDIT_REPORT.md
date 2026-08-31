@@ -1,7 +1,7 @@
 # jol-marketplace — Independent Audit Report (2026-08)
 
 **Audit ID:** 2026-08-marketplace-audit · **Date:** 2026-08-15 · **Auditor:** independent audit team (Principal App Auditor / Sr. Payments Engineer / Lead Security Engineer / GDPR Auditor)
-**Object:** local repository `jol-m-marketplace` (canonical public name: `jol-marketplace`), AGPL-3.0, Django/DRF backend + Next.js frontend
+**Object:** local repository `jolarca` (canonical public name: `jol-marketplace`), AGPL-3.0, Django/DRF backend + Next.js frontend
 **Governing specs:** Master Prompt v2.0 (quality gates §9, stub policy §10), Repository Strategy & Build Plan (file tree §2, build order)
 **Repo state at audit:** branch `main`, **zero commits** (all files untracked/staged only).
 
@@ -76,7 +76,7 @@ four CI gates fail, and three critical-path code paths crash on their happy path
 - `payments_app` is the **only** Stripe importer — verified by grep across `backend/` (zero hits outside). ✔
 - Cross-app violations found: `payments_app/tasks.py:56` imports `apps.sellers_app.models` directly (ADR-0001 rule 2 breach) — AUD-25.
 - `LICENSE`: intact AGPL-3.0 (header + full text, 34,523 bytes). ✔
-- `README.md`: vision/architecture content present and consistent; **H1 is the non-canonical name `jol-m-marketplace`** — AUD-26.
+- `README.md`: vision/architecture content present and consistent; **H1 is the non-canonical name `jolarca`** — AUD-26.
 
 **Dimension A verdict: PASS-WITH-FINDINGS.**
 
@@ -269,10 +269,10 @@ Every `NotImplementedError` carries an MVP ticket id and raises loudly, consiste
 - `ASSUMPTIONS.md` covers stack substitutions incl. A-04 (Fernet vs pgcrypto), A-07 (deploy target UNDECIDED — deploy workflows `exit 1` loudly, verified) ✔.
 - **CONTRIBUTING drift:** gate #3 says "coverage ≥80% on changed lines", CI enforces total ≥80%; `npm ci` instructions cannot work (no lockfile) → AUD-32.
 - **CODEOWNERS:** handles `@jol-infrastructure/{payments,compliance,platform}-owners` — the public org is JourneyOfLife; teams unverifiable and likely nonexistent → branch protection would silently fall open. **CRITICAL pre-push** → AUD-33 (replacement table in checklist).
-- **Naming:** repo dir + README H1 + CONTRIBUTING clone path say `jol-m-marketplace`; canonical public repo is `jol-marketplace` (JourneyOfLife). Internal names are mostly canonical (pyproject, compose project names, package.json) → AUD-26 with rename runbook in checklist.
+- **Naming:** repo dir + README H1 + CONTRIBUTING clone path say `jolarca`; canonical public repo is `jol-marketplace` (JourneyOfLife). Internal names are mostly canonical (pyproject, compose project names, package.json) → AUD-26 with rename runbook in checklist.
 - Public-repo readiness: issue templates ✔, SECURITY.md with private disclosure ✔, `.example`-domain contacts only, no internal hostnames/IPs/personnel emails (grep verified; `.venv` hits are third-party vendored files, gitignored) ✔.
 - Version drift vs audit object spec: Django **5.2** (spec: 4.2), Next **15** (spec: 14), React 19. No ADR records the deviation → AUD-34.
-- Repo hygiene: `.idea/*` staged (incl. `jol-m-marketplace.iml`), `workspace.xml` correctly gitignored; `.pytest_cache` present but gitignored → AUD-35.
+- Repo hygiene: `.idea/*` staged (incl. `jolarca.iml`), `workspace.xml` correctly gitignored; `.pytest_cache` present but gitignored → AUD-35.
 
 **Dimension H verdict: PASS-WITH-FINDINGS.**
 
@@ -307,7 +307,7 @@ Every `NotImplementedError` carries an MVP ticket id and raises loudly, consiste
 | AUD-23 | F/G | **HIGH** | `products_app/translations.py` + migrations | Claim (ADR-0003): modeltranslation for catalog. Evidence: `hasattr(ProductListing,'title_lt') == False`; no translated columns in migrations; `save(update_fields=['title_lt'])` would raise | Fix registration timing/migrations (makemigrations after registration loads); add test asserting translated columns exist | backend |
 | AUD-24 | C | **MEDIUM** | `search_app/backends/opensearch.py` | Unlisted stub ("Phase 2", no MVP id) | Add to MVP_REMAINING_WORK or implement | search |
 | AUD-25 | A/H | **MEDIUM** | `payments_app/tasks.py:56` | ADR-0001: cross-app via services only. Evidence: direct `sellers_app.models` import | Route through `sellers_app.services` | payments |
-| AUD-26 | H | **MEDIUM** | README H1, repo dir, CONTRIBUTING | Canonical name `jol-marketplace`; actual `jol-m-marketplace` | See rename runbook in PRE_PUSH_CHECKLIST | infra |
+| AUD-26 | H | **MEDIUM** | README H1, repo dir, CONTRIBUTING | Canonical name `jol-marketplace`; actual `jolarca` | See rename runbook in PRE_PUSH_CHECKLIST | infra |
 | AUD-27 | F | **MEDIUM** | `compliance_app/services.py:42` | Erasure deletes ConsentRecord rows; receipt stores only counts → consent evidence lost | Retain hashed consent evidence or snapshot into receipt per RoPA decision | compliance |
 | AUD-28 | G | **MEDIUM** | `[locale]/layout.tsx` metadata | Gate #6 zero hardcoded strings: title/description hardcoded English | Localize metadata per locale | frontend |
 | AUD-29 | G/H | **MEDIUM** | `frontend/src/lib/api/`, `ci.yml` frontend job | README invariant #4: generated client as CI artifact. Evidence: no client, no CI generation step | Add `npm run generate:api` to CI + wire client into pages | frontend |
@@ -316,7 +316,7 @@ Every `NotImplementedError` carries an MVP ticket id and raises loudly, consiste
 | AUD-32 | H | **LOW** | CONTRIBUTING vs ci.yml | "≥80% on changed lines" vs total coverage; `npm ci` docs | Align docs with CI | docs |
 | AUD-33 | H | **CRITICAL (pre-push)** | `.github/CODEOWNERS` | Placeholder-ish org handles `@jol-infrastructure/*-owners`; public org is JourneyOfLife; unverified teams = protection silently open | Replacement table in PRE_PUSH_CHECKLIST; verify teams exist before enabling protection | infra |
 | AUD-34 | A/H | **MEDIUM** | `pyproject.toml`, `package.json` | Spec says Django 4.2 / Next 14; actual Django 5.2.17 / Next 15.5 with no ADR | Record substitution ADR or pin to spec | leads |
-| AUD-35 | H | **LOW** | `.idea/*` staged | IDE metadata incl. `jol-m-marketplace.iml` staged for a public repo | Ignore `.idea/` wholesale; unstage | infra |
+| AUD-35 | H | **LOW** | `.idea/*` staged | IDE metadata incl. `jolarca.iml` staged for a public repo | Ignore `.idea/` wholesale; unstage | infra |
 | AUD-36 | E | **MEDIUM** | `payments_app/webhooks.py:54-68` | `processed_at` set at dispatch (not completion); concurrent duplicate events both pass `is_processed` check before either saves | Set a processing claim atomically (select_for_update/unique state) and mark completion from the task | payments |
 | AUD-37 | E | **MEDIUM** | `orders_app/services.py:24-28` | `_next_order_number` = `count()+1` — concurrent checkouts collide (unique constraint then 500) | DB sequence or retry-on-IntegrityError | orders |
 | AUD-38 | F/D | **MEDIUM** | gdpr_middleware | Audit acceptance: consent enforced server-side + fail-closed when missing. Evidence: middleware implements halt-switch + correlation only; consent never consulted anywhere | Define consent gate for non-essential processing (or document legal basis per purpose in an ADR) | compliance |

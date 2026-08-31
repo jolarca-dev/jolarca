@@ -1,6 +1,6 @@
 # STEP 20 — EXECUTED: /internal/v1 live locally + contract suite green (B3, C4, C5, RSK-010)
 
-- **Date:** 2026-08-17 · **Repo:** jol-m-marketplace · **Branch:** `step-20-internal-payment-api` → PR #18
+- **Date:** 2026-08-17 · **Repo:** jolarca · **Branch:** `step-20-internal-payment-api` → PR #18
 - **Risk class:** High (payment scope) · **Stripe mode:** TEST/stub (sanctioned stub when no key; no live PSP calls)
 - **Sequence role:** third of 18 → 19 → 20 → 21; STEP 18 (`89c4812d`) and STEP 19 (`85d51489`) merged first.
 - **NOT a verdict.** Independent re-audit (Step 22b) judges PROVEN/NOT-PROVEN.

@@ -1,7 +1,7 @@
 """Internal payment API — /internal/v1 (Model A, ADR-0005).
 
 Sole cross-program interface of the fleet (ADR-0004 Amendment 1).
-Contract: jol-m-infrastructure/docs/payment-api-contract.md.
+Contract: jolarca-infrastructure/docs/payment-api-contract.md.
 
 Design rules enforced here:
 - HMAC caller auth + server-side caller<->product binding (§4.2/§4.4)

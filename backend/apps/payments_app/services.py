@@ -30,10 +30,13 @@ def _stripe():
 
 
 def create_payment_intent(order) -> str:
-    """Create a PaymentIntent for the order gross amount. Returns client-secret-less id.
+    """Create a PaymentIntent for the order gross amount.
 
-    Split payouts: transfer_data.destination is set per-seller in the
-    multi-seller order flow (MVP pays single-seller orders first — MVP-Y1).
+    Returns the CLIENT SECRET: the embedded Payment Element (SAQ-A) needs
+    it browser-side, and it never grants any power beyond confirming this
+    one intent. Split payouts: transfer_data.destination is set per-seller
+    in the multi-seller order flow (MVP pays single-seller orders first —
+    MVP-Y1).
     """
     stripe = _stripe()
     intent = stripe.PaymentIntent.create(
@@ -54,7 +57,20 @@ def create_payment_intent(order) -> str:
         },
     )
     audit.info("payment_intent_created", order_id=str(order.pk), intent=intent["id"])
-    return intent["id"]
+    return intent["client_secret"]
+
+
+def client_secret_for_order(order) -> str | None:
+    """Re-fetch the client secret for an order's existing PaymentIntent
+    (idempotent replays of order creation). None when payments are off."""
+    from .models import PaymentRecord
+
+    record = PaymentRecord.objects.filter(order=order).first()
+    if record is None or not record.payment_intent_id:
+        return None
+    stripe = _stripe()
+    intent = stripe.PaymentIntent.retrieve(record.payment_intent_id)
+    return intent["client_secret"]
 
 
 def connect_onboarding(seller_profile) -> str:

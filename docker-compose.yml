@@ -1,0 +1,116 @@
+# JOL Marketplace — self-hosted production topology (Proxmox 9.2 VM).
+#
+# Tiered network isolation:
+#   edge  — public ingress (nginx only publishes ports)
+#   web   — nginx ⇄ Next.js app (internal, no published ports)
+#   data  — PostgreSQL / Redis / Elasticsearch (internal only)
+#
+# The Django backend lives in docker-compose.dev.yml (dev) / its own
+# production deployment; nginx reaches it via BACKEND_UPSTREAM (envsubst).
+# Secrets come from .env (never committed; see frontend/.env.example).
+
+name: jol-marketplace
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-80}:8080"
+    environment:
+      # Rendered into nginx.conf by the entrypoint envsubst pass.
+      # 8010 = BACKEND_PORT of docker-compose.dev.yml (offset from 8000 so the
+      # JOL Church platform can run concurrently on the same host).
+      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-http://host.docker.internal:8010}
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/templates/nginx.conf.template:ro
+    networks: [edge, web]
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  app:
+    build:
+      context: ./frontend
+      target: runner
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      # Browser-reachable API origin (injected into the client bundle at build
+      # time; override here only for runtime config consumers).
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8010}
+    expose:
+      - "3000"
+    networks: [web]
+    # Never directly reachable: no published ports; only nginx on `web`.
+
+  # --- Data tier (dev parity; production uses managed/external services) ----
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-jol_marketplace}
+      POSTGRES_USER: ${POSTGRES_USER:-jol}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jol} -d ${POSTGRES_DB:-jol_marketplace}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redisdata:/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  elasticsearch:
+    # Dev parity for search_app. Production note: xpack security is DISABLED
+    # here — acceptable only because the `data` network is internal and the
+    # VM sits behind the Proxmox firewall. Never publish 9200.
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.5
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+      cluster.name: jol-marketplace
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 40s
+
+networks:
+  edge:
+  web:
+    internal: true   # no external routes into the app tier
+  data:
+    internal: true   # no external routes into the data tier
+
+volumes:
+  pgdata:
+  redisdata:
+  esdata:

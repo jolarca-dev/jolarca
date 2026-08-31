@@ -86,7 +86,7 @@ class InternalPaymentIntent(UUIDModel, TimeStampedModel):
     finalized_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        indexes = [models.Index(fields=["product", "status"])]
+        indexes = [models.Index(fields=["product", "status"], name="payments_pr_product_idx")]
 
     def __str__(self) -> str:
         return f"{self.pk} [{self.product}/{self.status}]"

@@ -43,6 +43,10 @@ class SellerProfile(UUIDModel, TimeStampedModel):
     submitted_at = models.DateTimeField(null=True, blank=True)
     verified_at = models.DateTimeField(null=True, blank=True)
     rejection_reason = models.TextField(blank=True, default="")
+    # Public storefront content (GAP-V05). Plain text, escaped server-side
+    # before rendering; never PII (contact details stay private).
+    public_description = models.TextField(blank=True, default="")
+    city = models.CharField(max_length=80, blank=True, default="")
     # Storage KEYS of uploaded KYC documents (files live in private S3);
     # never store document content in the database.
     docs_meta = models.JSONField(default=dict, blank=True)

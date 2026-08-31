@@ -26,15 +26,21 @@ staticfiles/
 .env
 .env.*
 !.env.example
+!.env.prod.example
 *.pem
 *.key
 service-account*.json
 
+# --- Runtime artifacts (TLS bootstrap, edge logs) ---
+certbot-webroot/
+logs/
+ssl/
+
 # --- Node / Next.js ---
 node_modules/
 .next/
+.next-dev/
 out/
-frontend/src/lib/api/generated/
 playwright-report/
 test-results/
 
@@ -48,3 +54,19 @@ minio-data/
 .vscode/
 .DS_Store
 frontend/tsconfig.tsbuildinfo
+
+# --- Triage class-(b) dispositions (hub report 7894ba53) ---
+.state/
+frontend/coverage/
+backups/
+
+# Standing rule D-028 (2026-08-27): no transcript exports into any repo
+*qoder-history*/
+
+# Env posture (c) per D-029/D-030 (2026-08-27): Vaultwarden-only + env injection;
+# templates only in git — real values never on disk.
+.env
+.env.*
+!.env.example
+!.env.prod.example
+!frontend/.env.example

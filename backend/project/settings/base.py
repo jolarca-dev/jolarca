@@ -28,7 +28,9 @@ ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", default=("localhost", "127.0.0.
 # Applications
 # --------------------------------------------------------------------------
 INSTALLED_APPS = [
-    "django.contrib.admin",
+    # Custom AdminConfig: registers modeltranslation fields before admin
+    # autodiscovery (TranslationAdmin requires registered models).
+    "project.admin_apps.JOLAdminConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -171,12 +173,34 @@ SPECTACULAR_SETTINGS = {
 
 CORS_ALLOWED_ORIGINS = env_list("DJANGO_CORS_ORIGINS", default=("http://localhost:3000",))
 CORS_ALLOW_CREDENTIALS = True
+# The money path sends Idempotency-Key cross-origin; without it here the
+# browser blocks the order-creation POST at preflight (never reaches Django).
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-language",
+    "content-language",
+    "content-type",
+    "authorization",
+    "idempotency-key",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
 
 # --------------------------------------------------------------------------
 # Security defaults (hardened further in production.py)
 # --------------------------------------------------------------------------
+# Cookie names align with the frontend auth gate (src/i18n/config.ts).
+# Production upgrades both to the __Host- prefix (see production.py).
+SESSION_COOKIE_NAME = "jol_session"
+CSRF_COOKIE_NAME = "jol_csrf"
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_PATH = "/"
+CSRF_COOKIE_PATH = "/"
+# NOTE: the CSRF cookie must stay JS-readable (double-submit pattern) —
+# the HttpOnly exception is documented in docs/SECURITY.md; the token
+# itself is what protects mutations.
+SESSION_COOKIE_SAMESITE = "Lax"  # dev-friendly; production hardens to Strict
 CSRF_COOKIE_SAMESITE = "Lax"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"

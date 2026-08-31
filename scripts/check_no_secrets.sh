@@ -15,16 +15,21 @@ PATTERNS=(
   'xox[baprs]-[A-Za-z0-9-]{10,}'       # Slack tokens
 )
 
-# .env.example is the documented template; LICENSE is legal text.
+# .env.example / .env.prod.example are documented templates; LICENSE is legal text.
 EXCLUDES=(--exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.next
-          --exclude-dir=.venv --exclude=.env.example --exclude=LICENSE
+          --exclude-dir=.venv --exclude=.env.example --exclude=.env.prod.example
+          --exclude=LICENSE
           --exclude=check_no_secrets.sh)
 
 FOUND=0
 for pattern in "${PATTERNS[@]}"; do
   # -e: patterns may begin with '-' (e.g. PEM headers) and must not be
-  # interpreted as options — a silently-skipped pattern is a false clean.
-  if grep -rInE "${EXCLUDES[@]}" -e "$pattern" . ; then
+  # interpreted as options. CRITICAL: grep exits 2 on any read error (e.g. a
+  # permission-denied directory) even when it FOUND matches — keying the
+  # verdict on grep's exit code therefore produced false "clean" verdicts.
+  # Decide on OUTPUT, never on exit status; suppress stderr noise only.
+  if matches="$(grep -rInE "${EXCLUDES[@]}" -e "$pattern" . 2>/dev/null)"; [ -n "$matches" ]; then
+    printf '%s\n' "$matches"
     echo "^^^ potential secret matched: ${pattern}" >&2
     FOUND=1
   fi

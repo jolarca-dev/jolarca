@@ -53,7 +53,12 @@ jobs:
           name: coverage
           path: backend/coverage.xml
 
-  frontend:
+  # ===========================================================================
+  # Frontend pipeline — jobs 1–3 + 7 run in parallel (fail fast); 4 gates
+  # the runtime-dependent jobs 5–6; .next passes as an artifact.
+  # ===========================================================================
+
+  frontend-typecheck:
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -66,14 +71,170 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - name: Typecheck
-        run: npx tsc --noEmit
-      - name: Build
-        run: npm run build
-      - name: E2E (Playwright checkout journey)
+      - name: Typecheck (tsc --noEmit)
+        run: npx tsc --noEmit || (echo "::error::Type errors — fix before merge" && exit 1)
+
+  frontend-lint:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: ESLint
+        run: npm run lint || (echo "::error::Lint errors — run 'npm run lint' locally" && exit 1)
+      - name: Prettier check
+        run: npm run format:check || (echo "::error::Formatting drift — run 'npx prettier --write .'" && exit 1)
+
+  frontend-unit:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Unit tests (Vitest, 80% coverage gate)
+        run: npm run test:coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+
+  # Independent of the build chain — contract lockstep with the backend.
+  # Final frontend gate: fails any PR where src/generated/api.ts is stale.
+  frontend-openapi-drift:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: API contract drift check (final gate)
         run: |
-          npx playwright install --with-deps chromium
-          npx playwright test
+          npm run api:drift || \
+            (echo "::error::Generated API types stale — run 'npm run generate:api' and commit" && exit 1)
+
+  frontend-build:
+    needs: [frontend-typecheck, frontend-lint, frontend-unit]
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Next.js production build (fail on warning)
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee build.log || \
+            (echo "::error::Build failed — see log above" && exit 1)
+          if grep -qiE "compiled with warnings|type error" build.log; then
+            echo "::error::Build produced warnings — treat warnings as errors (see build.log)"
+            exit 1
+          fi
+      - name: Standalone server CSS verification
+        run: node scripts/verify-standalone.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/.next
+          retention-days: 1
+
+  frontend-lighthouse:
+    needs: frontend-build
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/.next
+      - name: Lighthouse CI (LCP<2000ms, CLS<0.1, TBT<200ms)
+        run: |
+          npx -y @lhci/cli@0.14.x autorun --config=lighthouserc.js || \
+            (echo "::error::Performance budget breached — report in frontend/.lighthouseci" && exit 1)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-reports
+          path: frontend/.lighthouseci
+
+  frontend-playwright-smoke:
+    needs: frontend-build
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/.next
+      - name: Install browsers
+        # chromium (desktop + Pixel 7) and webkit (iPhone 14) per
+        # playwright.config.ts projects.
+        run: npx playwright install --with-deps chromium webkit
+      - name: Start production server
+        run: |
+          npm run start > server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:3000/en > /dev/null 2>&1 && break
+            sleep 1
+          done
+          curl -fs http://localhost:3000/en > /dev/null || \
+            (echo "::error::Server failed to start — see server.log"; cat server.log; exit 1)
+      - name: Smoke tests (all locales render)
+        # This job has no backend stack — journey/accessibility/GDPR
+        # suites run against the Docker Compose stack (e2e/README note in
+        # the config header). Keep CI pinned to the backend-free smoke.
+        run: npx playwright test smoke.spec.ts
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-smoke
+          path: frontend/playwright-report
+          if-no-files-found: ignore
 
   secrets:
     runs-on: ubuntu-24.04

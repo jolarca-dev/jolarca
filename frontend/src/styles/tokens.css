@@ -1,0 +1,241 @@
+/**
+ * JOL Marketplace design tokens — "sacred-modern" (ADR-0009).
+ *
+ * Single source of truth for the design system. Tailwind CSS v4 CSS-first
+ * configuration: there is deliberately NO tailwind.config.ts (tokens would
+ * duplicate and drift). Runtime theming works because `@theme inline`
+ * compiles utilities to var(--tok-*) references; `.theme-funeral` overrides
+ * the raw variables when applied to <html> or <body>.
+ *
+ * Accessibility floor: WCAG 2.2 AA (4.5:1) for all text colors on their
+ * intended surfaces; 18px base type; no pure black anywhere.
+ * RTL-readiness: components may only use CSS logical properties.
+ */
+
+/* ---------------------------------------------------------------------------
+ * 1. Raw tokens — runtime-overridable layer
+ * ------------------------------------------------------------------------- */
+/* Font-family variables are injected by next/font on <html> (self-hosted
+   glyphs). Zero-specificity defaults so the injected values always win;
+   these only cover a missing-class edge case. */
+:where(:root) {
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-body: "Inter", system-ui, sans-serif;
+}
+
+:root {
+  /* --- Brand ------------------------------------------------------------ */
+  /* Deep forest green — primary action + headings. 9.8:1 on stone. */
+  --tok-primary: #1b4332;
+  --tok-primary-deep: #12332a;
+  --tok-primary-soft: #e3ebe6; /* tinted surfaces, selected states */
+
+  /* Warm stone — page background. */
+  --tok-surface: #f5f1eb;
+  --tok-surface-raised: #fdfcfa; /* cards, panels, inputs */
+
+  /* Aged gold — decorative accents ONLY (2.0:1 on stone; never body text).
+     Use gold-ink (5.1:1) whenever gold must carry meaning as text. */
+  --tok-gold: #c9a96e;
+  --tok-gold-soft: #f0e8d8;
+  --tok-gold-ink: #7a6237;
+
+  /* --- Ink --------------------------------------------------------------- */
+  /* Warm charcoal (never #000). */
+  --tok-ink: #1a1a1a;
+  --tok-ink-muted: #5c574e; /* 6.3:1 on stone */
+  --tok-ink-faint: #6f6a60; /* captions; ≥4.5:1 on surface and raised */
+
+  /* --- Lines & elevation -------------------------------------------------- */
+  --tok-line: #e7e0d5; /* stone-200: 1px borders preferred over shadows */
+  --tok-line-strong: #d5ccbd;
+
+  /* --- Semantic (all >= 4.5:1 on --tok-surface) --------------------------- */
+  --tok-success: #245c3b; /* 6.9:1 */
+  --tok-success-soft: #e2eee5;
+  --tok-warning: #8a5a18; /* 5.3:1 */
+  --tok-warning-soft: #f4ead7;
+  --tok-danger: #9b2c2c; /* 6.7:1 */
+  --tok-danger-soft: #f5e2e2;
+  --tok-info: #1f4e79; /* 7.7:1 */
+  --tok-info-soft: #e1eaf3;
+
+  /* --- Typography ---------------------------------------------------------- */
+  /* 1.25 ratio (major third), base 18px, H1 capped at 3.052rem.
+     Font families resolve from next/font variables (layout.tsx) so glyphs
+     are self-hosted — no runtime requests to third parties (GDPR). */
+  --tok-font-display: var(--font-display), "Cormorant Garamond", Georgia, serif;
+  --tok-font-body: var(--font-body), "Inter", system-ui, sans-serif;
+
+  --tok-text-xs: 0.72rem; /* 12.96px — micro labels only, never body */
+  --tok-text-sm: 0.9rem; /* 16.2px */
+  --tok-text-base: 1.125rem; /* 18px — body floor (16px mobile minimum) */
+  --tok-text-lg: 1.406rem;
+  --tok-text-xl: 1.758rem;
+  --tok-text-2xl: 2.197rem;
+  --tok-text-3xl: 2.746rem;
+  --tok-text-4xl: 3.052rem; /* H1 ceiling */
+
+  --tok-leading: 1.6; /* body line-height */
+  --tok-leading-tight: 1.2; /* headings */
+
+  /* --- Spacing: 8px grid (use even Tailwind steps) + macro whitespace ----- */
+  --tok-space-section-sm: 5rem; /* 80px */
+  --tok-space-section: 6rem; /* 96px */
+  --tok-space-section-lg: 7.5rem; /* 120px */
+
+  /* --- Elevation: warm-tinted, subtle; borders preferred ------------------ */
+  --tok-shadow-sm:
+    0 1px 2px rgb(26 26 26 / 0.04), 0 1px 3px rgb(27 67 50 / 0.05);
+  --tok-shadow-md:
+    0 2px 4px rgb(26 26 26 / 0.04), 0 4px 12px rgb(27 67 50 / 0.07);
+  --tok-shadow-lg:
+    0 4px 8px rgb(26 26 26 / 0.05), 0 12px 32px rgb(27 67 50 / 0.09);
+
+  /* --- Motion: dignified only — no bounce, no spring ---------------------- */
+  --tok-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --tok-duration-micro: 200ms; /* hover, focus, toggles */
+  --tok-duration-page: 400ms; /* route/section transitions */
+}
+
+/* ---------------------------------------------------------------------------
+ * 2. Funeral variant — applied via class="theme-funeral" on <html>/<body>.
+ *    Muted, low-stimulation: slate over pewter, larger type (20px base),
+ *    more leading. No countdown/scarcity components may ever render here.
+ * ------------------------------------------------------------------------- */
+.theme-funeral {
+  /* Muted slate — 7.5:1 on pewter, 7.9:1 as button bg with raised text.
+     Kept at ≥7:1 everywhere it reads as text (AAA floor for this vertical). */
+  --tok-primary: #475061;
+  --tok-primary-deep: #3a4353;
+  --tok-primary-soft: #e6e9ee;
+
+  --tok-surface: #f4f6f8;
+  --tok-surface-raised: #fdfdfe;
+
+  --tok-gold: #a8a29a; /* desaturated for mourning context */
+  --tok-gold-soft: #eceae6;
+  --tok-gold-ink: #635f58; /* 5.4:1 on pewter */
+
+  --tok-ink: #26282c;
+  --tok-ink-muted: #4c5158; /* warm grey text — 7.4:1 on pewter */
+  --tok-ink-faint: #4f545c; /* raised from site default: ≥7:1 on raised/pewter (AAA) */
+
+  --tok-line: #e2e8f0; /* soft pewter borders */
+  --tok-line-strong: #cbd2dc;
+
+  --tok-success: #2f5d50;
+  --tok-success-soft: #e3ece9;
+  --tok-warning: #7d5a24;
+  --tok-warning-soft: #f0e9dc;
+  --tok-danger: #8f3a3a;
+  --tok-danger-soft: #f2e4e4;
+  --tok-info: #3d5a80;
+  --tok-info-soft: #e4eaf1;
+
+  --tok-text-base: 1.25rem; /* 20px base for bereaved readers */
+  --tok-leading: 1.7;
+
+  --tok-shadow-sm: 0 1px 2px rgb(38 40 44 / 0.04);
+  --tok-shadow-md:
+    0 2px 4px rgb(38 40 44 / 0.04), 0 4px 12px rgb(38 40 44 / 0.06);
+  --tok-shadow-lg:
+    0 4px 8px rgb(38 40 44 / 0.05), 0 12px 32px rgb(38 40 44 / 0.08);
+
+  /* Even calmer motion for the funeral vertical. */
+  --tok-duration-micro: 250ms;
+  --tok-duration-page: 500ms;
+}
+
+/* ---------------------------------------------------------------------------
+ * 3. Dark variant — applied via class="theme-dark" on <html>. Admin tools
+ *    opt in via the layout toggle (persisted to localStorage). Same AA
+ *    floor: all text tokens keep ≥ 4.5:1 on their intended surfaces; gold
+ *    stays decorative-only.
+ * ------------------------------------------------------------------------- */
+.theme-dark {
+  --tok-primary: #8fc7a8; /* 6.9:1 on charcoal; button bg carries dark text */
+  --tok-primary-deep: #b4dcc6;
+  --tok-primary-soft: #1e3a2d;
+
+  --tok-surface: #14120e; /* warm charcoal — never pure black */
+  --tok-surface-raised: #1f1c16;
+
+  --tok-gold: #c9a96e;
+  --tok-gold-soft: #2e2717;
+  --tok-gold-ink: #d6bd8d;
+
+  --tok-ink: #ece7de;
+  --tok-ink-muted: #b5aea1; /* 6.5:1 on charcoal */
+  --tok-ink-faint: #8d867a; /* captions on raised surfaces only */
+
+  --tok-line: #2f2a22;
+  --tok-line-strong: #453e32;
+
+  --tok-success: #82c29b; /* 6.6:1 on success-soft */
+  --tok-success-soft: #1c3327;
+  --tok-warning: #d9a55d;
+  --tok-warning-soft: #392c15;
+  --tok-danger: #e2908c;
+  --tok-danger-soft: #3d1f1e;
+  --tok-info: #93bcdf;
+  --tok-info-soft: #1b2d3d;
+
+  /* Deeper, warmer elevation for dark surfaces. */
+  --tok-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --tok-shadow-md: 0 2px 4px rgb(0 0 0 / 0.3), 0 4px 12px rgb(0 0 0 / 0.35);
+  --tok-shadow-lg: 0 4px 8px rgb(0 0 0 / 0.35), 0 12px 32px rgb(0 0 0 / 0.45);
+}
+
+/* ---------------------------------------------------------------------------
+ * 4. Tailwind v4 theme mapping — utilities compile to var(--tok-*) so the
+ *    funeral/dark overrides cascade at runtime. (inline = resolve at use site)
+ * ------------------------------------------------------------------------- */
+@theme inline {
+  /* Colors */
+  --color-primary: var(--tok-primary);
+  --color-primary-deep: var(--tok-primary-deep);
+  --color-primary-soft: var(--tok-primary-soft);
+  --color-surface: var(--tok-surface);
+  --color-surface-raised: var(--tok-surface-raised);
+  --color-gold: var(--tok-gold);
+  --color-gold-soft: var(--tok-gold-soft);
+  --color-gold-ink: var(--tok-gold-ink);
+  --color-ink: var(--tok-ink);
+  --color-ink-muted: var(--tok-ink-muted);
+  --color-ink-faint: var(--tok-ink-faint);
+  --color-line: var(--tok-line);
+  --color-line-strong: var(--tok-line-strong);
+  --color-success: var(--tok-success);
+  --color-success-soft: var(--tok-success-soft);
+  --color-warning: var(--tok-warning);
+  --color-warning-soft: var(--tok-warning-soft);
+  --color-danger: var(--tok-danger);
+  --color-danger-soft: var(--tok-danger-soft);
+  --color-info: var(--tok-info);
+  --color-info-soft: var(--tok-info-soft);
+
+  /* Fonts */
+  --font-display: var(--tok-font-display);
+  --font-sans: var(--tok-font-body);
+
+  /* Type scale (1.25 ratio, base 18px) */
+  --text-xs: var(--tok-text-xs);
+  --text-sm: var(--tok-text-sm);
+  --text-base: var(--tok-text-base);
+  --text-lg: var(--tok-text-lg);
+  --text-xl: var(--tok-text-xl);
+  --text-2xl: var(--tok-text-2xl);
+  --text-3xl: var(--tok-text-3xl);
+  --text-4xl: var(--tok-text-4xl);
+
+  /* Elevation */
+  --shadow-sm: var(--tok-shadow-sm);
+  --shadow-md: var(--tok-shadow-md);
+  --shadow-lg: var(--tok-shadow-lg);
+
+  /* Motion */
+  --ease-dignified: var(--tok-ease);
+  --duration-micro: var(--tok-duration-micro);
+  --duration-page: var(--tok-duration-page);
+}

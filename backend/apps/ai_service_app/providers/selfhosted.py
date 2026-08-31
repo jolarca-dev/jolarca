@@ -26,13 +26,16 @@ class SelfHostedProvider:
 
     def translate(self, text: str, *, source_lang: str, target_lang: str) -> str:
         started = time.monotonic()
+        base_url = settings.AI_SELFHOSTED_BASE_URL
+        if not base_url:
+            raise ProviderError("AI_SELFHOSTED_BASE_URL is not configured.")
         prompt = (
             f"Translate the following {source_lang} e-commerce listing text to {target_lang}. "
             f"Preserve formatting, output ONLY the translation.\n\n{text}"
         )
         try:
             resp = requests.post(
-                f"{settings.AI_SELFHOSTED_BASE_URL.rstrip('/')}/chat/completions",
+                f"{base_url.rstrip('/')}/chat/completions",
                 headers={"Authorization": f"Bearer {settings.AI_SELFHOSTED_API_KEY}"}
                 if settings.AI_SELFHOSTED_API_KEY
                 else {},

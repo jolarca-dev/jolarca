@@ -55,7 +55,14 @@ main() {
       return 0
     fi
   else
-    hosts=("localhost:5432" "localhost:6379" "localhost:9000" "localhost:8000")
+    # Dev mode: host-mapped ports of docker-compose.dev.yml. Defaults match
+    # .env (offset from 5432/6379/8000 so jol-hub can run concurrently).
+    hosts=(
+      "localhost:${POSTGRES_PORT:-5433}"
+      "localhost:${REDIS_HOST_PORT:-6380}"
+      "localhost:${MINIO_PORT:-9000}"
+      "localhost:${BACKEND_PORT:-8010}"
+    )
   fi
 
   for hp in "${hosts[@]}"; do

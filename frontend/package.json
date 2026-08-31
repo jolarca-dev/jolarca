@@ -7,26 +7,56 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "generate:api": "openapi-ts"
+    "generate:api": "tsx scripts/generate-api-client.ts",
+    "api:drift": "tsx scripts/check-api-drift.ts",
+    "analyze:bundle": "tsx scripts/bundle-analyze.ts"
+  },
+  "overrides": {
+    "postcss": "^8.5.26",
+    "sharp": "^0.35.0",
+    "jsdom": "^26.1.0"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^6.8.1",
+    "@stripe/stripe-js": "^9.13.0",
     "@tanstack/react-query": "^5.75.0",
+    "@tanstack/react-table": "^8.21.3",
+    "isomorphic-dompurify": "^3.22.0",
     "next": "^15.3.0",
     "next-intl": "^4.1.0",
+    "openapi-fetch": "^0.17.0",
+    "openapi-typescript": "^7.13.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "web-vitals": "^6.1.1",
     "zod": "^3.24.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
-    "@hey-api/openapi-ts": "^0.67.0",
+    "@axe-core/playwright": "^4.13.0",
+    "@eslint/eslintrc": "^3.3.6",
     "@playwright/test": "^1.52.0",
     "@tailwindcss/postcss": "^4.1.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^22.15.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^6.0.5",
+    "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.23",
+    "jsdom": "^26.1.0",
+    "prettier": "^3.9.6",
     "tailwindcss": "^4.1.0",
-    "typescript": "^5.8.0"
+    "tsx": "^4.23.12",
+    "typescript": "^5.8.0",
+    "vitest": "^4.1.10",
+    "vitest-axe": "^0.1.0"
   }
 }

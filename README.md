@@ -1,4 +1,10 @@
-# jol-m-marketplace
+# jolarca
+
+[![CI](https://github.com/journeyoflife-org/jolarca/actions/workflows/ci.yml/badge.svg)](https://github.com/journeyoflife-org/jolarca/actions/workflows/ci.yml)
+[![Security](https://github.com/journeyoflife-org/jolarca/actions/workflows/security.yml/badge.svg)](https://github.com/journeyoflife-org/jolarca/actions/workflows/security.yml)
+![Coverage](https://img.shields.io/badge/coverage-%E2%89%A580%25-success)
+![Lighthouse](https://img.shields.io/badge/lighthouse-budgets%20enforced-success)
+![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
 
 Baltic-first B2C/B2B2C marketplace (LT · LV · EE · EN): seller onboarding with
 KYC-lite/VIES validation, EU VAT OSS-aware checkout, parcel-locker shipping
@@ -33,7 +39,7 @@ Design invariants (enforced in review, see `docs/architecture/01-modular-breakdo
 1. `payments_app` is the **only** module importing the Stripe SDK.
 2. Cross-app calls go through `services.py` — never another app's models/views/tasks.
 3. AI work runs **only** in Celery (`ai` queue), never in the request path.
-4. `openapi.yaml` and `frontend/src/lib/api/generated/` are CI artifacts — hand-edits fail CI.
+4. `openapi.yaml` and `frontend/src/generated/api.ts` are CI artifacts — hand-edits fail CI (drift gate: `npm run api:drift`).
 5. Fail-closed: `GDPR_PROCESSING_HALTED=1` stops all mutating traffic (503).
 
 ## Quickstart
@@ -44,8 +50,23 @@ make bootstrap                # venv + deps
 make sysdeps                  # GDAL on the host (one-time, needs sudo)
 make dev-up                   # full stack via docker-compose.dev.yml
 make migrate && make seed
-# Frontend: http://localhost:3000  ·  API schema: http://localhost:8000/api/schema/swagger/
+# Frontend: http://localhost:3000  ·  API schema: http://localhost:8010/api/schema/swagger/
 ```
+
+## Documentation
+
+| Document | Contents |
+| --- | --- |
+| [EXECUTIVE_SUMMARY.md](docs/EXECUTIVE_SUMMARY.md) | One-page mission, value, and status |
+| [GRANT_APPLICATION.md](docs/GRANT_APPLICATION.md) · [GRANT_SUBMISSION.md](docs/GRANT_SUBMISSION.md) | Work packages, Gantt, budget, risks, metrics · narrative |
+| [ARCHITECTURE_DECISION_RECORDS.md](docs/ARCHITECTURE_DECISION_RECORDS.md) | Consolidated ADR registry (ADR-0001…0017) |
+| [TECHNICAL_SPECIFICATION.md](docs/TECHNICAL_SPECIFICATION.md) | Architecture, data flows, API contract, caching |
+| [SECURITY_POSTURE.md](docs/SECURITY_POSTURE.md) · [SECURITY.md](docs/SECURITY.md) | STRIDE model, compliance mapping, IR · operational policy |
+| [PERFORMANCE_REPORT.md](docs/PERFORMANCE_REPORT.md) | CWV budgets, techniques, scalability plan |
+| [TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md) · [TESTING.md](docs/TESTING.md) | Pyramid, a11y, security, CI/CD gates |
+| [POST_MVP_ROADMAP.md](docs/POST_MVP_ROADMAP.md) | Phases 2–4 (AI search → EU expansion) |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Proxmox/Docker/nginx production topology |
+| [GDPR_COMPLIANCE.md](docs/GDPR_COMPLIANCE.md) · [COMPLIANCE_MATRIX.md](docs/COMPLIANCE_MATRIX.md) | Privacy architecture · control-to-article matrix |
 
 Full developer guide: [CONTRIBUTING.md](CONTRIBUTING.md) ·
 Vulnerability reporting: [SECURITY.md](SECURITY.md) ·
