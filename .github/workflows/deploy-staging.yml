@@ -19,7 +19,7 @@ jobs:
     environment: staging          # GitHub environment: audit log of every deploy (SOC 2 CC8.1)
     steps:
       - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:
           registry: ghcr.io
