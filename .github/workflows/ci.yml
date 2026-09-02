@@ -175,11 +175,14 @@ jobs:
         with:
           name: frontend-build
           path: frontend/.next
-          retention-days: 1
+          retention-days: 3
 
   frontend-lighthouse:
     needs: frontend-build
     runs-on: ubuntu-24.04
+    # Disabled until staging environment exists (Proxmox hardware pending).
+    # Re-enable by removing the 'if: false' line.
+    if: false
     defaults:
       run:
         working-directory: frontend
@@ -208,6 +211,9 @@ jobs:
   frontend-playwright-smoke:
     needs: frontend-build
     runs-on: ubuntu-24.04
+    # Disabled until staging environment exists (Proxmox hardware pending).
+    # Re-enable by removing the 'if: false' line.
+    if: false
     defaults:
       run:
         working-directory: frontend
