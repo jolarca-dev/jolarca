@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
-from django.test import Client
 from decimal import Decimal
+
+import pytest
 
 from apps.payments_app.models import PaymentRecord, StripeWebhookEvent
 

@@ -1,9 +1,8 @@
 """tax_app async work — queue: default + compliance."""
 
+import structlog
 from celery import shared_task
 from django.utils import timezone
-
-import structlog
 
 audit = structlog.get_logger("jol.audit")
 
@@ -17,7 +16,7 @@ def prepare_oss_return(period: str) -> None:
     The finance team reviews and submits via the VMI portal.
     """
     from apps.orders_app.models import Order
-    from apps.tax_app.models import OssReturnData, VatRateSnapshot
+    from apps.tax_app.models import OssReturnData
 
     year, quarter = int(period[:4]), int(period[-1])
     quarter_months = {1: (1, 3), 2: (4, 6), 3: (7, 9), 4: (10, 12)}
@@ -81,7 +80,6 @@ def monthly_isaf_export() -> str:
 
     Schedule: 0 6 1 * * (1st of each month at 06:00)
     """
-    from datetime import timedelta
 
     from .isaf_export import generate_isaf_export
 

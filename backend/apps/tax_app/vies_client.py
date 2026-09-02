@@ -142,9 +142,9 @@ def _call_vies_soap(country_code: str, vat_number: str) -> ViesResult:
 
 def _call_vies_via_zeep(country_code: str, vat_number: str) -> ViesResult:
     """VIES check via zeep SOAP client (preferred)."""
+    from requests import Session
     from zeep import Client
     from zeep.transports import Transport
-    from requests import Session
 
     session = Session()
     session.timeout = VIES_TIMEOUT_SECONDS
@@ -200,9 +200,9 @@ def _call_vies_via_http(country_code: str, vat_number: str) -> ViesResult:
             source="vies_live",
         )
     except requests.Timeout:
-        raise ViesUnavailableError("VIES REST API timeout")
+        raise ViesUnavailableError("VIES REST API timeout") from None
     except requests.ConnectionError:
-        raise ViesUnavailableError("VIES REST API unreachable")
+        raise ViesUnavailableError("VIES REST API unreachable") from None
     except Exception as e:
         raise ViesUnavailableError(str(e)) from e
 

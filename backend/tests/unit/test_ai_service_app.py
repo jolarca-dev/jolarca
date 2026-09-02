@@ -28,7 +28,7 @@ class TestAIRequestLog:
 
     def test_log_does_not_store_content(self):
         """Critical GDPR control: prompt/response content is NEVER stored."""
-        log = AIRequestLog.objects.create(
+        AIRequestLog.objects.create(
             purpose="chat",
             provider="openai",
             pii_filtered=True,

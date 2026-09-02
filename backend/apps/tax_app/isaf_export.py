@@ -39,8 +39,12 @@ def generate_isaf_export(year: int, month: int) -> str:
         end_date = date(year, month + 1, 1)
 
     invoices = CommercialInvoice.objects.filter(
-        issued_at__gte=timezone.make_aware(timezone.datetime.combine(start_date, timezone.datetime.min.time())),
-        issued_at__lt=timezone.make_aware(timezone.datetime.combine(end_date, timezone.datetime.min.time())),
+        issued_at__gte=timezone.make_aware(
+            timezone.datetime.combine(start_date, timezone.datetime.min.time()),
+        ),
+        issued_at__lt=timezone.make_aware(
+            timezone.datetime.combine(end_date, timezone.datetime.min.time()),
+        ),
     ).select_related("order")
 
     if not invoices.exists():
