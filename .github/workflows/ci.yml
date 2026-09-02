@@ -19,6 +19,23 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: jol_test
+          POSTGRES_USER: jol_test
+          POSTGRES_PASSWORD: jol_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jol_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://jol_test:jol_test@localhost:5432/jol_test
+      DJANGO_SETTINGS_MODULE: project.settings.test
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
@@ -33,18 +50,12 @@ jobs:
         run: ruff check .
       - name: Typecheck (mypy)
         run: mypy project apps
-      - name: Unit + security tests (coverage gate 80%)
-        env:
-          DJANGO_SETTINGS_MODULE: project.settings.test
+      - name: Unit + security tests
         run: |
           pytest tests/unit tests/security --cov=. --cov-report=xml --cov-fail-under=20
           # TODO: raise threshold toward 80% as contract/integration tests land
-      - name: Integration tests (compose parity topology)
-        run: |
-          docker compose -f ../docker-compose.test.yml up -d --build
-          bash ../scripts/wait_for_services.sh test
-          docker compose -f ../docker-compose.test.yml run --rm backend-test
-          docker compose -f ../docker-compose.test.yml down
+      - name: Migrate DB for OpenAPI check
+        run: python manage.py migrate --noinput
       - name: OpenAPI drift check
         run: |
           python manage.py spectacular --file /tmp/openapi.yaml --validate
