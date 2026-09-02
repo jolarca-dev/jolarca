@@ -9,8 +9,7 @@
  * local draft is kept (the cart remains usable, nothing is faked) and a
  * single info toast surfaces it; real errors roll back with an error toast.
  */
-import { useCallback, useEffect, useRef } from "react";
-import { useShallow } from "zustand/react/shallow";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { emitToast, isApiError } from "@/lib/api-client";
@@ -32,10 +31,10 @@ import {
 /* -------------------------------------------------------------------------- */
 
 export function useCartItems(): CartItem[] {
-  // useShallow: Object.values yields a fresh array per snapshot; without
-  // shallow memoization useSyncExternalStore loops during hydration
-  // (zustand v5 compares selector output by reference).
-  return useCartStore(useShallow((s) => Object.values(s.items)));
+  // Memoized selector: Object.values creates a new array per snapshot;
+  // useMemo caches the result to prevent useSyncExternalStore infinite loop.
+  const items = useCartStore((s) => s.items);
+  return useMemo(() => Object.values(items), [items]);
 }
 
 /** Gross subtotal across all lines. */
