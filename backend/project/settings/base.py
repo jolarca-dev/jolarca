@@ -304,6 +304,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.compliance_app.tasks.check_erasure_sla",
         "schedule": timedelta(hours=1),
     },
+    "tax-isaf-monthly-export": {
+        "task": "apps.tax_app.tasks.monthly_isaf_export",
+        "schedule": crontab(day_of_month=1, hour=6, minute=0),
+    },
 }
 
 # --------------------------------------------------------------------------
