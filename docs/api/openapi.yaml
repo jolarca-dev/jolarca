@@ -3,6 +3,57 @@ info:
   title: JOL Marketplace API
   version: 1.0.0
 paths:
+  /api/v1/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: |-
+        POST /api/v1/auth/login/ — email/password session login (GAP-U01).
+
+        Brute-force protection comes from AxesStandaloneBackend in
+        AUTHENTICATION_BACKENDS: lockouts raise PermissionDenied out of
+        authenticate() and surface as 429. Failed logins answer a single
+        generic 401 — never which half (email vs password) was wrong
+        (no user enumeration).
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionUser'
+          description: ''
+  /api/v1/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      description: |-
+        POST /api/v1/auth/logout/ — expires the session (GAP-U02).
+
+        Anonymous logout is a 204 no-op, never an error: clients clear local
+        state regardless, and punishing an already-expired session invites
+        retry loops.
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/v1/auth/register/:
     post:
       operationId: auth_register_create
@@ -31,6 +82,340 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
           description: ''
+  /api/v1/auth/session/:
+    get:
+      operationId: auth_session_retrieve
+      description: |-
+        GET /api/v1/auth/session/ — current session user (GAP-U03).
+
+        401 for anonymous callers (the frontend maps 401/403 to `null` —
+        probing the session must never redirect or toast).
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionUser'
+          description: ''
+  /api/v1/cart/:
+    get:
+      operationId: cart_retrieve
+      description: |-
+        GET /api/v1/cart/ — the authenticated user's active cart (GAP-O01).
+
+        Read-only: a GET never creates the cart. Users without one receive an
+        empty envelope (cart_id=null) — the frontend treats that as "draft only".
+      tags:
+      - cart
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_CartEnvelopeSchema'
+          description: ''
+  /api/v1/cart/items/:
+    post:
+      operationId: cart_items_create
+      description: |-
+        POST /api/v1/cart/items/ — add a published listing (GAP-O02).
+
+        Adding the same listing again SUMS the quantity (capped) instead of
+        duplicating the line (uniq_cart_item_listing constraint).
+      tags:
+      - cart
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartAddItemRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CartAddItemRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CartAddItemRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_ItemResponseSchema'
+          description: ''
+  /api/v1/cart/items/{item_id}/:
+    patch:
+      operationId: cart_items_partial_update
+      description: |-
+        PATCH/DELETE /api/v1/cart/items/{id}/ (GAP-O05/O06).
+
+        Lines are scoped through the requester's ACTIVE cart: foreign or stale
+        ids answer 404, never another user's data.
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - cart
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCartUpdateItemRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCartUpdateItemRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCartUpdateItemRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_ItemResponseSchema'
+          description: ''
+    delete:
+      operationId: cart_items_destroy
+      description: |-
+        PATCH/DELETE /api/v1/cart/items/{id}/ (GAP-O05/O06).
+
+        Lines are scoped through the requester's ACTIVE cart: foreign or stale
+        ids answer 404, never another user's data.
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - cart
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_ItemResponseSchema'
+          description: ''
+  /api/v1/cart/sync/:
+    post:
+      operationId: cart_sync_create
+      description: |-
+        POST /api/v1/cart/sync/ — merge the guest draft on login (GAP-O07).
+
+        Merge contract: same product present on both sides SUMS quantities
+        (capped at MAX_LINE_QUANTITY); product data (title/price) always comes
+        from the server's live listing — server wins on conflict. Unknown or
+        unpublished ids are skipped silently: the draft is best-effort input,
+        and punishing a login for a stale draft would be hostile UX. Responds
+        with the full merged envelope so the caller can apply it in one pass.
+      tags:
+      - cart
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartSyncRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CartSyncRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CartSyncRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_CartEnvelopeSchema'
+          description: ''
+  /api/v1/catalog/home/:
+    get:
+      operationId: catalog_home_retrieve
+      description: |-
+        GET /api/v1/catalog/home/ — hero + curated categories + featured rail.
+
+        Curation is explicit and editorial (Category.homepage_rank,
+        ProductListing.is_featured): nothing "trending" is synthesized from
+        behavioral data — zero analytics until consent infra v2.
+      tags:
+      - catalog
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HomeContent'
+          description: ''
+  /api/v1/categories/:
+    get:
+      operationId: categories_list
+      description: |-
+        GET /api/v1/categories/ — flat category index (GAP-P05).
+
+        Two consumers, one payload: the seller listing form needs the UUID
+        (`id`) for category_id, the search facet needs the URL slug. Both are
+        returned; names follow Accept-Language.
+      tags:
+      - categories
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryPicker'
+          description: ''
+  /api/v1/categories/{slug}/products/:
+    get:
+      operationId: categories_products_retrieve
+      description: |-
+        GET /api/v1/categories/{slug}/products/ — public category grid (GAP-P02).
+
+        Server-side pagination + commerce filters (price range, seller set,
+        sort). All parameters are non-PII commerce state, safe to share in
+        URLs (ADR-0009); the frontend island rewrites the query string and
+        this view re-renders. `in_stock` is accepted but a no-op until the
+        inventory model lands (MVP-P2) — silently faking stock would breach
+        ADR-0007, so the storefront omits the toggle for now.
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+      - in: query
+        name: price_max
+        schema:
+          type: string
+      - in: query
+        name: price_min
+        schema:
+          type: string
+      - in: query
+        name: sellers
+        schema:
+          type: string
+        description: Comma-separated derived seller slugs.
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: sort
+        schema:
+          type: string
+          enum:
+          - name
+          - newest
+          - price_asc
+          - price_desc
+      tags:
+      - categories
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryProductsPage'
+          description: ''
+  /api/v1/orders/:
+    get:
+      operationId: orders_retrieve
+      description: POST creates (GAP-O08); GET lists history (GAP-O03).
+      tags:
+      - orders
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderCreated'
+          description: ''
+    post:
+      operationId: orders_create
+      description: POST creates (GAP-O08); GET lists history (GAP-O03).
+      tags:
+      - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderCreated'
+          description: ''
+  /api/v1/orders/{order_id}/:
+    get:
+      operationId: orders_retrieve_2
+      description: |-
+        GET /api/v1/orders/{id}/ — confirmation + tracking entry (GAP-O04).
+
+        Scoped to the buyer: foreign ids answer 404 (no existence leak).
+      parameters:
+      - in: path
+        name: order_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - orders
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetail'
+          description: ''
   /api/v1/orders/checkout/:
     post:
       operationId: orders_checkout_create
@@ -58,8 +443,337 @@ paths:
               schema:
                 $ref: '#/components/schemas/CheckoutResponse'
           description: ''
+  /api/v1/orders/shipping-options/:
+    post:
+      operationId: orders_shipping_options_create
+      description: POST /api/v1/orders/shipping-options/ — per-country delivery methods.
+      tags:
+      - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShippingOptionsQueryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ShippingOptionsQueryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ShippingOptionsQueryRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingOptions'
+          description: ''
+  /api/v1/products/{slug}/:
+    get:
+      operationId: products_retrieve
+      description: |-
+        GET /api/v1/products/{slug}/ — public product detail (GAP-P03).
+
+        The public identifier is the listing UUID (no slug field yet); the
+        /p/{slug} route passes it verbatim. Unpublished or unknown ids return
+        404 — no enumeration of drafts (same posture as the home rail).
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - products
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingDetail'
+          description: ''
+  /api/v1/products/{slug}/related/:
+    get:
+      operationId: products_related_list
+      description: |-
+        GET /api/v1/products/{slug}/related/ — PDP rail (GAP-P04).
+
+        Same-category siblings of a published listing, newest first, capped at
+        RELATED_LIMIT. The frontend streams this inside Suspense — the rail is
+        optional merchandising, so an empty list simply renders nothing there.
+        Unknown or unpublished ids return 404 (same posture as the detail view:
+        no enumeration of drafts).
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - products
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ListingHome'
+          description: ''
+  /api/v1/search/:
+    post:
+      operationId: search_create
+      description: |-
+        POST /api/v1/search/ — full-text search over published listings (GAP-S01).
+
+        Commerce filters (category slug, price range, seller name fragment)
+        apply server-side after the recall pool. `availability`/`delivery` are
+        accepted but no-ops until inventory/shipping models land — filtering on
+        data we do not have would be fake UX (ADR-0007).
+      tags:
+      - search
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchQueryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SearchQueryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SearchQueryRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResults'
+          description: ''
+  /api/v1/search/suggest/:
+    get:
+      operationId: search_suggest_retrieve
+      description: |-
+        GET /api/v1/search/suggest/ — command-palette suggestions (GAP-S02).
+
+        Tiny result sets by design (3 per facet); suggestions are ephemeral
+        keystroke aids, so a light GET is acceptable here while the full query
+        stays POST-only.
+      tags:
+      - search
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestions'
+          description: ''
+  /api/v1/sellers/{slug}/:
+    get:
+      operationId: sellers_retrieve
+      description: GET /api/v1/sellers/{slug}/ — public seller profile (GAP-V05).
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - sellers
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicSeller'
+          description: ''
+  /api/v1/sellers/{slug}/products/:
+    get:
+      operationId: sellers_products_retrieve
+      description: GET /api/v1/sellers/{slug}/products/ — storefront grid (GAP-V06).
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - sellers
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerProductsPage'
+          description: ''
+  /api/v1/shipping/lockers/:
+    get:
+      operationId: shipping_lockers_retrieve
+      description: GET /api/v1/shipping/lockers/?country=…&carrier=… — locker picker
+        data.
+      tags:
+      - shipping
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LockerDirectory'
+          description: ''
+  /api/v1/tax/vat-id/validate/:
+    post:
+      operationId: tax_vat_id_validate_create
+      description: POST /api/v1/tax/vat-id/validate/ — live VIES VAT ID validation.
+      tags:
+      - tax
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VatIdValidateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VatIdValidateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VatIdValidateRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VatIdValidateResult'
+          description: ''
 components:
   schemas:
+    CartAddItemRequest:
+      type: object
+      properties:
+        product_id:
+          type: string
+          minLength: 1
+        quantity:
+          type: integer
+      required:
+      - product_id
+    CartSyncLineRequest:
+      type: object
+      properties:
+        product_id:
+          type: string
+          minLength: 1
+        slug:
+          type: string
+          minLength: 1
+        quantity:
+          type: integer
+      required:
+      - product_id
+    CartSyncRequest:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartSyncLineRequest'
+      required:
+      - items
+    CategoryHome:
+      type: object
+      properties:
+        slug:
+          type: string
+          maxLength: 128
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+          maxLength: 128
+        description:
+          type: string
+          readOnly: true
+        image:
+          type: string
+          readOnly: true
+      required:
+      - description
+      - image
+      - name
+      - slug
+    CategoryPicker:
+      type: object
+      description: |-
+        Flat category index (GAP-P05): UUID for listing forms, slug for
+        search facets/URLs, localized name for display.
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+          maxLength: 128
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+          maxLength: 128
+      required:
+      - id
+      - name
+      - slug
+    CategoryProductsPage:
+      type: object
+      description: Pagination envelope + category meta + facets (GAP-P02).
+      properties:
+        count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListingHome'
+        category:
+          $ref: '#/components/schemas/CategoryHome'
+        facets:
+          $ref: '#/components/schemas/Facets'
+      required:
+      - category
+      - count
+      - facets
+      - page
+      - page_size
+      - results
     CheckoutRequest:
       type: object
       properties:
@@ -94,6 +808,77 @@ components:
       - order_number
       - status
       - total_gross
+    CountryEnum:
+      enum:
+      - LT
+      - LV
+      - EE
+      type: string
+      description: |-
+        * `LT` - LT
+        * `LV` - LV
+        * `EE` - EE
+    FacetSeller:
+      type: object
+      description: Top sellers in a category, for the filter island (GAP-P02).
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        count:
+          type: integer
+      required:
+      - count
+      - name
+      - slug
+    Facets:
+      type: object
+      properties:
+        sellers:
+          type: array
+          items:
+            $ref: '#/components/schemas/FacetSeller'
+      required:
+      - sellers
+    Hero:
+      type: object
+      properties:
+        title:
+          type: string
+        subtitle:
+          type: string
+        image:
+          allOf:
+          - $ref: '#/components/schemas/ProductImage'
+          nullable: true
+      required:
+      - title
+    HomeContent:
+      type: object
+      description: |-
+        Envelope for GET /api/v1/catalog/home/ (OpenAPI documentation shape).
+
+        `hero` is nullable: served from the admin-managed micro-CMS
+        (HomeHeroContent); null when no active hero exists and the frontend
+        renders no hero section (ADR-0007).
+      properties:
+        hero:
+          allOf:
+          - $ref: '#/components/schemas/Hero'
+          nullable: true
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryHome'
+        featured:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListingHome'
+      required:
+      - categories
+      - featured
+      - hero
     LanguageEnum:
       enum:
       - lt
@@ -106,6 +891,289 @@ components:
         * `lv` - lv
         * `et` - et
         * `en` - en
+    ListingDetail:
+      type: object
+      description: |-
+        Product detail projection (GAP-P03).
+
+        Extends the card projection with a safe HTML rendering of the
+        description: seller text is escaped per paragraph and wrapped in our
+        own <p> tags only — the frontend sanitizes again with DOMPurify.
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        price_gross:
+          type: string
+          readOnly: true
+        currency:
+          type: string
+          maxLength: 3
+        image:
+          type: string
+          readOnly: true
+        images:
+          type: array
+          items: {}
+          readOnly: true
+        description_html:
+          type: string
+          readOnly: true
+        seller:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        rating:
+          type: string
+          readOnly: true
+        vat_note:
+          type: string
+          readOnly: true
+      required:
+      - description_html
+      - id
+      - image
+      - images
+      - price_gross
+      - rating
+      - seller
+      - slug
+      - title
+      - vat_note
+    ListingHome:
+      type: object
+      description: Published-listing card projection for the home featured rail.
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        price_gross:
+          type: string
+          readOnly: true
+        currency:
+          type: string
+          maxLength: 3
+        image:
+          type: string
+          readOnly: true
+        images:
+          type: array
+          items: {}
+          readOnly: true
+        description_html:
+          type: string
+          readOnly: true
+        seller:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        rating:
+          type: string
+          readOnly: true
+        vat_note:
+          type: string
+          readOnly: true
+      required:
+      - description_html
+      - id
+      - image
+      - images
+      - price_gross
+      - rating
+      - seller
+      - slug
+      - title
+      - vat_note
+    LockerDirectory:
+      type: object
+      properties:
+        country:
+          type: string
+        carrier:
+          type: string
+        source:
+          type: string
+        lockers:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - carrier
+      - country
+      - lockers
+      - source
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+        remember:
+          type: boolean
+          default: false
+      required:
+      - email
+      - password
+    MethodEnum:
+      enum:
+      - courier
+      - dpd_locker
+      - omniva_locker
+      type: string
+      description: |-
+        * `courier` - courier
+        * `dpd_locker` - dpd_locker
+        * `omniva_locker` - omniva_locker
+    OrderCreateRequest:
+      type: object
+      description: Either an existing active cart OR explicit lines — never both needed.
+      properties:
+        cart_id:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/_OrderLineRequest'
+        shipping:
+          $ref: '#/components/schemas/_OrderShippingRequest'
+        vat_id:
+          type: string
+          maxLength: 32
+      required:
+      - shipping
+    OrderCreated:
+      type: object
+      properties:
+        order_id:
+          type: string
+          format: uuid
+        order_number:
+          type: string
+        status:
+          type: string
+        total_gross:
+          type: string
+        currency:
+          type: string
+        client_secret:
+          type: string
+          nullable: true
+      required:
+      - client_secret
+      - currency
+      - order_id
+      - order_number
+      - status
+      - total_gross
+    OrderDetail:
+      type: object
+      properties:
+        order_id:
+          type: string
+          format: uuid
+        order_number:
+          type: string
+        status:
+          type: string
+        currency:
+          type: string
+        total_gross:
+          type: string
+        shipping_fee:
+          type: string
+        shipping_method:
+          type: string
+        eta_days:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - currency
+      - eta_days
+      - items
+      - order_id
+      - order_number
+      - shipping_fee
+      - shipping_method
+      - status
+      - total_gross
+    PatchedCartUpdateItemRequest:
+      type: object
+      properties:
+        quantity:
+          type: integer
+    ProductImage:
+      type: object
+      properties:
+        url:
+          type: string
+        alt:
+          type: string
+        width:
+          type: integer
+        height:
+          type: integer
+      required:
+      - url
+    PublicSeller:
+      type: object
+      description: |-
+        Buyer-facing seller profile.
+
+        `slug` derives deterministically from the company name (slugify) —
+        sellers_app ships no slug column; any consumer of this contract must
+        use the same derivation (frontend storefront links, facets).
+      properties:
+        slug:
+          type: string
+          readOnly: true
+        name:
+          type: string
+        description:
+          type: string
+          readOnly: true
+        logo_url:
+          type: string
+          readOnly: true
+        verified:
+          type: boolean
+          readOnly: true
+        location:
+          type: string
+        country:
+          type: string
+        member_since:
+          type: string
+          readOnly: true
+      required:
+      - country
+      - description
+      - location
+      - logo_url
+      - member_since
+      - name
+      - slug
+      - verified
     RegisterRequest:
       type: object
       properties:
@@ -124,6 +1192,126 @@ components:
       required:
       - email
       - password
+    RoleEnum:
+      enum:
+      - buyer
+      - seller
+      - admin
+      type: string
+      description: |-
+        * `buyer` - buyer
+        * `seller` - seller
+        * `admin` - admin
+    SearchQueryRequest:
+      type: object
+      properties:
+        q:
+          type: string
+          minLength: 1
+        page:
+          type: integer
+        page_size:
+          type: integer
+        category:
+          type: string
+          minLength: 1
+        price_min:
+          type: string
+          minLength: 1
+        price_max:
+          type: string
+          minLength: 1
+        seller:
+          type: string
+          minLength: 1
+        availability:
+          type: string
+          minLength: 1
+        delivery:
+          type: string
+          minLength: 1
+      required:
+      - q
+    SearchResults:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListingHome'
+        page:
+          type: integer
+        total_pages:
+          type: integer
+        ranking:
+          type: string
+      required:
+      - page
+      - ranking
+      - results
+      - total_pages
+    SearchSuggestions:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListingHome'
+        sellers:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - categories
+      - products
+      - sellers
+    SellerProductsPage:
+      type: object
+      description: Pagination envelope for the seller storefront grid (GAP-V06).
+      properties:
+        count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListingHome'
+      required:
+      - count
+      - page
+      - page_size
+      - results
+    SessionUser:
+      type: object
+      description: Consumer-driven against frontend/src/lib/auth.ts SessionUserSchema.
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        language:
+          type: string
+        is_verified:
+          type: boolean
+        seller_slug:
+          type: string
+          nullable: true
+      required:
+      - email
+      - id
+      - role
     ShippingCountryEnum:
       enum:
       - LT
@@ -134,6 +1322,26 @@ components:
         * `LT` - LT
         * `LV` - LV
         * `EE` - EE
+    ShippingOptions:
+      type: object
+      properties:
+        country:
+          type: string
+        options:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - country
+      - options
+    ShippingOptionsQueryRequest:
+      type: object
+      properties:
+        country:
+          $ref: '#/components/schemas/CountryEnum'
+      required:
+      - country
     User:
       type: object
       properties:
@@ -154,8 +1362,140 @@ components:
       - date_joined
       - email
       - id
+    VatIdValidateRequest:
+      type: object
+      properties:
+        vat_id:
+          type: string
+          minLength: 1
+      required:
+      - vat_id
+    VatIdValidateResult:
+      type: object
+      properties:
+        vat_id:
+          type: string
+        valid:
+          type: boolean
+        country:
+          type: string
+        vies_checked:
+          type: boolean
+        vies_available:
+          type: boolean
+        source:
+          type: string
+        name:
+          type: string
+        address:
+          type: string
+      required:
+      - address
+      - country
+      - name
+      - source
+      - valid
+      - vat_id
+      - vies_available
+      - vies_checked
+    _CartEnvelopeSchema:
+      type: object
+      properties:
+        cart_id:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/_ItemResponseSchema'
+      required:
+      - cart_id
+      - items
+    _ItemResponseSchema:
+      type: object
+      properties:
+        id:
+          type: string
+        product_id:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        price:
+          type: string
+        currency:
+          type: string
+        quantity:
+          type: integer
+      required:
+      - currency
+      - id
+      - price
+      - product_id
+      - quantity
+      - slug
+      - title
+    _OrderAddressRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+          minLength: 2
+          maxLength: 255
+        street:
+          type: string
+          minLength: 3
+          maxLength: 255
+        city:
+          type: string
+          minLength: 2
+          maxLength: 128
+        postal_code:
+          type: string
+          minLength: 3
+          maxLength: 16
+        country:
+          $ref: '#/components/schemas/CountryEnum'
+        phone:
+          type: string
+          minLength: 7
+          maxLength: 24
+      required:
+      - city
+      - country
+      - full_name
+      - phone
+      - postal_code
+      - street
+    _OrderLineRequest:
+      type: object
+      properties:
+        product_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          maximum: 99
+          minimum: 1
+      required:
+      - product_id
+      - quantity
+    _OrderShippingRequest:
+      type: object
+      properties:
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        locker_id:
+          type: string
+          maxLength: 32
+        address:
+          $ref: '#/components/schemas/_OrderAddressRequest'
+      required:
+      - address
+      - method
   securitySchemes:
     cookieAuth:
       type: apiKey
       in: cookie
-      name: sessionid
+      name: jol_session
