@@ -60,9 +60,9 @@ check: ## Django system checks (settings, apps, migrations consistency)
 	cd backend && $(PY) manage.py check
 
 lock: ## Recompile pinned requirements from pyproject (pip-tools, hashes)
-	cd backend && $(PY) -m piptools compile --generate-hashes --output-file=requirements/base.txt pyproject.toml
-	cd backend && $(PY) -m piptools compile --generate-hashes --extra=dev --output-file=requirements/dev.txt pyproject.toml
-	cd backend && $(PY) -m piptools compile --generate-hashes --extra=prod --output-file=requirements/prod.txt pyproject.toml
+	cd backend && $(PY) -m piptools compile --generate-hashes --allow-unsafe --output-file=requirements/base.txt pyproject.toml
+	cd backend && $(PY) -m piptools compile --generate-hashes --allow-unsafe --extra=dev --output-file=requirements/dev.txt pyproject.toml
+	cd backend && $(PY) -m piptools compile --generate-hashes --allow-unsafe --extra=prod --output-file=requirements/prod.txt pyproject.toml
 
 api-schema: ## Regenerate OpenAPI snapshot + frontend client (never hand-edit)
 	cd backend && $(PY) manage.py spectacular --file ../docs/api/openapi.yaml --validate

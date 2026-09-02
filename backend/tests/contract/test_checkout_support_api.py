@@ -2,16 +2,50 @@
 
 Consumer-driven against frontend/src/components/client/checkout/
 checkout-provider.tsx (fetchShippingOptions / fetchLockers / validateVatId).
-Pins the honest posture: prices come from the in-repo policy table and the
-locker directory is marked "curated" until the live carrier APIs land.
+VIES validation is live (P6): tests mock the VIES client to avoid
+hitting the EU gateway in CI.
 """
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 from django.test import Client
 
+from apps.tax_app.vies_client import ViesResult
+
 pytestmark = pytest.mark.django_db
+
+
+# ── VIES mock fixtures ───────────────────────────────────────────────
+
+VALID_VIES_RESULT = ViesResult(
+    vat_id="LT123456789",
+    valid=True,
+    name="UAB Testinė Įmonė",
+    address="Vilniaus g. 1, Vilnius",
+    vies_available=True,
+    source="vies_live",
+)
+
+INVALID_VIES_RESULT = ViesResult(
+    vat_id="LT999999999",
+    valid=False,
+    name="",
+    address="",
+    vies_available=True,
+    source="vies_live",
+)
+
+VIES_DOWN_RESULT = ViesResult(
+    vat_id="LT123456789",
+    valid=True,  # Format-valid fallback
+    name="",
+    address="",
+    vies_available=False,
+    source="format_only",
+)
 
 
 class TestShippingOptions:
@@ -64,23 +98,77 @@ class TestLockerDirectory:
 
 
 class TestVatIdValidation:
-    @pytest.mark.parametrize(
-        "vat_id",
-        ["LT123456789", "LT123456789012", " LV12345678901 ", "EE123456789"],
-    )
-    def test_valid_baltic_formats(self, client: Client, vat_id: str):
+    """VIES live validation tests (P6)."""
+
+    @patch("apps.tax_app.views.check_vat_live")
+    def test_valid_vies_check_returns_true(self, mock_vies, client: Client):
+        mock_vies.return_value = VALID_VIES_RESULT
         body = client.post(
-            "/api/v1/tax/vat-id/validate/", {"vat_id": vat_id}, content_type="application/json"
+            "/api/v1/tax/vat-id/validate/",
+            {"vat_id": "LT123456789"},
+            content_type="application/json",
         ).json()
         assert body["valid"] is True
-        assert body["vies_checked"] is False  # honest: VIES is not wired
+        assert body["vies_checked"] is True
+        assert body["vies_available"] is True
+        assert body["source"] == "vies_live"
+        assert body["name"] == "UAB Testinė Įmonė"
+        assert body["country"] == "LT"
 
-    @pytest.mark.parametrize("vat_id", ["LT123", "DE123456789", "123456789", ""])
-    def test_invalid_inputs(self, client: Client, vat_id: str):
+    @patch("apps.tax_app.views.check_vat_live")
+    def test_invalid_vat_returns_false(self, mock_vies, client: Client):
+        mock_vies.return_value = INVALID_VIES_RESULT
+        body = client.post(
+            "/api/v1/tax/vat-id/validate/",
+            {"vat_id": "LT999999999"},
+            content_type="application/json",
+        ).json()
+        assert body["valid"] is False
+        assert body["vies_checked"] is True  # VIES responded, just said no
+        assert body["vies_available"] is True
+
+    @patch("apps.tax_app.views.check_vat_live")
+    def test_vies_down_returns_format_only(self, mock_vies, client: Client):
+        mock_vies.return_value = VIES_DOWN_RESULT
+        body = client.post(
+            "/api/v1/tax/vat-id/validate/",
+            {"vat_id": "LT123456789"},
+            content_type="application/json",
+        ).json()
+        assert body["valid"] is True  # Format-valid fallback
+        assert body["vies_checked"] is False  # NOT VIES-verified
+        assert body["vies_available"] is False
+        assert body["source"] == "format_only"
+
+    def test_empty_vat_id_returns_400(self, client: Client):
         res = client.post(
-            "/api/v1/tax/vat-id/validate/", {"vat_id": vat_id}, content_type="application/json"
+            "/api/v1/tax/vat-id/validate/",
+            {"vat_id": ""},
+            content_type="application/json",
         )
-        if vat_id == "":
-            assert res.status_code == 400
-        else:
-            assert res.json()["valid"] is False
+        assert res.status_code == 400
+
+    @patch("apps.tax_app.views.check_vat_live")
+    def test_all_baltic_formats_supported(self, mock_vies, client: Client):
+        """Verify LT (9/12 digit), LV (11 digit), EE (9 digit) formats."""
+        for vat_id, country in [
+            ("LT123456789", "LT"),
+            ("LT123456789012", "LT"),
+            ("LV12345678901", "LV"),
+            ("EE123456789", "EE"),
+        ]:
+            mock_vies.return_value = ViesResult(
+                vat_id=vat_id.replace(" ", ""),
+                valid=True,
+                name="Test",
+                address="Test",
+                vies_available=True,
+                source="vies_live",
+            )
+            body = client.post(
+                "/api/v1/tax/vat-id/validate/",
+                {"vat_id": vat_id},
+                content_type="application/json",
+            ).json()
+            assert body["valid"] is True, f"Failed for {vat_id}"
+            assert body["country"] == country

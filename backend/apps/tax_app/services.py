@@ -67,13 +67,44 @@ def _latest_rate(country: str):
 
 
 def reverse_charge_check(*, seller_vat: str, buyer_vat: str) -> bool:
-    """B2B cross-border reverse charge eligibility (sanctioned stub MVP-T3:
-    VIES verification of BOTH numbers must be evidenced before applying)."""
+    """B2B cross-border reverse charge eligibility.
+
+    Requires live VIES verification of BOTH VAT numbers. If VIES is
+    unavailable, returns False (conservative: don't apply reverse charge
+    without proof). The caller should flag the transaction for manual
+    review when VIES is down.
+    """
     if not seller_vat or not buyer_vat:
         return False
     if seller_vat[:2] == buyer_vat[:2]:
         return False  # domestic: reverse charge does not apply
-    raise NotImplementedError("MVP-T3: VIES-evidenced reverse charge not yet wired")
+
+    from .vies_client import check_vat_live
+
+    seller_result = check_vat_live(seller_vat)
+    buyer_result = check_vat_live(buyer_vat)
+
+    # Both must be VIES-verified and valid
+    if not seller_result.vies_available or not buyer_result.vies_available:
+        audit.warning(
+            "reverse_charge_vies_unavailable",
+            seller_vat=seller_vat,
+            buyer_vat=buyer_vat,
+            action="manual_review_required",
+        )
+        return False  # Conservative: don't apply without proof
+
+    if not seller_result.valid or not buyer_result.valid:
+        return False
+
+    audit.info(
+        "reverse_charge_applied",
+        seller_vat=seller_vat,
+        buyer_vat=buyer_vat,
+        seller_source=seller_result.source,
+        buyer_source=buyer_result.source,
+    )
+    return True
 
 
 # Baltic VAT ID formats (EU VIES structure, national digit rules):
