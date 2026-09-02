@@ -4,7 +4,7 @@
 # configuration arrives via environment), non-root runtime user.
 
 # --- Stage 1: dependencies (lockfile-only; no lifecycle scripts) ------------
-FROM node:22-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
@@ -44,7 +44,7 @@ COPY . .
 RUN npm run build
 
 # --- Stage 3: runner (minimal surface) -----------------------------------------
-FROM node:22-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
