@@ -147,7 +147,6 @@ def _call_vies_via_zeep(country_code: str, vat_number: str) -> ViesResult:
     from zeep.transports import Transport
 
     session = Session()
-    session.timeout = VIES_TIMEOUT_SECONDS
     transport = Transport(session=session, timeout=VIES_TIMEOUT_SECONDS)
     client = Client(VIES_WSDL_URL, transport=transport)
 

@@ -14,7 +14,7 @@ The actual submission to VMI is done manually via the VMI portal
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from io import StringIO
 
@@ -40,10 +40,10 @@ def generate_isaf_export(year: int, month: int) -> str:
 
     invoices = CommercialInvoice.objects.filter(
         issued_at__gte=timezone.make_aware(
-            timezone.datetime.combine(start_date, timezone.datetime.min.time()),
+            datetime.combine(start_date, datetime.min.time()),
         ),
         issued_at__lt=timezone.make_aware(
-            timezone.datetime.combine(end_date, timezone.datetime.min.time()),
+            datetime.combine(end_date, datetime.min.time()),
         ),
     ).select_related("order")
 

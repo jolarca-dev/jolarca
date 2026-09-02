@@ -22,7 +22,7 @@ def prepare_oss_return(period: str) -> None:
     quarter_months = {1: (1, 3), 2: (4, 6), 3: (7, 9), 4: (10, 12)}
     start_month, end_month = quarter_months[quarter]
 
-    from datetime import date
+    from datetime import date, datetime
 
     start_date = date(year, start_month, 1)
     if end_month == 12:
@@ -33,10 +33,10 @@ def prepare_oss_return(period: str) -> None:
     # Aggregate by buyer country (destination principle for OSS)
     orders = Order.objects.filter(
         created_at__gte=timezone.make_aware(
-            timezone.datetime.combine(start_date, timezone.datetime.min.time())
+            datetime.combine(start_date, datetime.min.time())
         ),
         created_at__lt=timezone.make_aware(
-            timezone.datetime.combine(end_date, timezone.datetime.min.time())
+            datetime.combine(end_date, datetime.min.time())
         ),
         status__in=["paid", "fulfilled", "completed"],
     )
