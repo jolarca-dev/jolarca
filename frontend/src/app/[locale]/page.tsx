@@ -21,8 +21,7 @@ import { localeAlternates } from "@/lib/seo";
 // baked into static HTML as an error/empty state.
 export const dynamic = "force-dynamic";
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://jol-marketplace.example";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://jolarca.example";
 
 const OG_LOCALES: Record<string, string> = {
   lt: "lt_LT",

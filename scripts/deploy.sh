@@ -19,7 +19,7 @@ set -euo pipefail
 
 COMPOSE_FILE="docker-compose.prod.yml"
 ENV_FILE=".env.prod"
-IMAGE_NAME="jol-marketplace/frontend"
+IMAGE_NAME="jolarca/frontend"
 HEALTH_TIMEOUT_S=120
 COMPOSE="docker compose -f ${COMPOSE_FILE} --env-file ${ENV_FILE}"
 

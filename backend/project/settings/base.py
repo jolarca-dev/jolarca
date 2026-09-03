@@ -101,8 +101,8 @@ if _database_url:
     _db = parse_database_url(_database_url)
 else:
     _db = {
-        "NAME": env_str("POSTGRES_DB", "jol_marketplace"),
-        "USER": env_str("POSTGRES_USER", "jol_marketplace"),
+        "NAME": env_str("POSTGRES_DB", "jolarca"),
+        "USER": env_str("POSTGRES_USER", "jolarca"),
         "PASSWORD": env_str("POSTGRES_PASSWORD", ""),
         "HOST": env_str("POSTGRES_HOST", "localhost"),
         "PORT": env_str("POSTGRES_PORT", "5432"),
@@ -161,6 +161,7 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.StandardResultsSetPagination",
     "PAGE_SIZE": 20,
+    "EXCEPTION_HANDLER": "apps.core.exception_handler.custom_exception_handler",
 }
 
 SPECTACULAR_SETTINGS = {
@@ -242,7 +243,7 @@ STORAGES = {
 _s3_endpoint = env_str("AWS_S3_ENDPOINT_URL")
 AWS_ACCESS_KEY_ID = env_str("AWS_ACCESS_KEY_ID", "")
 AWS_SECRET_ACCESS_KEY = env_str("AWS_SECRET_ACCESS_KEY", "")
-AWS_STORAGE_BUCKET_NAME = env_str("AWS_S3_BUCKET", "jol-media")
+AWS_STORAGE_BUCKET_NAME = env_str("AWS_S3_BUCKET", "jolarca-media")
 AWS_S3_ENDPOINT_URL = _s3_endpoint
 AWS_QUERYSTRING_AUTH = True  # signed URLs by default: media is not public
 if _s3_endpoint:
@@ -267,7 +268,7 @@ MODELTRANSLATION_DEFAULT_LANGUAGE = "en"
 # --------------------------------------------------------------------------
 EMAIL_HOST = env_str("EMAIL_HOST", "localhost")
 EMAIL_PORT = env_int("EMAIL_PORT", 1025)
-DEFAULT_FROM_EMAIL = "no-reply@jol-marketplace.example"
+DEFAULT_FROM_EMAIL = "journey4oflife+jolarca.dev@gmail.com"
 
 # --------------------------------------------------------------------------
 # Celery — reliability settings for marketplace money paths

@@ -1,10 +1,11 @@
 {
-  "name": "jol-marketplace-frontend",
+  "name": "jolarca-frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "cp -r .next/static .next/standalone/.next/ 2>/dev/null || true",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

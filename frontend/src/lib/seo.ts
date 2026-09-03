@@ -8,7 +8,7 @@
 import { DEFAULT_LOCALE, LAUNCH_LOCALES } from "@/i18n/config";
 
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://jol-marketplace.example";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://jolarca.example";
 
 /** Absolute URL for a site path in a given locale. */
 export function localizedUrl(path: string, locale: string): string {

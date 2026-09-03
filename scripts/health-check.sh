@@ -31,7 +31,7 @@ set -uo pipefail
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 ENV_FILE="${ENV_FILE:-.env.prod}"
 FAIL_THRESHOLD="${FAIL_THRESHOLD:-3}"
-STATE_DIR="${STATE_DIR:-/var/lib/jol-marketplace}"
+STATE_DIR="${STATE_DIR:-/var/lib/jolarca}"
 STATE_FILE="${STATE_DIR}/health-check-failures"
 HTTP_TIMEOUT="${HTTP_TIMEOUT:-10}"
 

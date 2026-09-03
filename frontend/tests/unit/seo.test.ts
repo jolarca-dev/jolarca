@@ -5,7 +5,7 @@ import sitemap from "@/app/sitemap";
 import { localizedUrl, localeAlternates } from "@/lib/seo";
 
 /* NEXT_PUBLIC_SITE_URL is unset under vitest → the documented fallback. */
-const BASE = "https://jol-marketplace.example";
+const BASE = "https://jolarca.example";
 
 describe("localizedUrl — localePrefix as-needed scheme", () => {
   it("serves the default locale unprefixed at root", () => {

@@ -220,7 +220,7 @@ risk, it is P1. Everything that merely looks broken is P2 or P3.
 | Stripe account ID | **PENDING — fill from Stripe Dashboard → Developers**. Never recorded on the VM. `.env.prod` `STRIPE_CONNECT_CLIENT_ID` is also still empty. |
 | Stripe key mode | **TEST** (`sk_test_` / `pk_test_`). Live swap (Prompt 7) is blocked until the firewall opens — do not swap keys behind a closed edge. |
 | Stripe webhook URL | `https://marketplace.gyvenimo-kelias.lt/api/v1/payments/webhooks/stripe/` (NOT `/api/v1/webhooks/stripe/` — that path 404s). Events: `payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.refunded`. |
-| Backups | Nightly via `scripts/backup.sh` (pg_dump + redis rdb + ES snapshot). Root is `/var/backups/jol-marketplace` under cron; verification runs used `BACKUP_ROOT=backups` inside the repo. |
+| Backups | Nightly via `scripts/backup.sh` (pg_dump + redis rdb + ES snapshot). Root is `/var/backups/jolarca` under cron; verification runs used `BACKUP_ROOT=backups` inside the repo. |
 
 ---
 

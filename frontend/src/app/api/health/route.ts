@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export function GET(): NextResponse {
   return NextResponse.json(
-    { status: "ok", service: "jol-marketplace-frontend" },
+    { status: "ok", service: "jolarca-frontend" },
     {
       headers: {
         "Cache-Control": "no-store",

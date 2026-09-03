@@ -14,8 +14,7 @@ import {
   type CategoryFilters as Filters,
 } from "@/server/catalog";
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://jol-marketplace.example";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://jolarca.example";
 
 const SORTS = ["newest", "price_asc", "price_desc", "name"] as const;
 type Sort = (typeof SORTS)[number];

@@ -17,7 +17,7 @@
 # (./certbot-webroot) — see docs/DEPLOYMENT.md.
 # =============================================================================
 
-name: jol-marketplace-prod
+name: jolarca-prod
 
 # Bounded container logs (json-file driver): 10MB per file, keep 5 files —
 # a chatty worker can never fill the VM's disk. Applied to every service;
@@ -42,7 +42,7 @@ services:
         NEXT_PUBLIC_MEDIA_HOSTNAME: ${NEXT_PUBLIC_MEDIA_HOSTNAME:-}
         NEXT_PUBLIC_OTEL_ENDPOINT: ${NEXT_PUBLIC_OTEL_ENDPOINT:-}
         NEXT_PUBLIC_PLAUSIBLE_API: ${NEXT_PUBLIC_PLAUSIBLE_API:-}
-    image: jol-marketplace/frontend:${IMAGE_TAG:-latest}
+    image: jolarca/frontend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     logging: *default-logging
     env_file:
@@ -70,7 +70,7 @@ services:
     build:
       context: ./backend
       target: runtime
-    image: jol-marketplace/backend:${IMAGE_TAG:-latest}
+    image: jolarca/backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     logging: *default-logging
     env_file:
@@ -105,7 +105,7 @@ services:
     build:
       context: ./backend
       target: runtime
-    image: jol-marketplace/backend:${IMAGE_TAG:-latest}
+    image: jolarca/backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     logging: *default-logging
     env_file:
@@ -132,7 +132,7 @@ services:
     build:
       context: ./backend
       target: runtime
-    image: jol-marketplace/backend:${IMAGE_TAG:-latest}
+    image: jolarca/backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     logging: *default-logging
     env_file:
@@ -188,20 +188,20 @@ services:
     # extensions as superuser on first init. Stock postgres:16-alpine lacks
     # them — verified by boot smoke (NotSupportedError on migrate).
     build: ./backend/db
-    image: jol-marketplace/postgres:16-postgis
+    image: jolarca/postgres:16-postgis
     restart: unless-stopped
     logging: *default-logging
     env_file:
       - .env.prod
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-jol_marketplace}
+      POSTGRES_DB: ${POSTGRES_DB:-jolarca}
       POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env.prod}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks: [backend]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jol} -d ${POSTGRES_DB:-jol_marketplace}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jol} -d ${POSTGRES_DB:-jolarca}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -231,7 +231,7 @@ services:
       discovery.type: single-node
       xpack.security.enabled: "false"
       ES_JAVA_OPTS: "-Xms512m -Xmx512m"
-      cluster.name: jol-marketplace
+      cluster.name: jolarca
     volumes:
       - esdata:/usr/share/elasticsearch/data
     networks: [backend]

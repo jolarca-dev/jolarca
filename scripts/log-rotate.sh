@@ -19,7 +19,7 @@ set -uo pipefail
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 ENV_FILE="${ENV_FILE:-.env.prod}"
 NGINX_LOG_DIR="${NGINX_LOG_DIR:-$(pwd)/logs/nginx}"
-BACKUP_ROOT="${BACKUP_ROOT:-/var/backups/jol-marketplace}"
+BACKUP_ROOT="${BACKUP_ROOT:-/var/backups/jolarca}"
 KEEP_DAYS="${KEEP_DAYS:-30}"
 MIN_ROTATE_BYTES="${MIN_ROTATE_BYTES:-1048576}"   # 1 MiB
 

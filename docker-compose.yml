@@ -9,7 +9,7 @@
 # production deployment; nginx reaches it via BACKEND_UPSTREAM (envsubst).
 # Secrets come from .env (never committed; see frontend/.env.example).
 
-name: jol-marketplace
+name: jolarca
 
 services:
   nginx:
@@ -57,14 +57,14 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-jol_marketplace}
+      POSTGRES_DB: ${POSTGRES_DB:-jolarca}
       POSTGRES_USER: ${POSTGRES_USER:-jol}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks: [data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jol} -d ${POSTGRES_DB:-jol_marketplace}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jol} -d ${POSTGRES_DB:-jolarca}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -92,7 +92,7 @@ services:
       discovery.type: single-node
       xpack.security.enabled: "false"
       ES_JAVA_OPTS: "-Xms512m -Xmx512m"
-      cluster.name: jol-marketplace
+      cluster.name: jolarca
     volumes:
       - esdata:/usr/share/elasticsearch/data
     networks: [data]

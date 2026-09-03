@@ -1,11 +1,11 @@
 # Local development stack. CI parity lives in docker-compose.test.yml.
 # Secrets come from .env (never committed; see .env.example).
 #
-# Host-published ports are OFFSET from the defaults on purpose: this machine
-# also runs the JOL Church platform (jol-hub) and host-level PostgreSQL/Redis
-# on 5432/6379/8000. Container-internal ports stay standard; only the host
-# mappings differ (override via .env if your machine is free).
-name: jol-marketplace-dev
+# Host-published ports are OFFSET from the defaults on purpose so the dev
+# stack can run alongside other local services using 5432/6379/8000.
+# Container-internal ports stay standard; only the host mappings differ
+# (override via .env if your machine is free).
+name: jolarca-dev
 
 services:
   db:

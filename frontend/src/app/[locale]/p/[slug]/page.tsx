@@ -15,8 +15,7 @@ import { localeAlternates } from "@/lib/seo";
 import { Link } from "@/i18n/navigation";
 import { formatPrice, getProduct, getRelatedProducts } from "@/server/catalog";
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://jol-marketplace.example";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://jolarca.example";
 
 interface RouteParams {
   locale: string;

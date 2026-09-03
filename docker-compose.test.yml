@@ -1,6 +1,6 @@
 # CI-parity topology for integration tests: same images and env shape as dev,
 # ephemeral data, no ports exposed to the host, test runner included.
-name: jol-marketplace-test
+name: jolarca-test
 
 services:
   db:

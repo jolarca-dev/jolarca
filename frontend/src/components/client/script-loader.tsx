@@ -21,7 +21,7 @@ import Script from "next/script";
 import { ConsentGate } from "@/components/client/consent-gate";
 
 const PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
-/** Self-hosted ingest origin, e.g. https://pa.jol-marketplace.example */
+/** Self-hosted ingest origin, e.g. https://pa.jolarca.example */
 const PLAUSIBLE_API = process.env.NEXT_PUBLIC_PLAUSIBLE_API;
 
 /**

@@ -4,8 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { CheckoutFlow } from "@/components/client/checkout/checkout-flow";
 import { JsonLd } from "@/components/rsc/json-ld";
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://jol-marketplace.example";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://jolarca.example";
 
 export async function generateMetadata({
   params,

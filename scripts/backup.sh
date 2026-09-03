@@ -21,7 +21,7 @@ if [[ -f "${ENV_FILE}" ]]; then
   : "${POSTGRES_USER:=$(grep -E '^POSTGRES_USER=' "${ENV_FILE}" | head -1 | cut -d= -f2-)}"
   : "${POSTGRES_DB:=$(grep -E '^POSTGRES_DB=' "${ENV_FILE}" | head -1 | cut -d= -f2-)}"
 fi
-BACKUP_ROOT="${BACKUP_ROOT:-/var/backups/jol-marketplace}"
+BACKUP_ROOT="${BACKUP_ROOT:-/var/backups/jolarca}"
 COMPOSE="docker compose -f ${COMPOSE_FILE} --env-file ${ENV_FILE}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 DAY_OF_WEEK="$(date +%u)"   # 1 = Monday
@@ -45,7 +45,7 @@ log "backup tier: ${TIER} → ${DEST}"
 
 # --- 1. PostgreSQL -------------------------------------------------------------
 log "pg_dump → gzip"
-${COMPOSE} exec -T postgres pg_dump -U "${POSTGRES_USER:-jol}" -d "${POSTGRES_DB:-jol_marketplace}" \
+${COMPOSE} exec -T postgres pg_dump -U "${POSTGRES_USER:-jolarca}" -d "${POSTGRES_DB:-jolarca}" \
   | gzip -9 > "${DEST}/postgres-${STAMP}.sql.gz"
 [[ -s "${DEST}/postgres-${STAMP}.sql.gz" ]] || fail "postgres dump is empty."
 

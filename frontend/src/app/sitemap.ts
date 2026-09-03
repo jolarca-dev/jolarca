@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://jol-marketplace.example";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://jolarca.example";
 
 /*
  * PUBLIC indexable routes only. Private/authenticated surfaces (/account,
