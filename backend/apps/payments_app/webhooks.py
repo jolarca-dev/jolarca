@@ -15,6 +15,8 @@ import structlog
 from django.conf import settings
 from django.http import HttpResponseBadRequest, JsonResponse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -52,38 +54,48 @@ HANDLERS: dict[str, str] = {
 }
 
 
-@csrf_exempt
-@require_POST
-def stripe_webhook(request):
-    signature = request.headers.get("Stripe-Signature", "")
-    try:
-        event = _verify_and_parse(request.body, signature)
-    except ValueError:
-        audit.warning("stripe_webhook_rejected", reason="signature_invalid")
-        return HttpResponseBadRequest("invalid signature")
-    except Exception as exc:  # C4: SDK signature errors -> 400, never 500
-        if _is_signature_error(exc):
+@method_decorator(csrf_exempt, name="dispatch")
+@method_decorator(require_POST, name="dispatch")
+class StripePaymentWebhook(View):
+    """Stripe webhook endpoint — signature-verified, idempotent, replay-safe."""
+
+    def post(self, request):
+        signature = request.headers.get("Stripe-Signature", "")
+        try:
+            event = _verify_and_parse(request.body, signature)
+        except ValueError:
             audit.warning("stripe_webhook_rejected", reason="signature_invalid")
             return HttpResponseBadRequest("invalid signature")
-        raise
+        except Exception as exc:  # C4: SDK signature errors -> 400, never 500
+            if _is_signature_error(exc):
+                audit.warning("stripe_webhook_rejected", reason="signature_invalid")
+                return HttpResponseBadRequest("invalid signature")
+            raise
 
-    record, created = StripeWebhookEvent.objects.get_or_create(
-        event_id=event["id"],
-        defaults={"event_type": event["type"], "payload": json.loads(str(event))},
-    )
-    if not created and record.is_processed:
-        return JsonResponse({"status": "duplicate_ignored"})
+        # Log raw payload BEFORE processing (audit evidence, §webhook security).
+        audit.info(
+            "stripe_webhook_received",
+            event_id=event["id"],
+            event_type=event["type"],
+        )
 
-    task_path = HANDLERS.get(event["type"])
-    if task_path:
-        # Resolve to the task object and use .delay(): unlike send_task it
-        # honors CELERY_TASK_ALWAYS_EAGER (tests) and enqueues normally in
-        # production.
-        from importlib import import_module
+        record, created = StripeWebhookEvent.objects.get_or_create(
+            event_id=event["id"],
+            defaults={"event_type": event["type"], "payload": json.loads(str(event))},
+        )
+        if not created and record.is_processed:
+            return JsonResponse({"status": "duplicate_ignored"})
 
-        module_name, _, attr_name = task_path.rpartition(".")
-        getattr(import_module(module_name), attr_name).delay(str(record.pk))
+        task_path = HANDLERS.get(event["type"])
+        if task_path:
+            # Resolve to the task object and use .delay(): unlike send_task it
+            # honors CELERY_TASK_ALWAYS_EAGER (tests) and enqueues normally in
+            # production.
+            from importlib import import_module
 
-    record.processed_at = timezone.now()
-    record.save(update_fields=["processed_at"])
-    return JsonResponse({"status": "accepted"})
+            module_name, _, attr_name = task_path.rpartition(".")
+            getattr(import_module(module_name), attr_name).delay(str(record.pk))
+
+        record.processed_at = timezone.now()
+        record.save(update_fields=["processed_at"])
+        return JsonResponse({"status": "accepted"})

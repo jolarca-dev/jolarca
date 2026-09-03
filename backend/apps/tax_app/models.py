@@ -5,7 +5,7 @@ from django.db import models
 from apps.core.models import TimeStampedModel, UUIDModel
 
 
-class VatRateSnapshot(TimeStampedModel):
+class VatRateSnapshot(UUIDModel, TimeStampedModel):
     """Point-in-time standard VAT rate per country. Checkout stores the rate
     applied on the order item; audits compare against this history."""
 
@@ -14,6 +14,7 @@ class VatRateSnapshot(TimeStampedModel):
     valid_from = models.DateField()
 
     class Meta:
+        ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(fields=["country", "valid_from"], name="uniq_vat_country_from")
         ]
@@ -40,8 +41,11 @@ class CommercialInvoice(UUIDModel, TimeStampedModel):
     pdf_key = models.CharField(max_length=255, blank=True, default="", help_text="S3 key of PDF")
     issued_at = models.DateTimeField()
 
+    class Meta:
+        ordering = ["-created_at"]
 
-class OssReturnData(TimeStampedModel):
+
+class OssReturnData(UUIDModel, TimeStampedModel):
     """Aggregated OSS (One-Stop-Shop) quarterly figures per member state."""
 
     period = models.CharField(max_length=7, help_text="e.g. 2026Q3")
@@ -51,6 +55,7 @@ class OssReturnData(TimeStampedModel):
     status = models.CharField(max_length=16, default="draft", help_text="draft|submitted|accepted")
 
     class Meta:
+        ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(fields=["period", "country"], name="uniq_oss_period_country")
         ]

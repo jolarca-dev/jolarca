@@ -25,6 +25,7 @@ class StripeWebhookEvent(UUIDModel, TimeStampedModel):
     error = models.TextField(blank=True, default="")
 
     class Meta:
+        ordering = ["-created_at"]
         indexes = [models.Index(fields=["event_type", "processed_at"])]
 
     @property
@@ -49,6 +50,9 @@ class PaymentRecord(UUIDModel, TimeStampedModel):
     # Revenue attribution (ADR-0005 contract §5, STEP 20): order payments
     # are marketplace revenue; hub intents live in InternalPaymentIntent.
     product = models.CharField(max_length=16, default="marketplace", db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
 
 
 class InternalPaymentIntent(UUIDModel, TimeStampedModel):
@@ -86,6 +90,7 @@ class InternalPaymentIntent(UUIDModel, TimeStampedModel):
     finalized_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        ordering = ["-created_at"]
         indexes = [models.Index(fields=["product", "status"], name="payments_pr_product_idx")]
 
     def __str__(self) -> str:
@@ -102,6 +107,9 @@ class InternalRefund(UUIDModel, TimeStampedModel):
     reason = models.CharField(max_length=64)
     reason_detail = models.CharField(max_length=255, blank=True, default="")
     status = models.CharField(max_length=16, default="succeeded")
+
+    class Meta:
+        ordering = ["-created_at"]
 
     def __str__(self) -> str:
         return f"refund {self.pk} [{self.status}]"

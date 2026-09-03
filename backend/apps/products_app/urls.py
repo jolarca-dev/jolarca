@@ -8,6 +8,8 @@ from .views import (
     RelatedProductsView,
 )
 
+app_name = "products_app"
+
 urlpatterns = [
     path("catalog/home/", CatalogHomeView.as_view(), name="catalog-home"),
     path("categories/", CategoriesIndexView.as_view(), name="categories-index"),

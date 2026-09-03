@@ -24,6 +24,7 @@ class Category(UUIDModel, TimeStampedModel):
 
     class Meta:
         verbose_name_plural = "categories"
+        ordering = ["-created_at"]
 
     def __str__(self) -> str:
         return self.name
@@ -59,6 +60,7 @@ class ProductListing(UUIDModel, TimeStampedModel):
     is_featured = models.BooleanField(default=False, db_index=True)
 
     class Meta:
+        ordering = ["-created_at"]
         indexes = [models.Index(fields=["status", "published_at"])]
 
     def __str__(self) -> str:
@@ -80,6 +82,7 @@ class HomeHeroContent(UUIDModel, TimeStampedModel):
 
     class Meta:
         verbose_name_plural = "home hero content"
+        ordering = ["-created_at"]
 
     def __str__(self) -> str:
         return self.title

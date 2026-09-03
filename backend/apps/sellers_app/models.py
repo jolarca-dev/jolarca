@@ -52,6 +52,7 @@ class SellerProfile(UUIDModel, TimeStampedModel):
     docs_meta = models.JSONField(default=dict, blank=True)
 
     class Meta:
+        ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(
                 fields=["vat_number"], name="uniq_seller_vat", condition=~models.Q(vat_number="")

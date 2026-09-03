@@ -9,6 +9,8 @@ from django.urls import path
 
 from . import internal_views
 
+app_name = "payments_internal"
+
 urlpatterns = [
     path(
         "payment-intents",

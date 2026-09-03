@@ -34,11 +34,17 @@ class Shipment(UUIDModel, TimeStampedModel):
         max_length=32, blank=True, default="", help_text="Parcel locker code"
     )
 
+    class Meta:
+        ordering = ["-created_at"]
 
-class TrackingEvent(TimeStampedModel):
+
+class TrackingEvent(UUIDModel, TimeStampedModel):
     """Immutable carrier tracking feed (audit evidence for delivery disputes)."""
 
     shipment = models.ForeignKey(Shipment, on_delete=models.PROTECT, related_name="events")
     carrier_status = models.CharField(max_length=64)
     occurred_at = models.DateTimeField()
     raw = models.JSONField(default=dict)
+
+    class Meta:
+        ordering = ["-created_at"]

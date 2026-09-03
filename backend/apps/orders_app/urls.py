@@ -7,6 +7,8 @@ from .views import (
     OrderListView,
 )
 
+app_name = "orders_app"
+
 
 class OrderCollectionView(OrderCreateView, OrderListView):
     """POST creates (GAP-O08); GET lists history (GAP-O03)."""

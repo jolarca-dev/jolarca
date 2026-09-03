@@ -2,6 +2,8 @@ from django.urls import path
 
 from .views_public import LockerDirectoryView, ShippingOptionsView
 
+app_name = "shipping_app"
+
 # Mounted at /api/v1/ (project/urls.py). shipping-options lives under the
 # orders/ namespace because it is consumed mid-checkout; lockers under
 # shipping/ because the directory is reusable beyond checkout.

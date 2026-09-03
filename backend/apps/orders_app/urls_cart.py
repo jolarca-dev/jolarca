@@ -2,6 +2,8 @@ from django.urls import path
 
 from .cart_views import CartItemDetailView, CartItemsView, CartSyncView, CartView
 
+app_name = "orders_cart"
+
 # Mounted at /api/v1/ (project/urls.py) — the cart root is its own resource
 # tree, sibling to orders/, matching the frontend store contract.
 urlpatterns = [

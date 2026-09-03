@@ -24,6 +24,7 @@ class AuditLog(UUIDModel):
     data = models.JSONField(default=dict)
 
     class Meta:
+        ordering = ["-created_at"]
         indexes = [models.Index(fields=["action", "created_at"])]
 
     def save(self, *args, **kwargs):
@@ -60,6 +61,9 @@ class ErasureRequest(UUIDModel, TimeStampedModel):
         default=dict, help_text="Per-handler outcomes — the erasure evidence"
     )
 
+    class Meta:
+        ordering = ["-created_at"]
+
 
 class DataExport(UUIDModel, TimeStampedModel):
     """GDPR Art. 20 portability export job."""
@@ -72,3 +76,6 @@ class DataExport(UUIDModel, TimeStampedModel):
         max_length=255, blank=True, default="", help_text="S3 key; signed URL on demand"
     )
     expires_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]

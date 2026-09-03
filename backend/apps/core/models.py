@@ -40,6 +40,7 @@ class IdempotencyRecord(UUIDModel, TimeStampedModel):
     response_body = models.JSONField(null=True)
 
     class Meta:
+        ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(fields=["scope", "key"], name="uniq_idempotency_scope_key")
         ]

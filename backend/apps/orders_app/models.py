@@ -23,6 +23,9 @@ class Cart(UUIDModel, TimeStampedModel):
     )
     status = models.CharField(max_length=16, choices=CartStatus.choices, default=CartStatus.ACTIVE)
 
+    class Meta:
+        ordering = ["-created_at"]
+
     def __str__(self) -> str:
         return f"Cart {self.pk} [{self.status}]"
 
@@ -35,6 +38,7 @@ class CartItem(UUIDModel, TimeStampedModel):
     quantity = models.PositiveIntegerField(default=1)
 
     class Meta:
+        ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(fields=["cart", "listing"], name="uniq_cart_item_listing")
         ]
@@ -91,6 +95,7 @@ class Order(UUIDModel, TimeStampedModel):
     )
 
     class Meta:
+        ordering = ["-created_at"]
         indexes = [models.Index(fields=["buyer", "status"])]
 
     def __str__(self) -> str:
@@ -108,3 +113,6 @@ class OrderItem(UUIDModel):
     quantity = models.PositiveIntegerField()
     vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     seller_id = models.UUIDField(help_text="Denormalized for split payouts & erasure scoping")
+
+    class Meta:
+        ordering = ["pk"]

@@ -18,4 +18,5 @@ class AIRequestLog(UUIDModel, TimeStampedModel):
     # contain residual PII; retention of content is a separate legal decision.
 
     class Meta:
+        ordering = ["-created_at"]
         indexes = [models.Index(fields=["purpose", "created_at"])]

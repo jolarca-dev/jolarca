@@ -42,6 +42,9 @@ class User(UUIDModel, AbstractUser):
 
     objects: ClassVar[UserManager] = UserManager()
 
+    class Meta:
+        ordering = ["-date_joined"]
+
     def __str__(self) -> str:
         return self.email
 
@@ -59,6 +62,9 @@ class UserProfile(UUIDModel, TimeStampedModel):
     city = models.CharField(max_length=128, blank=True, default="")
     country = models.CharField(max_length=2, blank=True, default="", help_text="ISO 3166-1 alpha-2")
     preferred_language = models.CharField(max_length=8, default="en")
+
+    class Meta:
+        ordering = ["-created_at"]
 
 
 class ConsentPurpose(models.TextChoices):
@@ -81,6 +87,7 @@ class ConsentRecord(UUIDModel, TimeStampedModel):
     revoked_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        ordering = ["-created_at"]
         indexes = [models.Index(fields=["user", "purpose"])]
 
     def save(self, *args, **kwargs):

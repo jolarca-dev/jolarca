@@ -1,9 +1,11 @@
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.pagination import LimitOffsetPagination
 
 
-class StandardResultsSetPagination(PageNumberPagination):
-    """Single pagination contract for the whole API (OpenAPI stability)."""
+class StandardResultsSetPagination(LimitOffsetPagination):
+    """Single pagination contract for the whole API (OpenAPI stability).
 
-    page_size = 20
-    page_size_query_param = "page_size"
-    max_page_size = 100
+    LimitOffsetPagination with max_limit=100 per architectural spec.
+    """
+
+    default_limit = 20
+    max_limit = 100
