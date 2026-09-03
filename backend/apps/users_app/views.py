@@ -1,6 +1,8 @@
 from django.contrib.auth import authenticate, login, logout
 from django.core.exceptions import PermissionDenied
+from django.utils.decorators import method_decorator
 from django.utils.text import slugify
+from django.views.decorators.csrf import ensure_csrf_cookie
 from drf_spectacular.utils import extend_schema
 from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
@@ -129,11 +131,16 @@ class LogoutView(APIView):
 
 
 @extend_schema(responses={200: SessionUserSerializer})
+@method_decorator(ensure_csrf_cookie, name="dispatch")
 class SessionView(APIView):
     """GET /api/v1/auth/session/ — current session user (GAP-U03).
 
     401 for anonymous callers (the frontend maps 401/403 to `null` —
     probing the session must never redirect or toast).
+
+    The @ensure_csrf_cookie decorator guarantees that Django sets the
+    JS-readable CSRF cookie on this safe GET, so the frontend can prime
+    it before any mutating request (double-submit pattern).
     """
 
     permission_classes = [AllowAny]

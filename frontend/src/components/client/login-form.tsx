@@ -10,7 +10,7 @@
  */
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { z } from "zod";
 
 import { Link } from "@/i18n/navigation";
@@ -40,10 +40,14 @@ export function LoginForm() {
   const [lockedUntil, setLockedUntil] = useState(0);
   const [locked, setLocked] = useState(false);
 
-  const schema = z.object({
-    email: z.string().min(1, t("required")).email(t("invalidEmail")),
-    password: z.string().min(1, t("required")),
-  });
+  const schema = useMemo(
+    () =>
+      z.object({
+        email: z.string().min(1, t("required")).email(t("invalidEmail")),
+        password: z.string().min(1, t("required")),
+      }),
+    [t],
+  );
 
   function validateField(name: "email" | "password", value: string) {
     const result = schema.shape[name].safeParse(value);
@@ -81,8 +85,8 @@ export function LoginForm() {
     try {
       await login(parsed.data.email, parsed.data.password, remember);
       await queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEY });
-      router.push(safeRedirectTarget(searchParams.get("redirect")));
       router.refresh();
+      router.push(safeRedirectTarget(searchParams.get("redirect")));
     } catch (error) {
       // Backend message verbatim (DRF detail) — no generic fallback.
       setFormError(isApiError(error) ? error.message : String(error));

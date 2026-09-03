@@ -93,6 +93,23 @@ export function redirectToLogin(): void {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Auth-path whitelist — 401s from these endpoints MUST surface to callers,     */
+/* not trigger a hard redirect.                                                 */
+/* -------------------------------------------------------------------------- */
+
+const AUTH_PATHS = [
+  "/api/v1/auth/session/",
+  "/api/v1/auth/login/",
+  "/api/v1/auth/register/",
+  "/api/v1/auth/logout/",
+  "/api/v1/auth/password-reset/",
+];
+
+function isAuthEndpoint(url: string): boolean {
+  return AUTH_PATHS.some((p) => url.includes(p));
+}
+
+/* -------------------------------------------------------------------------- */
 /* Client singleton + middleware                                                */
 /* -------------------------------------------------------------------------- */
 
@@ -154,11 +171,16 @@ const middleware: Middleware = {
     if (response.status === 401) {
       // The session PROBE is expected to answer 401 for guests — never
       // bounce anonymous visitors to /login because of it.
-      if (!(response.url ?? "").includes("/api/v1/auth/session/")) {
+      if (
+        !(response.url ?? "").includes("/api/v1/auth/session/") &&
+        !isAuthEndpoint(response.url ?? "")
+      ) {
         redirectToLogin();
       }
     } else if (response.status === 403) {
-      emitToast({ variant: "warning", code: "forbidden" });
+      if (!isAuthEndpoint(response.url ?? "")) {
+        emitToast({ variant: "warning", code: "forbidden" });
+      }
     } else if (response.status >= 500) {
       // Report asynchronously; never block the response path.
       void ApiError.fromResponse(response).then((error) => {

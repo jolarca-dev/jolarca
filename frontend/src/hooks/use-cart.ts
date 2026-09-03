@@ -10,6 +10,7 @@
  * single info toast surfaces it; real errors roll back with an error toast.
  */
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { emitToast, isApiError } from "@/lib/api-client";
@@ -31,9 +32,11 @@ import {
 /* -------------------------------------------------------------------------- */
 
 export function useCartItems(): CartItem[] {
-  // Memoized selector: Object.values creates a new array per snapshot;
-  // useMemo caches the result to prevent useSyncExternalStore infinite loop.
-  const items = useCartStore((s) => s.items);
+  // Zustand's shallow equality ensures referential stability:
+  // when items haven't changed, the selector returns the SAME reference.
+  // This satisfies useSyncExternalStore's requirement for stable
+  // getServerSnapshot (prevents infinite loop).
+  const items = useCartStore(useShallow((s) => s.items));
   return useMemo(() => Object.values(items), [items]);
 }
 

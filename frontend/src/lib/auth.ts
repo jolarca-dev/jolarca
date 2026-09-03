@@ -54,6 +54,27 @@ export function readCsrfToken(cookieJar?: string): string | undefined {
 }
 
 /* -------------------------------------------------------------------------- */
+/* CSRF priming — fetch a safe endpoint so Django sets the cookie BEFORE      */
+/* any mutating request. Required because the middleware only echoes existing  */
+/* cookies; on first visit none exist.                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Prime the CSRF cookie by calling a safe GET endpoint.
+ * Resolves immediately if a CSRF cookie is already present.
+ * Idempotent — safe to call before every mutation.
+ */
+export async function ensureCsrfCookie(): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (readCsrfToken()) return; // already primed
+
+  // Session probe is safe: it returns 401 for guests, and the backend
+  // endpoint is decorated with @ensure_csrf_cookie so the response sets the
+  // JS-readable CSRF cookie that mutating requests need.
+  await apiClient.GET("/api/v1/auth/session/" as never, {} as never);
+}
+
+/* -------------------------------------------------------------------------- */
 /* Operations                                                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -67,6 +88,7 @@ export async function login(
   password: string,
   remember: boolean,
 ): Promise<SessionUser> {
+  await ensureCsrfCookie();
   const res = await apiClient.POST(
     "/api/v1/auth/login/" as never,
     {
@@ -93,6 +115,7 @@ export async function login(
  * The backend expires the httpOnly cookie; we drop zustand caches here.
  */
 export async function logout(): Promise<void> {
+  await ensureCsrfCookie();
   const res = await apiClient.POST(
     "/api/v1/auth/logout/" as never,
     {} as never,
@@ -121,6 +144,7 @@ export interface RegisterInput {
  * trust the client as the ledger.
  */
 export async function register(data: RegisterInput): Promise<void> {
+  await ensureCsrfCookie();
   const res = await apiClient.POST("/api/v1/auth/register/", {
     body: data,
   });
@@ -164,6 +188,7 @@ export async function getSession(): Promise<SessionUser | null> {
  * shows the same "if the address exists" confirmation.
  */
 export async function requestPasswordReset(email: string): Promise<void> {
+  await ensureCsrfCookie();
   const res = await apiClient.POST(
     "/api/v1/auth/password-reset/" as never,
     {
