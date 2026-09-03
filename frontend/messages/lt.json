@@ -232,7 +232,7 @@
     "exportButton": "Prašyti duomenų eksporto",
     "exportRequesting": "Prašymas teikiamas…",
     "exportSubmitted": "Prašymas gautas. Pranešime, kai eksportas bus paruoštas atsisiųsti.",
-    "exportPendingNotice": "Savitarnos eksportas ruošiamas. Iki tol kreipkitės privacy@jol-marketplace.example — šis paspaudimas nieko neįrašė.",
+    "exportPendingNotice": "Savitarnos eksportas ruošiamas. Iki tol kreipkitės journey4oflife+jolarca.dev@gmail.com — šis paspaudimas nieko neįrašė.",
     "exportError": "Prašymo nepavyko pateikti. Bandykite dar kartą.",
     "erasureTitle": "Paskyros ir duomenų ištrynimas",
     "erasureBody": "Pagal BDAR 17 straipsnį galite prašyti ištrinti savo asmens duomenis. Šio veiksmo atšaukti negalima.",
@@ -249,7 +249,7 @@
     "erasureRequesting": "Prašymas teikiamas…",
     "erasureSubmitted": "Ištrynimo prašymas gautas.",
     "erasureFollowUp": "Jį įvykdysime per įstatymų nustatytą terminą ir patvirtinsime el. paštu.",
-    "erasurePendingNotice": "Savitarnos ištrynimo portalas ruošiamas. Iki tol kreipkitės privacy@jol-marketplace.example — šis paspaudimas nieko neįrašė.",
+    "erasurePendingNotice": "Savitarnos ištrynimo portalas ruošiamas. Iki tol kreipkitės journey4oflife+jolarca.dev@gmail.com — šis paspaudimas nieko neįrašė.",
     "erasureError": "Prašymo nepavyko pateikti. Bandykite dar kartą."
   },
   "account": {

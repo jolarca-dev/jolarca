@@ -1,7 +1,9 @@
-# JOL Platform — SOPS creation rules (ADR-003 amendment PR #35; Gate 8 GO 2026-08-27)
-# TREE: Marketplace (/opt/jol-m/**) — recipient below ONLY. Cross-tree recipients are a segregation
-# incident (amendment rule 1). Private key: Vaultwarden SOPS-Custody + Shamir
-# custody. Counterpart config: church: jol-infrastructure .sops.yaml. PUBLIC recipient only.
+# Jolarca Marketplace — SOPS creation rules (ADR-003 amendment PR #35; Gate 8 GO 2026-08-27)
+# SCOPE: jolarca marketplace repositories only. The recipient below is the marketplace
+# public age key; cross-project recipients are a segregation incident (amendment rule 1).
+# Private key: Vaultwarden SOPS-Custody + Shamir custody.
+# Counterpart (church-platform tree): journeyoflife-org/jol-infrastructure .sops.yaml.
+# This file contains the PUBLIC recipient only.
 creation_rules:
   - path_regex: \.enc\.ya?ml$
     age: age1h6knxanpsq332ufrh54mh5y0wgzhu43vgq8flh55hrnc2zvuwe8qjn4n47  # pragma: allowlist secret

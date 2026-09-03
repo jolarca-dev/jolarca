@@ -232,7 +232,7 @@
     "exportButton": "Taotle andmete eksporti",
     "exportRequesting": "Saadan taotlust…",
     "exportSubmitted": "Taotlus vastu võetud. Anname teada, kui eksport on allalaadimiseks valmis.",
-    "exportPendingNotice": "Iseteeninduse eksport on ettevalmistamisel. Seni võtke ühendust: privacy@jol-marketplace.example — see klõps ei salvestanud midagi.",
+    "exportPendingNotice": "Iseteeninduse eksport on ettevalmistamisel. Seni võtke ühendust: journey4oflife+jolarca.dev@gmail.com — see klõps ei salvestanud midagi.",
     "exportError": "Taotlust ei õnnestunud saata. Proovige uuesti.",
     "erasureTitle": "Konto ja andmete kustutamine",
     "erasureBody": "Isikuandmete kaitse määruse artikli 17 alusel võite taotleda oma isikuandmete kustutamist. Seda toimingut ei saa tagasi võtta.",
@@ -249,7 +249,7 @@
     "erasureRequesting": "Saadan taotlust…",
     "erasureSubmitted": "Kustutamistaotlus vastu võetud.",
     "erasureFollowUp": "Täidame selle seaduses ettenähtud tähtaja jooksul ja kinnitame e-postiga.",
-    "erasurePendingNotice": "Iseteeninduse kustutusportaal on ettevalmistamisel. Seni võtke ühendust: privacy@jol-marketplace.example — see klõps ei salvestanud midagi.",
+    "erasurePendingNotice": "Iseteeninduse kustutusportaal on ettevalmistamisel. Seni võtke ühendust: journey4oflife+jolarca.dev@gmail.com — see klõps ei salvestanud midagi.",
     "erasureError": "Taotlust ei õnnestunud saata. Proovige uuesti."
   },
   "account": {

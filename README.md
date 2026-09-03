@@ -1,7 +1,7 @@
 # jolarca
 
-[![CI](https://github.com/journeyoflife-org/jolarca/actions/workflows/ci.yml/badge.svg)](https://github.com/journeyoflife-org/jolarca/actions/workflows/ci.yml)
-[![Security](https://github.com/journeyoflife-org/jolarca/actions/workflows/security.yml/badge.svg)](https://github.com/journeyoflife-org/jolarca/actions/workflows/security.yml)
+[![CI](https://github.com/jolarca-dev/jolarca/actions/workflows/ci.yml/badge.svg)](https://github.com/jolarca-dev/jolarca/actions/workflows/ci.yml)
+[![Security](https://github.com/jolarca-dev/jolarca/actions/workflows/security.yml/badge.svg)](https://github.com/jolarca-dev/jolarca/actions/workflows/security.yml)
 ![Coverage](https://img.shields.io/badge/coverage-%E2%89%A580%25-success)
 ![Lighthouse](https://img.shields.io/badge/lighthouse-budgets%20enforced-success)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue)

@@ -13,7 +13,8 @@ import { Link } from "@/i18n/navigation";
 import { serializeError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
-export const SUPPORT_EMAIL = "support@journeyoflife.org";
+// TODO: verify the mailbox exists before the repo is made public.
+export const SUPPORT_EMAIL = "journey4oflife+jolarca.dev@gmail.com";
 
 /** Component stack frames only; capped length; values never reach logs. */
 function sanitizeComponentStack(stack?: string | null): string | undefined {

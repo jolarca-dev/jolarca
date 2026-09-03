@@ -232,7 +232,7 @@
     "exportButton": "Pieprasīt datu eksportu",
     "exportRequesting": "Iesniedz pieprasījumu…",
     "exportSubmitted": "Pieprasījums saņemts. Paziņosim, kad eksports būs gatavs lejupielādei.",
-    "exportPendingNotice": "Pašapkalpošanās eksports tiek gatavots. Tikmēr sazinieties: privacy@jol-marketplace.example — šis klikšķis neko nereģistrēja.",
+    "exportPendingNotice": "Pašapkalpošanās eksports tiek gatavots. Tikmēr sazinieties: journey4oflife+jolarca.dev@gmail.com — šis klikšķis neko nereģistrēja.",
     "exportError": "Pieprasījumu neizdevās iesniegt. Lūdzu, mēģiniet vēlreiz.",
     "erasureTitle": "Konta un datu dzēšana",
     "erasureBody": "Saskaņā ar VDAR 17. pantu jūs varat pieprasīt savu personas datu dzēšanu. Šo darbību nevar atsaukt.",
@@ -249,7 +249,7 @@
     "erasureRequesting": "Iesniedz pieprasījumu…",
     "erasureSubmitted": "Dzēšanas pieprasījums saņemts.",
     "erasureFollowUp": "To izpildīsim likumā noteiktajā termiņā un apstiprināsim pa e-pastu.",
-    "erasurePendingNotice": "Pašapkalpošanās dzēšanas portāls tiek gatavots. Tikmēr sazinieties: privacy@jol-marketplace.example — šis klikšķis neko nereģistrēja.",
+    "erasurePendingNotice": "Pašapkalpošanās dzēšanas portāls tiek gatavots. Tikmēr sazinieties: journey4oflife+jolarca.dev@gmail.com — šis klikšķis neko nereģistrēja.",
     "erasureError": "Pieprasījumu neizdevās iesniegt. Lūdzu, mēģiniet vēlreiz."
   },
   "account": {

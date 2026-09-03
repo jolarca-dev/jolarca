@@ -55,8 +55,8 @@ main() {
       return 0
     fi
   else
-    # Dev mode: host-mapped ports of docker-compose.dev.yml. Defaults match
-    # .env (offset from 5432/6379/8000 so jol-hub can run concurrently).
+    # Dev mode: host-mapped ports of docker-compose.dev.yml. Defaults are
+    # offset from 5432/6379/8000 so other local services can run concurrently.
     hosts=(
       "localhost:${POSTGRES_PORT:-5433}"
       "localhost:${REDIS_HOST_PORT:-6380}"

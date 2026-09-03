@@ -232,7 +232,7 @@
     "exportButton": "Request my data export",
     "exportRequesting": "Submitting request…",
     "exportSubmitted": "Request received. We will notify you when the export is ready to download.",
-    "exportPendingNotice": "The self-service export is being prepared. Until it ships, contact privacy@jol-marketplace.example — nothing was recorded by this click.",
+    "exportPendingNotice": "The self-service export is being prepared. Until it ships, contact journey4oflife+jolarca.dev@gmail.com — nothing was recorded by this click.",
     "exportError": "The request could not be submitted. Please try again.",
     "erasureTitle": "Delete my account and data",
     "erasureBody": "Under GDPR Article 17 you can request erasure of your personal data. This action cannot be undone.",
@@ -249,7 +249,7 @@
     "erasureRequesting": "Submitting request…",
     "erasureSubmitted": "Erasure request received.",
     "erasureFollowUp": "We will process it within the statutory deadline and confirm by email.",
-    "erasurePendingNotice": "The self-service erasure portal is being prepared. Until it ships, contact privacy@jol-marketplace.example — nothing was recorded by this click.",
+    "erasurePendingNotice": "The self-service erasure portal is being prepared. Until it ships, contact journey4oflife+jolarca.dev@gmail.com — nothing was recorded by this click.",
     "erasureError": "The request could not be submitted. Please try again."
   },
   "account": {

@@ -14,7 +14,8 @@
 Report privately via one of:
 
 1. GitHub **Security → Report a vulnerability** (private disclosure), or
-2. Email `security@jol-infrastructure.example` with the subject prefix `[SECURITY]`.
+2. Email `journey4oflife+jolarca.dev@gmail.com` with the subject prefix `[SECURITY]`.
+   (This mailbox must be created and monitored before the repository is made public.)
 
 ### What to include
 
