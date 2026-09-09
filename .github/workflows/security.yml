@@ -69,7 +69,7 @@ jobs:
         run: |
           pip install pip-audit
           pip-audit -r backend/requirements/base.txt --strict || exit 1
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       - name: npm audit (frontend)
