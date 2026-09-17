@@ -185,10 +185,10 @@ services:
   postgres:
     # Same PostGIS+pgvector image as the dev stack (backend/db/Dockerfile):
     # migrations require postgis, and the entrypoint init creates the
-    # extensions as superuser on first init. Stock postgres:16-alpine lacks
+    # extensions as superuser on first init. Stock postgres:17-alpine lacks
     # them — verified by boot smoke (NotSupportedError on migrate).
     build: ./backend/db
-    image: jol-marketplace/postgres:16-postgis
+    image: jol-marketplace/postgres:17-postgis
     restart: unless-stopped
     logging: *default-logging
     env_file:
