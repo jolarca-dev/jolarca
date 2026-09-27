@@ -70,3 +70,14 @@ backups/
 !.env.example
 !.env.prod.example
 !frontend/.env.example
+
+# --- Control-plane policy patterns (policy/repo-defaults.yml#data_handling) ---
+# Readiness finding L-14 (2026-09-28): keys, certs and Terraform state
+# must never be committed. History verified clean by gitleaks (165 commits,
+# 0 leaks) on 2026-09-28, so this is prevention, not incident cleanup.
+*.p12
+secrets.json
+credentials.json
+*.tfstate
+*.tfstate.*
+.terraform/
