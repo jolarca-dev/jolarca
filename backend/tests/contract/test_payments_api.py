@@ -28,6 +28,7 @@ class TestStripeWebhookEvent:
             payload={},
         )
         from django.db import IntegrityError
+
         with pytest.raises(IntegrityError):
             StripeWebhookEvent.objects.create(
                 event_id="evt_unique",
@@ -37,6 +38,7 @@ class TestStripeWebhookEvent:
 
     def test_mark_as_processed(self):
         from django.utils import timezone
+
         event = StripeWebhookEvent.objects.create(
             event_id="evt_proc",
             event_type="payment_intent.succeeded",
@@ -70,6 +72,7 @@ class TestPaymentRecord:
 
     def test_payment_record_requires_order(self):
         from django.db import IntegrityError
+
         with pytest.raises(IntegrityError):
             PaymentRecord.objects.create(
                 amount=Decimal("10.00"),
@@ -96,9 +99,12 @@ class TestStripeTestMode:
     def test_no_live_keys_in_codebase(self):
         """Ensure no sk_live keys are hardcoded anywhere."""
         import subprocess
+
         result = subprocess.run(
             ["grep", "-rn", "sk_live", "apps/", "project/"],
-            capture_output=True, text=True, cwd="/opt/jolarca/repos/jolarca/backend",
+            capture_output=True,
+            text=True,
+            cwd="/opt/jolarca/repos/jolarca/backend",
         )
         # grep returns 1 if no matches found (which is what we want)
         assert result.returncode == 1, f"Found sk_live in codebase: {result.stdout}"

@@ -60,12 +60,16 @@ class TestTrackingEvent:
 
     def test_tracking_events_ordered_by_occurred_at(self, shipment):
         TrackingEvent.objects.create(
-            shipment=shipment, carrier_status="delivered",
-            occurred_at="2026-09-02T12:00:00Z", raw={},
+            shipment=shipment,
+            carrier_status="delivered",
+            occurred_at="2026-09-02T12:00:00Z",
+            raw={},
         )
         TrackingEvent.objects.create(
-            shipment=shipment, carrier_status="in_transit",
-            occurred_at="2026-09-01T12:00:00Z", raw={},
+            shipment=shipment,
+            carrier_status="in_transit",
+            occurred_at="2026-09-01T12:00:00Z",
+            raw={},
         )
         events = list(shipment.events.order_by("occurred_at"))
         assert events[0].carrier_status == "in_transit"
