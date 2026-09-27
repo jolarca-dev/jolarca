@@ -28,7 +28,7 @@
     "@tanstack/react-table": "^8.21.3",
     "isomorphic-dompurify": "^4.2.0",
     "next": "^15.5.26",
-    "next-intl": "^4.14.3",
+    "next-intl": "^4.14.7",
     "openapi-fetch": "^0.17.0",
     "openapi-typescript": "^7.13.0",
     "react": "^19.1.0",
