@@ -7,6 +7,15 @@ COMPOSE_TEST := docker compose -f docker-compose.test.yml
 PY := $(CURDIR)/.venv/bin/python
 PIP := $(CURDIR)/.venv/bin/pip
 
+# Host-side Django targets need .env (DATABASE_URL, DJANGO_SETTINGS_MODULE,
+# POSTGRES_*); without it Django silently falls back to 127.0.0.1:5432 with no
+# password and fails with "fe_sendauth: no password supplied". Make must NOT
+# `include` the file: a secret containing $ or # would be interpolated or
+# truncated by Make itself. Source it in the recipe shell instead, so the shell
+# parses the values. No-op when .env is absent — CI injects env directly, so
+# target behaviour is unchanged there (parity by design).
+LOAD_ENV := set -a; if [ -f .env ]; then . ./.env; fi; set +a;
+
 .PHONY: help bootstrap sysdeps dev-up dev-down logs migrate makemigrations seed \
         test test-integration lint typecheck check lock api-schema check-secrets wait
 
@@ -33,13 +42,13 @@ logs: ## Tail backend logs
 	$(COMPOSE_DEV) logs -f backend worker
 
 migrate: ## Apply migrations (uses DATABASE_URL)
-	cd backend && $(PY) manage.py migrate
+	$(LOAD_ENV) cd backend && $(PY) manage.py migrate
 
 makemigrations: ## Generate migrations
-	cd backend && $(PY) manage.py makemigrations
+	$(LOAD_ENV) cd backend && $(PY) manage.py makemigrations
 
 seed: ## Seed LT/LV/EE demo data (idempotent)
-	cd backend && $(PY) ../scripts/seed_data.py
+	$(LOAD_ENV) cd backend && $(PY) ../scripts/seed_data.py
 
 test: ## Unit + security tests (fast, no DB services required)
 	cd backend && $(PY) -m pytest tests/unit tests/security -q
@@ -57,7 +66,7 @@ typecheck: ## mypy with django plugin
 	cd backend && $(PY) -m mypy project apps
 
 check: ## Django system checks (settings, apps, migrations consistency)
-	cd backend && $(PY) manage.py check
+	$(LOAD_ENV) cd backend && $(PY) manage.py check
 
 lock: ## Recompile pinned requirements from pyproject (pip-tools, hashes)
 	cd backend && $(PY) -m piptools compile --generate-hashes --allow-unsafe --output-file=requirements/base.txt pyproject.toml
@@ -65,11 +74,12 @@ lock: ## Recompile pinned requirements from pyproject (pip-tools, hashes)
 	cd backend && $(PY) -m piptools compile --generate-hashes --allow-unsafe --extra=prod --output-file=requirements/prod.txt pyproject.toml
 
 api-schema: ## Regenerate OpenAPI snapshot + frontend client (never hand-edit)
-	cd backend && $(PY) manage.py spectacular --file ../docs/api/openapi.yaml --validate
+	$(LOAD_ENV) cd backend && $(PY) manage.py spectacular --file ../docs/api/openapi.yaml --validate
 	cd frontend && npm run generate:api
 
 check-secrets: ## Scan for accidentally staged secrets
 	bash scripts/check_no_secrets.sh
+	bash scripts/check_secrets_dir.sh
 
 wait: ## Block until local services are reachable
 	bash scripts/wait_for_services.sh
