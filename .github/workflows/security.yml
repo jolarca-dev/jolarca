@@ -32,18 +32,30 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+      # Reporting only: publish a SARIF snapshot to code scanning. exit-code is 0
+      # here ON PURPOSE — trivy-action builds the SARIF report with ALL severities
+      # (see its "Building SARIF report with all severities" log line), so a
+      # non-zero exit-code on this step would silently gate on MEDIUM/LOW as well:
+      # a stricter-than-documented control that blocks every PR on any newly
+      # published medium advisory. The build gate is the explicit CRITICAL,HIGH
+      # step below, which enforces the severity this job actually declares.
       - uses: aquasecurity/trivy-action@d2a0b60797ff03db6132bd4e2b293f9b37081297 # master
         with:
           scan-type: fs
           scan-ref: .
           severity: CRITICAL,HIGH
-          exit-code: "1"
+          exit-code: "0"
           format: sarif
           output: trivy-results.sarif
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: trivy-results.sarif
+      # Hard policy gate: fail the build ONLY on CRITICAL/HIGH (declared intent).
+      # Reuses the trivy binary + DB installed by the action step above.
+      - name: Trivy CRITICAL/HIGH policy gate
+        run: |
+          trivy fs --scanners vuln --vuln-type os,library --include-dev-deps --severity CRITICAL,HIGH --exit-code 1 --format table .
 
   codeql:
     runs-on: ubuntu-24.04
