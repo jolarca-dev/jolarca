@@ -44,6 +44,16 @@ jobs:
         if: always()
         with:
           sarif_file: trivy-results.sarif
+      - name: DEBUG reveal trivy findings (scratch — removed before any merge)
+        if: always()
+        uses: aquasecurity/trivy-action@d2a0b60797ff03db6132bd4e2b293f9b37081297 # master
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          vuln-type: os,library
+          exit-code: "0"
+          format: table
 
   codeql:
     runs-on: ubuntu-24.04
