@@ -79,6 +79,7 @@ api-schema: ## Regenerate OpenAPI snapshot + frontend client (never hand-edit)
 
 check-secrets: ## Scan for accidentally staged secrets
 	bash scripts/check_no_secrets.sh
+	bash scripts/check_secrets_dir.sh
 
 wait: ## Block until local services are reachable
 	bash scripts/wait_for_services.sh
