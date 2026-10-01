@@ -43,16 +43,47 @@ fi
 DEST="${BACKUP_ROOT}/${TIER}"
 log "backup tier: ${TIER} → ${DEST}"
 
+# Artefacts written by THIS run. A failing pg_dump aborts under `set -e` before
+# any guard below can run, so the trap removes partial files on the way out —
+# otherwise a truncated dump survives rotation as a decoy "backup".
+DUMP=""
+RDB=""
+cleanup_partial() {
+  local rc=$?
+  if (( rc == 0 )); then return 0; fi
+  local f
+  for f in "${DUMP}" "${RDB}"; do
+    [[ -n "${f}" && -e "${f}" ]] && rm -f -- "${f}"
+  done
+  log "ERROR: run failed (exit ${rc}) — removed partial artefacts."
+}
+trap cleanup_partial EXIT
+
 # --- 1. PostgreSQL -------------------------------------------------------------
 log "pg_dump → gzip"
+DUMP="${DEST}/postgres-${STAMP}.sql.gz"
 ${COMPOSE} exec -T postgres pg_dump -U "${POSTGRES_USER:-jol}" -d "${POSTGRES_DB:-jol_marketplace}" \
-  | gzip -9 > "${DEST}/postgres-${STAMP}.sql.gz"
-[[ -s "${DEST}/postgres-${STAMP}.sql.gz" ]] || fail "postgres dump is empty."
+  | gzip -9 > "${DUMP}"
+# `-s` is NOT an integrity check: pg_dump against an unreachable or empty
+# database still yields a ~20-byte gzip of an empty stream, which passes `-s`
+# and then masquerades as a restorable backup for a whole retention cycle.
+# Verify the gzip stream and the pg_dump magic header — the same string the
+# restore verification in step 6 greps for.
+[[ -s "${DUMP}" ]] || fail "postgres dump is empty."
+gzip -t "${DUMP}" 2>/dev/null || fail "postgres dump is not a valid gzip stream."
+# `|| true` absorbs the SIGPIPE `head -c` sends gunzip on large dumps; without
+# it `pipefail` fails the substitution even when the header is present.
+DUMP_HEAD="$(gunzip -c "${DUMP}" 2>/dev/null | head -c 4096 || true)"
+[[ "${DUMP_HEAD}" == *"PostgreSQL database dump"* ]] \
+  || fail "postgres dump has no pg_dump header (empty or truncated)."
+log "postgres dump verified: $(wc -c < "${DUMP}") bytes, gzip + header ok"
 
 # --- 2. Redis -------------------------------------------------------------------
 log "redis SAVE + dump.rdb copy"
+RDB="${DEST}/redis-${STAMP}.rdb"
 ${COMPOSE} exec -T redis redis-cli SAVE >/dev/null
-${COMPOSE} cp redis:/data/dump.rdb "${DEST}/redis-${STAMP}.rdb"
+${COMPOSE} cp redis:/data/dump.rdb "${RDB}"
+[[ -s "${RDB}" ]] || fail "redis snapshot is empty."
 
 # --- 3. Elasticsearch snapshot ---------------------------------------------------
 # One-time repository registration (idempotent), then snapshot.
