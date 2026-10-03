@@ -64,9 +64,10 @@ Design decisions:
 | Control | Implementation |
 |---|---|
 | Lockfile-only installs | CI runs `npm ci` (frontend) and pip-tools hashed pins (backend, `make lock`) — never floating resolution in CI |
-| Vulnerability scanning | `npm audit --omit=dev` in CI (production dependencies only); backend `pip-audit` equivalent in the security workflow |
+| Vulnerability scanning | Security workflow: trivy `CRITICAL/HIGH` **build gate scoped to production dependencies**, plus a **non-blocking dev-inclusive** trivy SARIF report so dev-only advisories still surface as code-scanning alerts; backend `pip-audit --strict` on `base.txt` **and** `prod.txt` (runtime parity); frontend `npm audit --omit=dev --audit-level=high` |
 | Secret scanning | Gitleaks (`scripts/check_no_secrets.sh` + CI `secrets` job) |
 | Codegen toolchain risk acceptance | `js-yaml 4.x` advisory in the OpenAPI codegen toolchain — dev-only, network-isolated usage; formally accepted in ADR-0010 |
+| Frontend lint-toolchain risk acceptance | `braces` CVE-2026-93687 (HIGH) — dev-only transitive of `eslint-config-next`, **no upstream fix**, not present in the shipped runner image; formally accepted in **ADR-0018**; tracked via the non-blocking trivy dev report |
 | Updates | Dependabot configured (`.github/dependabot.yml`); security patches prioritized over features |
 | Provenance | Production container images are built from committed lockfiles; MinIO pinned to release tags in production (ADR-0005) |
 

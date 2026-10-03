@@ -32,12 +32,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      # Reporting step: publish a SARIF snapshot to code scanning (trivy-action
-      # builds it with all severities). exit-code is 0 on purpose: a non-zero exit
-      # here would silently gate on MEDIUM/LOW too (the earlier severity fix). This
-      # step covers the production/library surface; DEV-only advisories are tracked
-      # via GitHub Dependabot security alerts (verified source) and remediated on
-      # cadence, not build-gated.
+      # Reporting step: publish a SARIF snapshot of the PRODUCTION/library surface
+      # to code scanning (trivy-action builds it with all severities). exit-code is
+      # 0 on purpose: a non-zero exit here would silently gate on MEDIUM/LOW too
+      # (the earlier severity fix). Dev-only npm advisories (which Dependabot does
+      # NOT carry, e.g. braces) are covered by the dedicated non-blocking dev report
+      # two steps below -- not by this step.
       - uses: aquasecurity/trivy-action@d2a0b60797ff03db6132bd4e2b293f9b37081297 # master
         with:
           scan-type: fs
@@ -50,12 +50,30 @@ jobs:
         if: always()
         with:
           sarif_file: trivy-results.sarif
+      # Dev-dependency TRACKING (non-blocking): dev-only npm transitives such as
+      # braces (CVE-2026-93687, HIGH, no upstream fix, reachable only via
+      # eslint-config-next) are absent from Dependabot's advisory DB, so without
+      # this nothing would alert on them. Scan WITH dev deps and upload a
+      # CRITICAL/HIGH SARIF with --exit-code 0 -> surfaces as a code-scanning alert
+      # but never denies the pipeline. Accepted risk is documented in ADR-0018.
+      - name: Trivy dev-dependency advisory report (non-blocking)
+        run: |
+          trivy fs --scanners vuln --vuln-type os,library --include-dev-deps --severity CRITICAL,HIGH --exit-code 0 --format sarif --output trivy-dev.sarif .
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-dev.sarif
+          # upload-sarif allows one upload per tool+category per job; give this
+          # second Trivy upload a distinct category so it does not collide with
+          # the production SARIF upload above (empty default category).
+          category: trivy-dev-dependencies
       # Hard policy gate: fail the build on CRITICAL/HIGH in the PRODUCTION
       # dependency surface only (NO --include-dev-deps). Dev-only build/lint
-      # transitives (e.g. braces via eslint-config-next) are not shipped, carry no
-      # runtime exposure, and can have no upstream fix — gating on them is an
-      # unfixable denial-of-pipeline. They remain tracked via Dependabot security
-      # alerts and are remediated on cadence, not blocked.
+      # transitives (e.g. braces via eslint-config-next) are not shipped (frontend
+      # runner image copies only .next/standalone+static+public and strips npm),
+      # carry no runtime exposure, and can have no upstream fix -- gating on them
+      # is an unfixable denial-of-pipeline. They are tracked via the non-blocking
+      # dev report above (code-scanning alerts) and accepted/remediated per ADR-0018.
       - name: Trivy CRITICAL/HIGH policy gate (production dependencies)
         run: |
           trivy fs --scanners vuln --vuln-type os,library --severity CRITICAL,HIGH --exit-code 1 --format table .
