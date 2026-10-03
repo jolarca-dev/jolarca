@@ -6,12 +6,45 @@ updates:
       interval: weekly
     open-pull-requests-limit: 10
     labels: [dependencies, security-review]
+    # Group routine moves into ONE PR per ecosystem per week instead of ~10
+    # single-package PRs that each consume a full CI cycle and each go stale on
+    # their own — the fan-out is what stalled the queue (QODER.md §8 G19).
+    # Majors are deliberately excluded from grouping: a breaking change stays a
+    # discrete, revertable decision. `django` and `stripe` are excluded outright,
+    # so the framework and the payment SDK are never merged inside a bundle.
+    groups:
+      weekly-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        exclude-patterns:
+          - django
+          - stripe
+        update-types:
+          - minor
+          - patch
   - package-ecosystem: npm
     directory: /frontend
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
     labels: [dependencies, security-review]
+    # Same policy as pip. Excluded from grouping: `dompurify` (it is the XSS
+    # sanitiser — a security control, so it lands alone and promptly) and the
+    # `@stripe/*` pair (Stripe Elements is what keeps the merchant out of CHD
+    # scope under PCI DSS SAQ-A; a silent regression there is a scope change,
+    # not a chore).
+    groups:
+      weekly-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        exclude-patterns:
+          - dompurify
+          - "@stripe/*"
+        update-types:
+          - minor
+          - patch
   - package-ecosystem: docker
     directories: [/backend, /frontend, /backend/db]
     schedule:
