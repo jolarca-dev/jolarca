@@ -17,7 +17,7 @@ PIP := $(CURDIR)/.venv/bin/pip
 LOAD_ENV := set -a; if [ -f .env ]; then . ./.env; fi; set +a;
 
 .PHONY: help bootstrap sysdeps dev-up dev-down logs migrate makemigrations seed \
-        test test-integration lint typecheck check lock api-schema check-secrets wait
+        test test-contract test-integration lint typecheck check lock api-schema check-secrets wait
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  %-18s %s\n", $$1, $$2}'
@@ -52,6 +52,14 @@ seed: ## Seed LT/LV/EE demo data (idempotent)
 
 test: ## Unit + security tests (fast, no DB services required)
 	cd backend && $(PY) -m pytest tests/unit tests/security -q
+
+# Contract tests need a real database, so they are NOT part of `make test` — but
+# CI now runs them (ci.yml), which is why this target exists: without it `make
+# test` would stay green while the build failed. LOAD_ENV supplies the DB creds
+# from .env, and DJANGO_SETTINGS_MODULE is forced back to `test` because .env
+# pins project.settings.dev, which would pull in the Redis cache.
+test-contract: ## Contract tests (API/DB + PCI/PII boundary) — needs `make dev-up`
+	$(LOAD_ENV) cd backend && DJANGO_SETTINGS_MODULE=project.settings.test $(PY) -m pytest tests/contract -q
 
 test-integration: ## Integration tests against the CI-parity compose topology
 	$(COMPOSE_TEST) up -d --build

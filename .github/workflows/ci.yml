@@ -50,9 +50,14 @@ jobs:
         run: ruff check .
       - name: Typecheck (mypy)
         run: mypy project apps
-      - name: Unit + security tests
+      - name: Unit + security + contract tests
         run: |
-          pytest tests/unit tests/security --cov=. --cov-report=xml --cov-fail-under=20
+          pytest tests/unit tests/security tests/contract --cov=. --cov-report=xml --cov-fail-under=20
+          # Contract tests joined CI on 2026-10-03 (gap G7): they assert the PCI
+          # SAQ-A Stripe boundary and PII non-leakage, so until now that evidence
+          # was written but never produced. Coverage measured 68.8% locally with
+          # them included — raise --cov-fail-under in steps from the figure CI
+          # actually reports, not from a local number.
           # TODO: raise threshold toward 80% as contract/integration tests land
       - name: Migrate DB for OpenAPI check
         run: python manage.py migrate --noinput
