@@ -444,6 +444,7 @@ Closed entries stay listed: the register is the audit trail.
 | G11 | **CLOSED** 2026-10-04 | "`ruff check` clean (lint + format)" is a CI gate | `ruff check` does not verify formatting, and **no CI job ran `ruff format --check` or pre-commit** — Python formatting was enforced only by the local hook (per-machine, installed 2026-10-01, bypassable) while the frontend had a real gate. Added a "Format check (ruff format)" step to the CI backend job and corrected the doc claim. Verified the whole tree is format-clean at the CI-pinned ruff **0.16.6** | ci.yml backend job, `Makefile → lint-py`, `CONTRIBUTING.md` → *Quality gates* item 1 |
 | G13 | **CLOSED** 2026-10-03 | A contract test asserts no live Stripe secret key is hardcoded "anywhere" | It shelled out to `grep` from a hardcoded developer-machine absolute path, so it could only ever pass on that one checkout (and would **error**, not fail, in CI), while scanning just `apps/` and `project/`. Rewritten to walk all `backend/**/*.py` in-process, with a non-empty-scan assertion so it cannot pass vacuously. Verified by mutation probe | `tests/contract/test_payments_api.py::TestStripeTestMode::test_no_live_keys_in_codebase` |
 | G14 | OPEN | A green local run means CI will be green | The local `.venv` had silently drifted from the pinned lock: `dev.txt` prescribes **ruff 0.16.6 / mypy 2.3.1 / Django 6.1.1 / DRF 3.18.1 / stripe 15.6.1**, the venv held **ruff 0.16.3 / mypy 2.3.0** and older runtime packages. Every local "pass" before that was corrected was measured against tools CI does not run. Nothing in the repo detects venv↔lock drift — `make bootstrap` installs the lock, but no check asserts the venv still matches it | `requirements/dev.txt` pins vs `.venv`; ci.yml "Install pinned deps" uses `--require-hashes` |
+| G15 | OPEN | `make check-secrets` is a green gate | It **cannot pass on any real checkout**. `scripts/check_no_secrets.sh` greps the whole working tree (`grep -rI ... .`) and excludes only `.env.example` / `.env.prod.example`, so it flags the operator's own required env files — e.g. a Stripe **test-mode** key in gitignored, untracked `.env.prod`. Consequence: a developer who ever runs it sees a failure they cannot fix, which trains them to ignore the gate (same failure mode as G3). **No leak**: `.env.prod` is untracked and gitignored, and CI's gitleaks — which scans history, the question that actually matters — passes | `make check-secrets`, `scripts/check_no_secrets.sh:14-36` vs `.gitignore` `.env.*` |
 
 **Remediation queue, in priority order** (highest risk per unit of effort first):
 
@@ -461,15 +462,20 @@ Closed entries stay listed: the register is the audit trail.
    durable guard is a `make deps-check` target that runs
    `pip install --require-hashes -r backend/requirements/dev.txt` and reports
    whether anything was out of date.
-3. **G2 — record a formal risk acceptance** for single-operator review, in the
+3. **G15 — rescope `check_no_secrets.sh` to tracked content.** Scan what git
+   actually carries (`git ls-files`, or the staged set for a pre-commit hook) rather
+   than the whole tree, so the gate becomes passable and keeps its meaning. CI's
+   gitleaks already covers history; the local script's job is "am I about to commit
+   a credential", not "does my machine have credentials".
+4. **G2 — record a formal risk acceptance** for single-operator review, in the
    ADR-0018 style: state the compensating controls (branch protection, the G6
    fitness tests, the now-gated contract suite, the mandatory PR checklist) and
    the trigger for revisiting (first hire). Until then the checklist at
    `pull_request_template.md:7-22` is the *only* human review layer, so
    self-verify it against the diff.
-4. **G4/G5 — re-enable or stop advertising.** `README.md:6` claims a Lighthouse
+5. **G4/G5 — re-enable or stop advertising.** `README.md:6` claims a Lighthouse
    gate that is disabled. Correct the badge or the workflow.
-5. **G8/G9 — trivial doc corrections**, batch into one `docs:` commit.
+6. **G8/G9 — trivial doc corrections**, batch into one `docs:` commit.
 
 **Closed:** G3, G6, G7, G10, G11 and G13 — 2026-10-03/04. When a real carrier or
 LLM SDK is adopted, add it to `SDK_CONTAINMENT` in
