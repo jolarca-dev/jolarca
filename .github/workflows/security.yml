@@ -80,10 +80,15 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - name: pip-audit (pinned backend deps)
+      - name: pip-audit (pinned backend runtime deps, base + prod)
         run: |
           pip install pip-audit
-          pip-audit -r backend/requirements/base.txt --strict || exit 1
+          # Runtime parity: audit BOTH base.txt AND prod.txt. prod.txt is the
+          # production superset (adds gunicorn et al.); scanning only base.txt
+          # left prod-only runtime pins un-gated. dev.txt is intentionally NOT
+          # build-gated here -- dev-only advisories are tracked via Dependabot
+          # security alerts and remediated on cadence, not denial-of-pipeline.
+          pip-audit -r backend/requirements/base.txt -r backend/requirements/prod.txt --strict || exit 1
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
