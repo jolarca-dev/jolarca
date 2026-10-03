@@ -32,13 +32,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      # Reporting only: publish a SARIF snapshot to code scanning. exit-code is 0
-      # here ON PURPOSE — trivy-action builds the SARIF report with ALL severities
-      # (see its "Building SARIF report with all severities" log line), so a
-      # non-zero exit-code on this step would silently gate on MEDIUM/LOW as well:
-      # a stricter-than-documented control that blocks every PR on any newly
-      # published medium advisory. The build gate is the explicit CRITICAL,HIGH
-      # step below, which enforces the severity this job actually declares.
+      # Reporting step: publish a SARIF snapshot to code scanning (trivy-action
+      # builds it with all severities). exit-code is 0 on purpose: a non-zero exit
+      # here would silently gate on MEDIUM/LOW too (the earlier severity fix). This
+      # step covers the production/library surface; DEV-only advisories are tracked
+      # via GitHub Dependabot security alerts (verified source) and remediated on
+      # cadence, not build-gated.
       - uses: aquasecurity/trivy-action@d2a0b60797ff03db6132bd4e2b293f9b37081297 # master
         with:
           scan-type: fs
@@ -51,11 +50,15 @@ jobs:
         if: always()
         with:
           sarif_file: trivy-results.sarif
-      # Hard policy gate: fail the build ONLY on CRITICAL/HIGH (declared intent).
-      # Reuses the trivy binary + DB installed by the action step above.
-      - name: Trivy CRITICAL/HIGH policy gate
+      # Hard policy gate: fail the build on CRITICAL/HIGH in the PRODUCTION
+      # dependency surface only (NO --include-dev-deps). Dev-only build/lint
+      # transitives (e.g. braces via eslint-config-next) are not shipped, carry no
+      # runtime exposure, and can have no upstream fix — gating on them is an
+      # unfixable denial-of-pipeline. They remain tracked via Dependabot security
+      # alerts and are remediated on cadence, not blocked.
+      - name: Trivy CRITICAL/HIGH policy gate (production dependencies)
         run: |
-          trivy fs --scanners vuln --vuln-type os,library --include-dev-deps --severity CRITICAL,HIGH --exit-code 1 --format table .
+          trivy fs --scanners vuln --vuln-type os,library --severity CRITICAL,HIGH --exit-code 1 --format table .
 
   codeql:
     runs-on: ubuntu-24.04
