@@ -43,16 +43,63 @@ fi
 DEST="${BACKUP_ROOT}/${TIER}"
 log "backup tier: ${TIER} → ${DEST}"
 
+# Artefacts written by THIS run that are still IN PROGRESS. A failing pg_dump
+# aborts under `set -e` before any guard can run, so the trap removes the partial
+# file on the way out — otherwise a truncated dump survives rotation as a decoy
+# "backup". Each artefact's tracker is cleared the moment it is verified
+# complete, so a failure in a LATER step (S3 offload, rotation, restore verify)
+# can never delete a good, already-written backup.
+DUMP=""
+RDB=""
+cleanup_partial() {
+  local rc=$?
+  if (( rc == 0 )); then return 0; fi
+  local f
+  for f in "${DUMP}" "${RDB}"; do
+    [[ -n "${f}" && -e "${f}" ]] && rm -f -- "${f}"
+  done
+  log "ERROR: run failed (exit ${rc}) — removed partial artefacts."
+}
+trap cleanup_partial EXIT
+
 # --- 1. PostgreSQL -------------------------------------------------------------
 log "pg_dump → gzip"
+DUMP="${DEST}/postgres-${STAMP}.sql.gz"
+# Plain-text format (pg_dump default, no -F flag). The header check below is
+# format-coupled: switching to -Fc/-Fd/-Fp=custom/tar would need a different magic.
 ${COMPOSE} exec -T postgres pg_dump -U "${POSTGRES_USER:-jol}" -d "${POSTGRES_DB:-jol_marketplace}" \
-  | gzip -9 > "${DEST}/postgres-${STAMP}.sql.gz"
-[[ -s "${DEST}/postgres-${STAMP}.sql.gz" ]] || fail "postgres dump is empty."
+  | gzip -9 > "${DUMP}"
+# `[[ -s ]]` and even `gzip -t` are NOT integrity checks: an aborted/empty
+# pg_dump still yields a small, VALID gzip whose magic header survives, then it
+# masquerades as a restorable backup for a whole retention cycle. Verify, in
+# order: non-empty -> valid gzip stream -> pg_dump magic header (the same string
+# step 6 greps) -> a decompressed-size floor that rejects a schema-less dump.
+[[ -s "${DUMP}" ]] || fail "postgres dump is empty."
+gzip -t "${DUMP}" 2>/dev/null || fail "postgres dump is not a valid gzip stream."
+# `|| true` absorbs the SIGPIPE `head -c` sends gunzip on large dumps; without
+# it `pipefail` fails the substitution even when the header is present.
+DUMP_HEAD="$(gunzip -c "${DUMP}" 2>/dev/null | head -c 4096 || true)"
+[[ "${DUMP_HEAD}" == *"PostgreSQL database dump"* ]] \
+  || fail "postgres dump has no pg_dump header (empty or truncated)."
+# Decompressed-size floor. An empty database emits ~370 bytes (header present,
+# gzip valid) yet holds nothing restorable; the real catalog dump is tens of KB.
+# Override via MIN_DUMP_BYTES if the schema legitimately shrinks.
+MIN_DUMP_BYTES="${MIN_DUMP_BYTES:-1024}"
+DUMP_RAW_BYTES="$(gunzip -c "${DUMP}" 2>/dev/null | wc -c || true)"
+(( DUMP_RAW_BYTES >= MIN_DUMP_BYTES )) \
+  || fail "postgres dump too small (${DUMP_RAW_BYTES}B < ${MIN_DUMP_BYTES}B) — empty/schema-less database?"
+# Complete + verified: clear the tracker so the EXIT trap cannot delete this
+# good dump if a later step fails.
+DUMP=""
+log "postgres dump verified: gzip + header ok, ${DUMP_RAW_BYTES}B decompressed"
 
 # --- 2. Redis -------------------------------------------------------------------
 log "redis SAVE + dump.rdb copy"
+RDB="${DEST}/redis-${STAMP}.rdb"
 ${COMPOSE} exec -T redis redis-cli SAVE >/dev/null
-${COMPOSE} cp redis:/data/dump.rdb "${DEST}/redis-${STAMP}.rdb"
+${COMPOSE} cp redis:/data/dump.rdb "${RDB}"
+[[ -s "${RDB}" ]] || fail "redis snapshot is empty."
+RDB=""   # complete: clear tracker so the EXIT trap won't delete it on a later failure
 
 # --- 3. Elasticsearch snapshot ---------------------------------------------------
 # One-time repository registration (idempotent), then snapshot.
@@ -77,7 +124,14 @@ fi
 if [[ -n "${BACKUP_S3_BUCKET:-}" ]]; then
   if command -v rclone >/dev/null 2>&1; then
     log "uploading ${TIER} tier to s3:${BACKUP_S3_BUCKET}/${TIER}"
-    rclone copy "${DEST}" "s3:${BACKUP_S3_BUCKET}/${TIER}" --include "postgres-${STAMP}*" --include "redis-${STAMP}*"
+    # Offload is a bonus copy; local artefacts are the safety net. A failed
+    # upload must NOT abort the run (that would skip rotation and, pre-fix,
+    # delete the good local backups via the EXIT trap).
+    if rclone copy "${DEST}" "s3:${BACKUP_S3_BUCKET}/${TIER}" --include "postgres-${STAMP}*" --include "redis-${STAMP}*"; then
+      log "s3 offload ok"
+    else
+      log "WARN: s3 offload failed — local backups in ${DEST} remain intact (not a data-loss event)."
+    fi
   else
     log "WARN: BACKUP_S3_BUCKET set but rclone missing — skipping upload."
   fi

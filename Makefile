@@ -7,8 +7,18 @@ COMPOSE_TEST := docker compose -f docker-compose.test.yml
 PY := $(CURDIR)/.venv/bin/python
 PIP := $(CURDIR)/.venv/bin/pip
 
+# Host-side Django targets need .env (DATABASE_URL, DJANGO_SETTINGS_MODULE,
+# POSTGRES_*); without it Django silently falls back to 127.0.0.1:5432 with no
+# password and fails with "fe_sendauth: no password supplied". Make must NOT
+# `include` the file: a secret containing $ or # would be interpolated or
+# truncated by Make itself. Source it in the recipe shell instead, so the shell
+# parses the values. No-op when .env is absent — CI injects env directly, so
+# target behaviour is unchanged there (parity by design).
+LOAD_ENV := set -a; if [ -f .env ]; then . ./.env; fi; set +a;
+
 .PHONY: help bootstrap sysdeps dev-up dev-down logs migrate makemigrations seed \
-        test test-integration lint typecheck check lock api-schema check-secrets wait
+        test test-contract test-integration lint lint-py lint-fe typecheck check lock \
+        api-schema check-secrets wait
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  %-18s %s\n", $$1, $$2}'
@@ -33,16 +43,24 @@ logs: ## Tail backend logs
 	$(COMPOSE_DEV) logs -f backend worker
 
 migrate: ## Apply migrations (uses DATABASE_URL)
-	cd backend && $(PY) manage.py migrate
+	$(LOAD_ENV) cd backend && $(PY) manage.py migrate
 
 makemigrations: ## Generate migrations
-	cd backend && $(PY) manage.py makemigrations
+	$(LOAD_ENV) cd backend && $(PY) manage.py makemigrations
 
 seed: ## Seed LT/LV/EE demo data (idempotent)
-	cd backend && $(PY) ../scripts/seed_data.py
+	$(LOAD_ENV) cd backend && $(PY) ../scripts/seed_data.py
 
 test: ## Unit + security tests (fast, no DB services required)
 	cd backend && $(PY) -m pytest tests/unit tests/security -q
+
+# Contract tests need a real database, so they are NOT part of `make test` — but
+# CI now runs them (ci.yml), which is why this target exists: without it `make
+# test` would stay green while the build failed. LOAD_ENV supplies the DB creds
+# from .env, and DJANGO_SETTINGS_MODULE is forced back to `test` because .env
+# pins project.settings.dev, which would pull in the Redis cache.
+test-contract: ## Contract tests (API/DB + PCI/PII boundary) — needs `make dev-up`
+	$(LOAD_ENV) cd backend && DJANGO_SETTINGS_MODULE=project.settings.test $(PY) -m pytest tests/contract -q
 
 test-integration: ## Integration tests against the CI-parity compose topology
 	$(COMPOSE_TEST) up -d --build
@@ -50,14 +68,25 @@ test-integration: ## Integration tests against the CI-parity compose topology
 	$(COMPOSE_TEST) run --rm backend-test
 	$(COMPOSE_TEST) down
 
-lint: ## ruff (format check + lint)
-	cd backend && $(PY) -m ruff check . && cd ../frontend && npx prettier --check . 2>/dev/null || true
+# The old single `lint` target ended in `|| true` on a left-associative
+# `A && B || true` chain, so it exited 0 even when ruff reported errors — a gate
+# that can never fail is worse than none, because it manufactures confidence
+# before push. Both halves now propagate their exit status, and each runs exactly
+# the command CI runs (backend: ruff check + ruff format --check; frontend: npm run
+# lint + npm run format:check).
+lint-py: ## ruff lint + format check (backend)
+	cd backend && $(PY) -m ruff check . && $(PY) -m ruff format --check .
+
+lint-fe: ## ESLint + Prettier check (frontend)
+	cd frontend && npm run lint && npm run format:check
+
+lint: lint-py lint-fe ## All lint and format checks (Python + frontend)
 
 typecheck: ## mypy with django plugin
 	cd backend && $(PY) -m mypy project apps
 
 check: ## Django system checks (settings, apps, migrations consistency)
-	cd backend && $(PY) manage.py check
+	$(LOAD_ENV) cd backend && $(PY) manage.py check
 
 lock: ## Recompile pinned requirements from pyproject (pip-tools, hashes)
 	cd backend && $(PY) -m piptools compile --generate-hashes --allow-unsafe --output-file=requirements/base.txt pyproject.toml
@@ -65,11 +94,12 @@ lock: ## Recompile pinned requirements from pyproject (pip-tools, hashes)
 	cd backend && $(PY) -m piptools compile --generate-hashes --allow-unsafe --extra=prod --output-file=requirements/prod.txt pyproject.toml
 
 api-schema: ## Regenerate OpenAPI snapshot + frontend client (never hand-edit)
-	cd backend && $(PY) manage.py spectacular --file ../docs/api/openapi.yaml --validate
+	$(LOAD_ENV) cd backend && $(PY) manage.py spectacular --file ../docs/api/openapi.yaml --validate
 	cd frontend && npm run generate:api
 
 check-secrets: ## Scan for accidentally staged secrets
 	bash scripts/check_no_secrets.sh
+	bash scripts/check_secrets_dir.sh
 
 wait: ## Block until local services are reachable
 	bash scripts/wait_for_services.sh

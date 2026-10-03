@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from django.db import IntegrityError
+from django.db import IntegrityError, connection, transaction
 
 from apps.shipping_app.models import CarrierName, Shipment, ShipmentStatus, TrackingEvent
 
@@ -33,9 +33,10 @@ class TestShipmentModel:
         shipment.refresh_from_db()
         assert shipment.status == "label_ready"
 
-    def test_shipment_carrier_choices(self, order):
+    def test_shipment_carrier_choices(self, new_order):
+        # Shipment.order is OneToOne, so each carrier needs its own order.
         for carrier in CarrierName.values:
-            s = Shipment.objects.create(order=order, carrier=carrier)
+            s = Shipment.objects.create(order=new_order(), carrier=carrier)
             assert s.carrier == carrier
 
     def test_shipment_locker_id_for_omniva(self, order):
@@ -60,21 +61,33 @@ class TestTrackingEvent:
 
     def test_tracking_events_ordered_by_occurred_at(self, shipment):
         TrackingEvent.objects.create(
-            shipment=shipment, carrier_status="delivered",
-            occurred_at="2026-09-02T12:00:00Z", raw={},
+            shipment=shipment,
+            carrier_status="delivered",
+            occurred_at="2026-09-02T12:00:00Z",
+            raw={},
         )
         TrackingEvent.objects.create(
-            shipment=shipment, carrier_status="in_transit",
-            occurred_at="2026-09-01T12:00:00Z", raw={},
+            shipment=shipment,
+            carrier_status="in_transit",
+            occurred_at="2026-09-01T12:00:00Z",
+            raw={},
         )
         events = list(shipment.events.order_by("occurred_at"))
         assert events[0].carrier_status == "in_transit"
         assert events[1].carrier_status == "delivered"
 
     def test_tracking_event_requires_shipment(self):
-        with pytest.raises(IntegrityError):
+        """A TrackingEvent cannot reference a shipment that does not exist.
+
+        The FK is DEFERRED, so the INSERT itself does not raise — Postgres only
+        validates pending deferred constraints when the transaction checks them.
+        `connection.check_constraints()` triggers that check explicitly, and the
+        enclosing atomic() rolls the bad row back so teardown stays clean.
+        """
+        with pytest.raises(IntegrityError), transaction.atomic():
             TrackingEvent.objects.create(
                 shipment_id="00000000-0000-0000-0000-000000000000",
                 carrier_status="test",
                 occurred_at="2026-09-01T12:00:00Z",
             )
+            connection.check_constraints()
