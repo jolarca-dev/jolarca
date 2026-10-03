@@ -9,7 +9,7 @@ rule has no citation, treat it as an opinion, not a control. Where the project
 *intends* a control but does not implement it, it is labelled **GAP** and listed
 in §8 — never assume a GAP is enforced.
 
-**Last verified against:** `main` @ 2026-10-03 — `Makefile`, `.pre-commit-config.yaml`,
+**Last verified against:** `main` @ 2026-10-04 — `Makefile`, `.pre-commit-config.yaml`,
 `.github/CODEOWNERS`, `.github/pull_request_template.md`, `.github/workflows/ci.yml`,
 `.github/workflows/security.yml`, `CONTRIBUTING.md`, `README.md`,
 `docs/architecture/01-modular-breakdown.md`, `backend/pyproject.toml`,
@@ -445,6 +445,7 @@ Closed entries stay listed: the register is the audit trail.
 | G13 | **CLOSED** 2026-10-03 | A contract test asserts no live Stripe secret key is hardcoded "anywhere" | It shelled out to `grep` from a hardcoded developer-machine absolute path, so it could only ever pass on that one checkout (and would **error**, not fail, in CI), while scanning just `apps/` and `project/`. Rewritten to walk all `backend/**/*.py` in-process, with a non-empty-scan assertion so it cannot pass vacuously. Verified by mutation probe | `tests/contract/test_payments_api.py::TestStripeTestMode::test_no_live_keys_in_codebase` |
 | G14 | OPEN | A green local run means CI will be green | The local `.venv` had silently drifted from the pinned lock: `dev.txt` prescribes **ruff 0.16.6 / mypy 2.3.1 / Django 6.1.1 / DRF 3.18.1 / stripe 15.6.1**, the venv held **ruff 0.16.3 / mypy 2.3.0** and older runtime packages. Every local "pass" before that was corrected was measured against tools CI does not run. Nothing in the repo detects venv↔lock drift — `make bootstrap` installs the lock, but no check asserts the venv still matches it | `requirements/dev.txt` pins vs `.venv`; ci.yml "Install pinned deps" uses `--require-hashes` |
 | G15 | OPEN | `make check-secrets` is a green gate | It **cannot pass on any real checkout**. `scripts/check_no_secrets.sh` greps the whole working tree (`grep -rI ... .`) and excludes only `.env.example` / `.env.prod.example`, so it flags the operator's own required env files — e.g. a Stripe **test-mode** key in gitignored, untracked `.env.prod`. Consequence: a developer who ever runs it sees a failure they cannot fix, which trains them to ignore the gate (same failure mode as G3). **No leak**: `.env.prod` is untracked and gitignored, and CI's gitleaks — which scans history, the question that actually matters — passes | `make check-secrets`, `scripts/check_no_secrets.sh:14-36` vs `.gitignore` `.env.*` |
+| G16 | OPEN | The `prettier` pre-commit hook formats only what the project wants formatted | The hook runs prettier from the **repo root**, and prettier resolves `.prettierignore` relative to **cwd** — so `frontend/.prettierignore`'s `src/generated` exclusion is never applied and the hook **rewrites committed generated files** (observed on `api.ts`: 134 insertions / 134 deletions). Proved not to be a version issue: the project's own prettier **3.9.6** flags `api.ts` when run from the root and reports it clean with `--ignore-path frontend/.prettierignore`. Consequence: the hook produces a diff **no CI gate will ever reproduce** (`npm run format:check` runs inside `frontend/` with the ignore honored), so it silently fights `make api-schema` on every commit that touches frontend files | `.pre-commit-config.yaml:25-29` (`files: ^frontend/`, `rev: v4.0.0-alpha.8`), `frontend/.prettierignore` (`src/generated`), A/B probe above |
 
 **Remediation queue, in priority order** (highest risk per unit of effort first):
 
@@ -462,11 +463,17 @@ Closed entries stay listed: the register is the audit trail.
    durable guard is a `make deps-check` target that runs
    `pip install --require-hashes -r backend/requirements/dev.txt` and reports
    whether anything was out of date.
-3. **G15 — rescope `check_no_secrets.sh` to tracked content.** Scan what git
-   actually carries (`git ls-files`, or the staged set for a pre-commit hook) rather
-   than the whole tree, so the gate becomes passable and keeps its meaning. CI's
-   gitleaks already covers history; the local script's job is "am I about to commit
-   a credential", not "does my machine have credentials".
+3. **G15 + G16 — rescope the two mis-scoped local gates.** Both fail for the same
+   structural reason: a local check is looking at more than it should, so its output
+   is unactionable and trains the operator to ignore it.
+   - **G15**: point `check_no_secrets.sh` at what git actually carries
+     (`git ls-files`, or the staged set for a hook) instead of the whole tree, so the
+     gate becomes passable and keeps its meaning. CI's gitleaks already covers
+     history; the local script's question is "am I about to commit a credential",
+     not "does my machine have credentials".
+   - **G16**: give the prettier hook `args: [--ignore-path, frontend/.prettierignore]`
+     or exclude `src/generated` from its `files:` regex, so it stops rewriting
+     generated files that the project deliberately excludes. One line either way.
 4. **G2 — record a formal risk acceptance** for single-operator review, in the
    ADR-0018 style: state the compensating controls (branch protection, the G6
    fitness tests, the now-gated contract suite, the mandatory PR checklist) and
