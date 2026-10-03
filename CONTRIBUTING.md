@@ -40,7 +40,10 @@ approver on `payments_app`, `compliance_app`, `settings/`, and workflows.
 
 1. `ruff check` clean (lint + format)
 2. `mypy` clean (django plugin, strict for `services.py`)
-3. Tests green, coverage ≥ 80% on changed lines
+3. Tests green — CI runs `tests/unit`, `tests/security` and `tests/contract`
+   (`make test`, `make test-contract`; the contract suite needs the dev database,
+   so it is not part of `make test`). The coverage gate today is
+   `--cov-fail-under=20`; 80% is the target, not the current gate.
 4. OpenAPI snapshot regenerated if API surface changed (`make api-schema`)
 5. No secrets (`scripts/check_no_secrets.sh`, Gitleaks)
 6. Playwright checkout journey passes (frontend e2e)

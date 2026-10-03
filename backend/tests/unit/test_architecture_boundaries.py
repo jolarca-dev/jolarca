@@ -1,12 +1,13 @@
 """Architecture fitness functions — module isolation that CI does not otherwise gate.
 
 `docs/architecture/01-modular-breakdown.md:5-18` declares a forbidden-imports table and
-`CONTRIBUTING.md:48-70` calls those rejections automatic. They were not: no test
-asserted any of them (QODER.md §8, gap G6). These checks convert the highest-risk rules
-from review-only into build gates.
+*Architecture rules* in `CONTRIBUTING.md` calls those rejections automatic. They were
+not: no test asserted any of them (QODER.md §8, gap G6). These checks convert the
+highest-risk rules from review-only into build gates.
 
-Pure AST over `backend/apps/**` — no DB, no Django setup, no network — so it runs inside
-the fast suite (`Makefile:54`, `ci.yml:55`). Migrations are excluded, matching ruff's
+Pure AST over `backend/apps/**` — no DB, no Django setup, no network — so it runs
+inside the fast suite (`make test`, and the same step in the CI backend job).
+Migrations are excluded, matching ruff's
 `extend-exclude` (`backend/pyproject.toml:53`): they are generated and reference other
 apps by string label, not by import.
 
@@ -190,14 +191,16 @@ def test_request_path_modules_import_no_ai_or_crm(scanned):
     ]
     assert not offenders, (
         "Request/response modules must not import AI or CRM apps; enqueue to the `ai` "
-        "queue via Celery (README.md:41, CONTRIBUTING.md:62). Offenders:\n" + "\n".join(offenders)
+        "queue via Celery (README.md:41, CONTRIBUTING.md → *Architecture rules*). "
+        "Offenders:\n" + "\n".join(offenders)
     )
 
 
 def test_cross_app_model_imports_match_baseline(scanned):
     """Ratchet: cross-app `models` imports may only shrink, never grow.
 
-    `CONTRIBUTING.md:63-66` requires cross-app access via the owning app's `services.py`.
+    `CONTRIBUTING.md` → *Architecture rules* requires cross-app access via the
+    owning app's `services.py`.
     Sixteen call sites predate that rule and are baselined above rather than refactored
     here — fixing them is a separate, reviewed change per app, not a side effect of
     adding a test. `core.models` is exempt: models + utilities are core's declared
@@ -216,7 +219,7 @@ def test_cross_app_model_imports_match_baseline(scanned):
     new = sorted(found - CROSS_APP_MODEL_BASELINE)
     assert not new, (
         "New direct cross-app model import(s) — go through the owning app's services.py "
-        "(CONTRIBUTING.md:63). If the import is genuinely required, add it to "
+        "(CONTRIBUTING.md → *Architecture rules*). If genuinely required, add it to "
         "CROSS_APP_MODEL_BASELINE in this file with a comment saying why:\n"
         + "\n".join(f"{path} -> {target}" for path, target in new)
     )

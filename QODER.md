@@ -15,7 +15,10 @@ in §8 — never assume a GAP is enforced.
 `docs/architecture/01-modular-breakdown.md`, `backend/pyproject.toml`,
 `backend/tests/unit/test_architecture_boundaries.py`, `frontend/package.json`,
 `frontend/vitest.config.mts`, `docker-compose.test.yml`.
-Line numbers drift; re-verify a citation before relying on it after CI changes.
+Line numbers drift. `Makefile`, `ci.yml` and `CONTRIBUTING.md` change most often,
+so they are cited **by target name, CI step/job name, or section name** rather
+than by line. Everything else uses line numbers — re-verify one before relying on
+it after the referenced file changes.
 
 **Tradeoff.** These guidelines bias toward caution over speed. For a trivial
 change (typo, doc fix), use judgment and skip the ceremony.
@@ -85,7 +88,8 @@ When your changes create orphans:
 
 Test: *every changed line traces directly to the request.*
 
-**Generated files are off-limits.** Never hand-edit (`CONTRIBUTING.md:67-68`):
+**Generated files are off-limits.** Never hand-edit (`CONTRIBUTING.md` →
+*Architecture rules*):
 `backend/requirements/*.txt`, `docs/api/openapi.yaml`,
 `frontend/src/lib/api/generated/`, `CHANGELOG.md`, `LICENSE`.
 
@@ -97,8 +101,8 @@ Restate every task as a verifiable goal before writing code:
 
 | Instead of | Restate as | Verify with |
 |---|---|---|
-| "Add validation" | "Contract test asserting 400 on invalid input, then make it pass" | `cd backend && ../.venv/bin/pytest tests/contract -q` *(see §8 G7 — not CI-gated)* |
-| "Fix the bug" | "Regression test reproducing it, then make it pass" | `make test` (`Makefile:54`) |
+| "Add validation" | "Contract test asserting 400 on invalid input, then make it pass" | `make test-contract` (CI-gated since 2026-10-03; needs the dev DB) |
+| "Fix the bug" | "Regression test reproducing it, then make it pass" | `make test` |
 | "Refactor X" | "Tests pass before **and** after; no behaviour change" | `make test && make typecheck` |
 | "Add a PII field" | "`EncryptedTextField` + RoPA annotation + `COMPLIANCE_MATRIX.md` updated + erasure handler registered" | `make check && make test` |
 | "Change the API" | "Snapshot regenerated, drift clean both sides" | `make api-schema` then `cd frontend && npm run api:drift` |
@@ -148,7 +152,7 @@ app. Its load-bearing rows:
 
 Since 2026-10-03 these are machine-gated by
 `backend/tests/unit/test_architecture_boundaries.py` (pure AST over
-`backend/apps/**`, no DB, runs inside `make test` and `ci.yml:55`):
+`backend/apps/**`, no DB, runs inside `make test` and the CI backend test step):
 
 1. **`stripe` is importable only in `payments_app`** — the PCI DSS SAQ-A card-data
    boundary. Verified today: the sole `import stripe` statements are
@@ -170,10 +174,10 @@ Since 2026-10-03 these are machine-gated by
    `products_app/tasks.py:36`.
 6. **Request/response modules import no AI or CRM app** — no inference or CRM
    egress on the request path; enqueue to the `ai` Celery queue
-   (`README.md:41`, `CONTRIBUTING.md:62`).
+   (`README.md:41`, `CONTRIBUTING.md` → *Architecture rules*).
 
 **Cross-app model imports are a shrink-only ratchet, not a prohibition.**
-`CONTRIBUTING.md:63-66` requires cross-app access via the owning app's `services.py`,
+*Architecture rules* in `CONTRIBUTING.md` requires cross-app access via the owning app's `services.py`,
 but 16 `(file, target app)` pairs predate that rule and are baselined in
 `CROSS_APP_MODEL_BASELINE`. Adding a new pair fails the build; burning one down
 fails it too until you delete the stale entry. **Route new calls through
@@ -220,7 +224,7 @@ readiness, PCI DSS SAQ-A with Stripe as the only card-data boundary.
 
 - New PII fields **MUST** use `core.encryption.EncryptedTextField`
   (`backend/apps/core/encryption.py:42`) and annotate the RoPA classification
-  (`CONTRIBUTING.md:69-70`).
+  (`CONTRIBUTING.md` → *Architecture rules*).
 - Update `docs/COMPLIANCE_MATRIX.md` **in the same PR**.
 - **Erasure fan-out:** any new storage of personal data must register a handler
   in `compliance_app.services.ERASURE_REGISTRY`
@@ -231,8 +235,8 @@ readiness, PCI DSS SAQ-A with Stripe as the only card-data boundary.
 - Never log, echo, or place PII into test fixtures, error messages, or docs.
   `backend/tests/contract/test_seller_storefront_api.py:51-52` asserts `email`,
   `phone`, `vat_number` and `stripe_account_id` never leak from the storefront
-  API — but note that suite is not CI-gated (§8 G7), so treat that property as
-  your responsibility, not the pipeline's.
+  API — and since 2026-10-03 that suite runs in CI (§8 G7 closed), so a leak now
+  fails the build rather than merely being unobserved.
 - AI features run behind PII guardrails (`ai_service_app/guardrails.py`); do not
   weaken or short-circuit them (`01-modular-breakdown.md:16`).
 
@@ -252,7 +256,8 @@ Complete the checklist from the *diff*, not from memory of intent.
 that the org has zero teams (D-10, `:4-5`), and jolarca is a single-operator
 project by design. **Consequence:** no second approver exists, so there is no
 independent review of `payments_app`, `compliance_app`, `users_app`, `settings/`,
-or the workflows. Earlier revisions of this file and `CONTRIBUTING.md:36-37`
+or the workflows. Earlier revisions of this file and `CONTRIBUTING.md` →
+*Branching & PR checklist*
 asserted per-path Code Owner review; that control does not exist. See §8 G2 for
 the required risk acceptance and compensating controls.
 
@@ -265,7 +270,7 @@ the required risk acceptance and compensating controls.
 1. `.gitignore` excludes env, SSL, backup and scratch paths (`.state/` at `:59`).
 2. Pre-commit (`.pre-commit-config.yaml`): `detect-private-key` (`:6`),
    `check-added-large-files` (`:5`), Gitleaks v8.23.1 (`:20-23`).
-3. CI: `ci.yml:263-265` runs `scripts/check_no_secrets.sh` **and**
+3. CI: the `secrets` job runs `scripts/check_no_secrets.sh` **and**
    `scripts/check_secrets_dir.sh`; `security.yml:29` runs
    `gitleaks detect --source . --no-banner --redact` with full history
    (`fetch-depth: 0`).
@@ -287,23 +292,25 @@ Rules:
 
 ## Backend — `make` targets and their real CI counterparts
 
-| Local | Command | CI equivalent | Actual threshold |
+| Gate | Local target | CI location | Actual threshold |
 |---|---|---|---|
-| Lint | `make lint` (`Makefile:62-63`) | `ci.yml:50` `ruff check .` | **GAP locally** — see §8 G3 |
-| Typecheck | `make typecheck` (`Makefile:65-66`) | `ci.yml:52` `mypy project apps` | ENFORCED, both. Tests are **not** typechecked |
-| Tests | `make test` (`Makefile:53-54`) | `ci.yml:53-56` | `tests/unit tests/security` only |
-| Coverage | — | `ci.yml:55` `--cov-fail-under=20` | **20%, not 80%** — see §8 G1 |
-| Integration | `make test-integration` (`Makefile:56-60`) | `docker-compose.test.yml:34` | `tests/integration` only |
-| Contract | *(no target)* | *(no job)* | **Not gated** — see §8 G7 |
-| Django checks | `make check` (`Makefile:68-69`) | — | REVIEW-GATED locally |
-| OpenAPI drift | `make api-schema` (`Makefile:76-78`) | `ci.yml:59-63` (diff vs `docs/api/openapi.yaml`) | ENFORCED |
-| Secrets | `make check-secrets` (`Makefile:80-82`) | `ci.yml:258-265` | ENFORCED |
+| Lint | `make lint` | backend job, `ruff check .` | **GAP locally** — see §8 G3 |
+| Typecheck | `make typecheck` | backend job, `mypy project apps` | ENFORCED, both. Tests are **not** typechecked |
+| Tests | `make test` | backend job, "Unit + security + contract tests" | runs `tests/unit tests/security tests/contract` |
+| Contract | `make test-contract` | same step as Tests | **ENFORCED since 2026-10-03** (§8 G7). Needs a DB, so it is *not* in `make test` |
+| Coverage | — | `--cov-fail-under=20` in that step | **20%, not 80%** — see §8 G1. Measured 68.8% with contract tests included |
+| Integration | `make test-integration` | not a CI job (`docker-compose.test.yml:34`) | `tests/integration` only, manual |
+| Django checks | `make check` | — | REVIEW-GATED locally |
+| OpenAPI drift | `make api-schema` | CI backend job, "OpenAPI drift check" | ENFORCED |
+| Secrets | `make check-secrets` | the `secrets` job | ENFORCED |
 
-CI installs with `pip install --require-hashes -r requirements/dev.txt`
-(`ci.yml:48`) against PostGIS 16-3.4 (`ci.yml:24`) and
-`DJANGO_SETTINGS_MODULE=project.settings.test` (`ci.yml:38`). Local host runs
-source `.env` in the recipe shell (`Makefile:17`) — Make must not `include` it,
-since a `$` or `#` inside a secret would be interpolated or truncated.
+`Makefile` targets and CI steps are cited by name — see the header's citation rule.
+
+CI installs with `pip install --require-hashes -r requirements/dev.txt` (backend
+job, "Install pinned deps") against PostGIS 16-3.4 (that job's `postgres` service)
+and `DJANGO_SETTINGS_MODULE=project.settings.test` (its `env` block). Local host
+runs source `.env` via `LOAD_ENV` in the recipe shell — Make must not `include`
+it, since a `$` or `#` inside a secret would be interpolated or truncated.
 
 For ad-hoc test runs, `.env` is not loaded automatically and it pins
 `DJANGO_SETTINGS_MODULE=project.settings.dev`, which pulls in the Redis cache.
@@ -318,17 +325,17 @@ cd backend && ../.venv/bin/python -m pytest tests/unit -q
 
 | Gate | CI job | Command |
 |---|---|---|
-| Typecheck | `ci.yml:74-88` | `npx tsc --noEmit` |
-| Lint | `ci.yml:104` | `npm run lint` (ESLint) |
-| Format | `ci.yml:106` | `npm run format:check` (Prettier) |
-| Unit + coverage | `ci.yml:122` | `npm run test:coverage` — **80%** branches/functions/lines/statements (`frontend/vitest.config.mts:56-59`) ENFORCED |
-| API drift | `ci.yml:146` | `npm run api:drift` ENFORCED |
-| Build | `ci.yml:163-171` | `npm run build`, **warnings treated as errors** |
-| Standalone CSS | `ci.yml:173` | `node scripts/verify-standalone.mjs` ENFORCED |
-| Lighthouse | `ci.yml:185` | **`if: false` — disabled** (§8 G5) |
-| Playwright smoke | `ci.yml:216,249` | **`if: false` — disabled**; `smoke.spec.ts` only when enabled (§8 G4) |
+| Typecheck | `frontend-typecheck` | `npx tsc --noEmit` |
+| Lint | `frontend-lint` | `npm run lint` (ESLint) |
+| Format | `frontend-lint` | `npm run format:check` (Prettier) |
+| Unit + coverage | `frontend-unit` | `npm run test:coverage` — **80%** branches/functions/lines/statements (`frontend/vitest.config.mts:56-59`) ENFORCED |
+| API drift | `frontend-openapi-drift` | `npm run api:drift` ENFORCED |
+| Build | `frontend-build` | `npm run build`, **warnings treated as errors** |
+| Standalone CSS | `frontend-build` | `node scripts/verify-standalone.mjs` ENFORCED |
+| Lighthouse | `frontend-lighthouse` | **`if: false` — disabled** (§8 G5) |
+| Playwright smoke | `frontend-playwright-smoke` | **`if: false` — disabled**; `smoke.spec.ts` only when enabled (§8 G4) |
 
-Node 22 in CI (`ci.yml:83`). `README.md:5-6` advertises "coverage ≥80%" and
+Node 22 in CI (`ci.yml`, frontend jobs). `README.md:5-6` advertises "coverage ≥80%" and
 "lighthouse-budgets enforced" — the first holds for the frontend only, the second
 is currently false.
 
@@ -357,10 +364,12 @@ database, so the non-blocking report is the only thing that surfaces them.
 
 # Part VI — Dependencies
 
-- Runtime deps go in `backend/pyproject.toml` **only** (`CONTRIBUTING.md:74`).
-- `make lock` (`Makefile:71-74`) regenerates pinned, hash-checked
+- Runtime deps go in `backend/pyproject.toml` **only** (`CONTRIBUTING.md` →
+  *Adding dependencies*).
+- `make lock` regenerates pinned, hash-checked
   `requirements/{base,dev,prod}.txt` via pip-tools `--generate-hashes`.
-- PRs editing `requirements/*.txt` directly are rejected (`CONTRIBUTING.md:75-76`).
+- PRs editing `requirements/*.txt` directly are rejected (`CONTRIBUTING.md` →
+  *Adding dependencies*).
 - Attach the requirements diff to the PR (`pull_request_template.md:11-12`).
 - New deps must survive `pip-audit --strict` and the Trivy CRITICAL/HIGH gate
   (Part V). A dependency with an unfixable HIGH advisory needs a written risk
@@ -379,7 +388,7 @@ database, so the non-blocking report is the only thing that surfaces them.
 
 ## Conventional Commits — ENFORCED
 
-Format (`CONTRIBUTING.md:22-28`); the CHANGELOG is generated from these:
+Format (`CONTRIBUTING.md` → *Commit style*); the CHANGELOG is generated from these:
 
 ```
 <type>(<scope>): <imperative summary>
@@ -392,9 +401,9 @@ scope:  users | sellers | products | orders | payments | tax | shipping | ai | b
 - Breaking changes: append `!` (`feat(payments)!: ...`) and describe the
   migration in the body.
 - **Security fixes reference the internal incident ID only — never the
-  vulnerability detail** (`CONTRIBUTING.md:31`). Commit messages are public and
+  vulnerability detail** (`CONTRIBUTING.md` → *Commit style*). Commit messages are public and
   permanent; a CVE-plus-path-plus-version string is an exploit roadmap.
-- One concern per PR; branch from `main` (`CONTRIBUTING.md:35`).
+- One concern per PR; branch from `main` (`CONTRIBUTING.md` → *Branching & PR checklist*).
 
 ## Migrations — REVIEW-GATED
 
@@ -420,46 +429,51 @@ Closed entries stay listed: the register is the audit trail.
 
 | # | Status | Documented claim | Reality | Evidence |
 |---|---|---|---|---|
-| G1 | OPEN | Backend coverage ≥ 80% | CI gate is **20%**, with an in-file `TODO: raise threshold toward 80%`. Measured 24.57% on 2026-10-03 | `ci.yml:55-56` vs `CONTRIBUTING.md:43`, `README.md:5` |
-| G2 | OPEN | Per-path Code Owner review of `payments_app`, `compliance_app`, `settings/` | Single wildcard owner; zero teams; no independent review possible | `CODEOWNERS:4-9` vs `CONTRIBUTING.md:36-37` |
-| G3 | OPEN | `make lint` checks ruff **and** prettier | The recipe ends in `\|\| true` on a left-associative `A && B \|\| true` chain — **the target cannot fail**, ruff errors included. It also never runs `ruff format --check` | `Makefile:63` |
-| G4 | OPEN | Playwright checkout journey is a CI gate | Job is `if: false` (disabled); when enabled it runs `smoke.spec.ts` only | `ci.yml:216,249` vs `CONTRIBUTING.md:46` |
-| G5 | OPEN | Lighthouse budgets enforced | Job is `if: false` (disabled) | `ci.yml:185` vs `README.md:6` |
-| G6 | **CLOSED** 2026-10-03 | App isolation is automatically rejected in CI | Was true — no fitness test existed. Now gated by `backend/tests/unit/test_architecture_boundaries.py`: stripe/zeep containment, `core` layering, bitrix24 and ai_service_app isolation, no AI/CRM on the request path. Cross-app `models` imports are a shrink-only ratchet over 16 baselined pairs | `tests/unit/test_architecture_boundaries.py`, run by `Makefile:54` / `ci.yml:55` |
-| G7 | OPEN | Contract tests are part of the suite | `tests/contract/` (16 files, incl. forged-Stripe-signature rejection and PII-leak assertions) is run by **no** `make` target and **no** CI job | `Makefile:54`, `ci.yml:55`, `docker-compose.test.yml:34` vs `pyproject.toml:96` |
+| G1 | OPEN | Backend coverage ≥ 80% is **enforced in CI** | The gate is `--cov-fail-under=20`, with an in-file `TODO: raise threshold toward 80%`. Measured 24.57% without contract tests, **68.8%** with them. The ≥80% claim recurs in `docs/TESTING_STRATEGY.md:18,56,72` ("enforced in CI"), `docs/TESTING.md:78`, `docs/GRANT_SUBMISSION.md:157` and `README.md:5`. **The 80→20 downgrade is recorded in no ADR** — unlike the `braces` risk acceptance, which was | CI backend step vs `TESTING_STRATEGY.md:18`, `TESTING.md:78`, `GRANT_SUBMISSION.md:157`, `README.md:5` |
+| G2 | OPEN | Per-path Code Owner review of `payments_app`, `compliance_app`, `settings/` | Single wildcard owner; zero teams; no independent review possible | `CODEOWNERS:4-9` vs `CONTRIBUTING.md` → *Branching & PR checklist* |
+| G3 | OPEN | `make lint` checks ruff **and** prettier | The recipe ends in `\|\| true` on a left-associative `A && B \|\| true` chain — **the target cannot fail**, ruff errors included. It also never runs `ruff format --check` | `Makefile → lint` |
+| G4 | OPEN | Playwright checkout journey is a CI gate | Job is `if: false` (disabled); when enabled it runs `smoke.spec.ts` only | `frontend-playwright-smoke` vs `CONTRIBUTING.md` → *Quality gates* item 6 |
+| G5 | OPEN | Lighthouse budgets enforced | Job is `if: false` (disabled) | `frontend-lighthouse` vs `README.md:6` |
+| G6 | **CLOSED** 2026-10-03 | App isolation is automatically rejected in CI | Was true — no fitness test existed. Now gated by `backend/tests/unit/test_architecture_boundaries.py`: stripe/zeep containment, `core` layering, bitrix24 and ai_service_app isolation, no AI/CRM on the request path. Cross-app `models` imports are a shrink-only ratchet over 16 baselined pairs | `tests/unit/test_architecture_boundaries.py`, run by `make test` and the CI backend step |
+| G7 | **CLOSED** 2026-10-03 | Contract tests are part of the suite | 14 files / 121 tests asserting the PCI SAQ-A Stripe boundary and PII non-leakage ran in **no** target and **no** job. Fixed: the `order` / `shipment` fixtures they requested **had never been written**, so ten tests errored; added them to `tests/conftest.py`, repaired a `OneToOne` reuse bug in `test_shipment_carrier_choices`, and fixed a deferred-FK assertion in `test_tracking_event_requires_shipment`. Joined `tests/contract` to CI via `make test-contract` | `Makefile → test-contract`, `tests/conftest.py`, CI backend test step |
 | G8 | OPEN | ADR registry is ADR-0001…0017 | ADR-0018 exists | `README.md:62` vs `docs/ARCHITECTURE_DECISION_RECORDS.md:190` |
 | G9 | OPEN | CI badges render | Badges point at `journeyoflife-org/jolarca`; `origin` is `jolarca-dev/jolarca` | `README.md:3-4` |
-| G10 | **CLOSED** 2026-10-03 | "Only `shipping_app` imports carrier SDKs. Only `ai_service_app` imports LLM SDKs." | Neither SDK class is a dependency (`pyproject.toml:11-29`). Docs corrected to state the real boundary: `Carrier` / `LLMProvider` protocols with clients confined to `shipping_app/carriers/` and `ai_service_app/providers/`, transport over `requests`. Carrier clients are unwired stubs raising `NotImplementedError`, handled at `shipping_app/services.py:87`. That boundary stays review-gated — `requests` is shared transport and cannot be confined | `CONTRIBUTING.md:53-59`, `01-modular-breakdown.md` → *Vendor boundaries* |
+| G10 | **CLOSED** 2026-10-03 | "Only `shipping_app` imports carrier SDKs. Only `ai_service_app` imports LLM SDKs." | Neither SDK class is a dependency (`pyproject.toml:11-29`). Docs corrected to state the real boundary: `Carrier` / `LLMProvider` protocols with clients confined to `shipping_app/carriers/` and `ai_service_app/providers/`, transport over `requests`. Carrier clients are unwired stubs raising `NotImplementedError`, handled at `shipping_app/services.py:87`. That boundary stays review-gated — `requests` is shared transport and cannot be confined | `CONTRIBUTING.md` → *Architecture rules*, `01-modular-breakdown.md` → *Vendor boundaries* |
+| G11 | OPEN | "`ruff check` clean (lint + format)" is a CI gate | `ruff check` does not check formatting, and **no CI job runs `ruff format --check` or pre-commit**. Python formatting is enforced only by the local `ruff-format` hook — per-machine, installed only on 2026-10-01 (a month after most of the suite was committed), and bypassable. Frontend formatting *is* CI-gated (`frontend-lint`) | `CONTRIBUTING.md` → *Quality gates* item 1 vs the ci.yml backend job, `.pre-commit-config.yaml:18` |
+| G13 | **CLOSED** 2026-10-03 | A contract test asserts no live Stripe secret key is hardcoded "anywhere" | It shelled out to `grep` from a hardcoded developer-machine absolute path, so it could only ever pass on that one checkout (and would **error**, not fail, in CI), while scanning just `apps/` and `project/`. Rewritten to walk all `backend/**/*.py` in-process, with a non-empty-scan assertion so it cannot pass vacuously. Verified by mutation probe | `tests/contract/test_payments_api.py::TestStripeTestMode::test_no_live_keys_in_codebase` |
 
 **Remediation queue, in priority order** (highest risk per unit of effort first):
 
-1. **G7 — wire `tests/contract/` into CI.** Now the top item. These tests are the
-   evidence for PCI DSS SAQ-A boundary integrity and PII non-leakage; they exist
-   and never run. Add them to `ci.yml:55` or give them a job. Cheap, and it
-   converts written evidence into produced evidence.
-2. **G3 — fix `make lint`.** Split into `lint-py` (`ruff check` +
-   `ruff format --check`) and `lint-fe` (`npm run lint` + `npm run format:check`),
-   each failing loudly. A local gate that always passes is worse than none: it
-   manufactures false confidence before push. Note that `ruff format` **will**
-   rewrite non-conforming files, and pre-commit runs it — so a file that is
-   `ruff check`-clean but not `ruff format`-clean still breaks the commit.
-3. **G2 — record a formal risk acceptance** for single-operator review, in the
+1. **G3 + G11 — restore local/CI parity for lint and format.** Split `make lint`
+   into `lint-py` (`ruff check` + `ruff format --check`) and `lint-fe`
+   (`npm run lint` + `npm run format:check`), each failing loudly, then add
+   `ruff format --check .` to the CI backend job. A local gate that always exits 0
+   manufactures false confidence before push, and a CI-only gate blindsides people
+   at PR time. Note `ruff format` **rewrites** files, so a `ruff check`-clean but
+   format-dirty file still breaks the commit. Prerequisite already met: the tree is
+   153/153 format-clean, and ruff 0.9.4 and 0.16.x produce identical output.
+2. **G2 — record a formal risk acceptance** for single-operator review, in the
    ADR-0018 style: state the compensating controls (branch protection, the G6
-   fitness tests, the mandatory PR checklist) and the trigger for revisiting
-   (first hire). Until then the checklist at `pull_request_template.md:7-22` is
-   the *only* human review layer, so self-verify it against the diff.
-4. **G1 — raise `--cov-fail-under` in steps** (20 → 40 → 60 → 80) as contract and
-   integration tests land. Do not jump to 80 in one commit; it will be reverted
-   under pressure.
-5. **G4/G5 — re-enable or stop advertising.** `README.md:6` claims a Lighthouse
+   fitness tests, the now-gated contract suite, the mandatory PR checklist) and
+   the trigger for revisiting (first hire). Until then the checklist at
+   `pull_request_template.md:7-22` is the *only* human review layer, so
+   self-verify it against the diff.
+3. **G1 — record the gate, then raise it.** No ADR documents the 80%→20%
+   downgrade, while `TESTING_STRATEGY.md:18`, `TESTING.md:78` and
+   `GRANT_SUBMISSION.md:157` all still describe ≥80% as enforced in CI — and one
+   of those is an external funding submission. Write the ADR (the ADR-0018
+   pattern: decision, rationale, revisit trigger), correct the three docs, then
+   raise `--cov-fail-under` from the figure CI itself reports (contract tests now
+   put measured coverage at ~68.8%), not in one jump — an unreachable gate gets
+   reverted under pressure, and a silently-lowered one gets forgotten.
+4. **G4/G5 — re-enable or stop advertising.** `README.md:6` claims a Lighthouse
    gate that is disabled. Correct the badge or the workflow.
-6. **G8/G9 — trivial doc corrections**, batch into one `docs:` commit.
+5. **G8/G9 — trivial doc corrections**, batch into one `docs:` commit.
 
-**Closed:** G6 (architecture fitness tests) and G10 (vendor-boundary docs), both
-2026-10-03. When a real carrier or LLM SDK is adopted, add it to
-`SDK_CONTAINMENT` in `backend/tests/unit/test_architecture_boundaries.py` in the
-same PR — do **not** re-document a containment rule for a package that is not a
-dependency.
+**Closed:** G6, G7, G10 and G13 — all 2026-10-03. When a real carrier or LLM SDK
+is adopted, add it to `SDK_CONTAINMENT` in
+`backend/tests/unit/test_architecture_boundaries.py` in the same PR — do **not**
+re-document a containment rule for a package that is not a dependency.
 
 ---
 
@@ -477,6 +491,8 @@ Before proposing a change as complete:
 - [ ] No new PII field, or it is encrypted + RoPA-annotated + `COMPLIANCE_MATRIX.md`
       updated + erasure handler registered (§Part III).
 - [ ] `make check-secrets` clean; no hook bypass suggested (§Part IV).
+- [ ] `make test-contract` passes — CI runs it but `make test` does not, because it
+      needs a database (§Part V).
 - [ ] Relevant gates from §Part V actually executed and passing.
 - [ ] Generated files regenerated, not hand-edited (§3, §Part VI).
 - [ ] Conventional Commit message; security fixes cite the incident ID only (§Part VII).
