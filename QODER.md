@@ -11,7 +11,8 @@ in §8 — never assume a GAP is enforced.
 
 **Last verified against:** `main` @ 2026-10-04 — `Makefile`, `.pre-commit-config.yaml`,
 `.github/CODEOWNERS`, `.github/pull_request_template.md`, `.github/workflows/ci.yml`,
-`.github/workflows/security.yml`, `CONTRIBUTING.md`, `README.md`,
+`.github/workflows/security.yml`, `.github/workflows/deploy-staging.yml`,
+`.github/workflows/deploy-production.yml`, `CONTRIBUTING.md`, `README.md`,
 `docs/architecture/01-modular-breakdown.md`, `backend/pyproject.toml`,
 `backend/tests/unit/test_architecture_boundaries.py`, `frontend/package.json`,
 `frontend/vitest.config.mts`, `docker-compose.test.yml`.
@@ -446,6 +447,8 @@ Closed entries stay listed: the register is the audit trail.
 | G14 | OPEN | A green local run means CI will be green | The local `.venv` had silently drifted from the pinned lock: `dev.txt` prescribes **ruff 0.16.6 / mypy 2.3.1 / Django 6.1.1 / DRF 3.18.1 / stripe 15.6.1**, the venv held **ruff 0.16.3 / mypy 2.3.0** and older runtime packages. Every local "pass" before that was corrected was measured against tools CI does not run. Nothing in the repo detects venv↔lock drift — `make bootstrap` installs the lock, but no check asserts the venv still matches it | `requirements/dev.txt` pins vs `.venv`; ci.yml "Install pinned deps" uses `--require-hashes` |
 | G15 | OPEN | `make check-secrets` is a green gate | It **cannot pass on any real checkout**. `scripts/check_no_secrets.sh` greps the whole working tree (`grep -rI ... .`) and excludes only `.env.example` / `.env.prod.example`, so it flags the operator's own required env files — e.g. a Stripe **test-mode** key in gitignored, untracked `.env.prod`. Consequence: a developer who ever runs it sees a failure they cannot fix, which trains them to ignore the gate (same failure mode as G3). **No leak**: `.env.prod` is untracked and gitignored, and CI's gitleaks — which scans history, the question that actually matters — passes | `make check-secrets`, `scripts/check_no_secrets.sh:14-36` vs `.gitignore` `.env.*` |
 | G16 | OPEN | The `prettier` pre-commit hook formats only what the project wants formatted | The hook runs prettier from the **repo root**, and prettier resolves `.prettierignore` relative to **cwd** — so `frontend/.prettierignore`'s `src/generated` exclusion is never applied and the hook **rewrites committed generated files** (observed on `api.ts`: 134 insertions / 134 deletions). Proved not to be a version issue: the project's own prettier **3.9.6** flags `api.ts` when run from the root and reports it clean with `--ignore-path frontend/.prettierignore`. Consequence: the hook produces a diff **no CI gate will ever reproduce** (`npm run format:check` runs inside `frontend/` with the ignore honored), so it silently fights `make api-schema` on every commit that touches frontend files | `.pre-commit-config.yaml:25-29` (`files: ^frontend/`, `rev: v4.0.0-alpha.8`), `frontend/.prettierignore` (`src/generated`), A/B probe above |
+| G17 | OPEN | A red workflow means something broke | `Deploy Staging` fails on **every** push to `main` by design: the rollout step runs `exit 1` ("fail loudly until the deploy target is implemented — no silent no-ops", pending `docs/ASSUMPTIONS.md` §A-07). Verified 9/9 consecutive failures on `main`. The defect is **placement, not intent**: the failing step sits in a `deploy` job with `needs: build-and-push`, so it fires *after* real, irreversible side effects — each merge already publishes `ghcr.io/.../{backend,frontend}:staging-<sha>`. A permanent red X is as unactionable as G3's permanent green one: a genuine image-build failure is indistinguishable from the stub, and nobody reads the run. It is not a required check, so it blocks nothing | `deploy-staging.yml:39-53`, run history on `main` |
+| G18 | OPEN | Production deploys require a manual approval gate | Asserted in a code comment (`deploy-production.yml:14`: "REQUIRED: manual approval gate before any prod action") but **absent in configuration**: the GitHub API reports exactly one environment, `staging`, with `protection_rules: []` and `deployment_branch_policy: null`; **no `production` environment exists at all**. Tagging `v*` would therefore auto-create it unprotected and push `:latest` production images plus SBOM/provenance with **no human approval**, and only then fail on the stub `exit 1`. **Weaker than it looks even if configured**: `can_admins_bypass` defaults to `true` and the sole developer is the org owner, so an environment approval here is self-grantable — it satisfies the letter of SOC 2 CC8.1 without any independent sign-off (same root as G2). **Latent, not current**: `git ls-remote --tags` returns no `v*` tags, so this workflow has never run. Note the comment reads as verified evidence and is not — the register's core failure mode | `deploy-production.yml:12-14,42-54` vs `gh api repos/.../environments` and `/orgs/jolarca-dev` (`free` plan; repo is public, so protection rules are available) |
 
 **Remediation queue, in priority order** (highest risk per unit of effort first):
 
@@ -474,15 +477,26 @@ Closed entries stay listed: the register is the audit trail.
    - **G16**: give the prettier hook `args: [--ignore-path, frontend/.prettierignore]`
      or exclude `src/generated` from its `files:` regex, so it stops rewriting
      generated files that the project deliberately excludes. One line either way.
-4. **G2 — record a formal risk acceptance** for single-operator review, in the
+4. **G18 — stop the unreviewed production publish, in code not just settings.**
+   Create the `production` environment with a required reviewer — feasible because
+   the repo is public, so protection rules are available on the free plan. But do not
+   stop there: `can_admins_bypass` defaults to `true` and there is one admin, so the
+   approval is self-grantable. The control that actually holds is removing the
+   `:latest` tag (and the prod push itself) until §A-07 ratifies a target — a workflow
+   cannot bypass its own steps the way a role bypasses an environment gate.
+5. **G17 — make the deploy stub visible without making it red.** Keep the refusal to
+   no-op silently, but move it from `exit 1` to a `::warning::` annotation that exits
+   0, and let the *real* gate be the `production` environment approval from G18. A
+   signal that is always firing is a signal nobody watches.
+6. **G2 — record a formal risk acceptance** for single-operator review, in the
    ADR-0018 style: state the compensating controls (branch protection, the G6
    fitness tests, the now-gated contract suite, the mandatory PR checklist) and
    the trigger for revisiting (first hire). Until then the checklist at
    `pull_request_template.md:7-22` is the *only* human review layer, so
    self-verify it against the diff.
-5. **G4/G5 — re-enable or stop advertising.** `README.md:6` claims a Lighthouse
+7. **G4/G5 — re-enable or stop advertising.** `README.md:6` claims a Lighthouse
    gate that is disabled. Correct the badge or the workflow.
-6. **G8/G9 — trivial doc corrections**, batch into one `docs:` commit.
+8. **G8/G9 — trivial doc corrections**, batch into one `docs:` commit.
 
 **Closed:** G3, G6, G7, G10, G11 and G13 — 2026-10-03/04. When a real carrier or
 LLM SDK is adopted, add it to `SDK_CONTAINMENT` in
