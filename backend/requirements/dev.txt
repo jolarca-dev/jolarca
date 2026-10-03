@@ -643,9 +643,9 @@ faker==40.38.0 \
     --hash=sha256:69927515d61759c8a257540b8a91891cd622ba1c24a386b62a0a777e44ba46a9 \
     --hash=sha256:72e421098664edf38478f4269a5d5a539337de5da18883ce67cb1e6bb96b0b3a
     # via factory-boy
-filelock==3.32.6 \
-    --hash=sha256:3f16ecd0117feae0dfc147e8c62eb5daeccd8bd800378c3ddf416de9b4feb6b1 \
-    --hash=sha256:a3f55a18af3652a94d8f47d6055df434f254ca1d02ef2524850c6d249ca2512c
+filelock==4.0.7 \
+    --hash=sha256:a93c4d93269b339a6af4848342c7e940d0f9928ad95eff64764699e5f1bf8a6a \
+    --hash=sha256:da5915714a70b55d167fdc7e251ad91302b0a36816fb574dfafae8f4f2c9bb21
     # via
     #   python-discovery
     #   virtualenv
