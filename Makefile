@@ -17,7 +17,8 @@ PIP := $(CURDIR)/.venv/bin/pip
 LOAD_ENV := set -a; if [ -f .env ]; then . ./.env; fi; set +a;
 
 .PHONY: help bootstrap sysdeps dev-up dev-down logs migrate makemigrations seed \
-        test test-integration lint typecheck check lock api-schema check-secrets wait
+        test test-contract test-integration lint lint-py lint-fe typecheck check lock \
+        api-schema check-secrets wait
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  %-18s %s\n", $$1, $$2}'
@@ -53,14 +54,33 @@ seed: ## Seed LT/LV/EE demo data (idempotent)
 test: ## Unit + security tests (fast, no DB services required)
 	cd backend && $(PY) -m pytest tests/unit tests/security -q
 
+# Contract tests need a real database, so they are NOT part of `make test` — but
+# CI now runs them (ci.yml), which is why this target exists: without it `make
+# test` would stay green while the build failed. LOAD_ENV supplies the DB creds
+# from .env, and DJANGO_SETTINGS_MODULE is forced back to `test` because .env
+# pins project.settings.dev, which would pull in the Redis cache.
+test-contract: ## Contract tests (API/DB + PCI/PII boundary) — needs `make dev-up`
+	$(LOAD_ENV) cd backend && DJANGO_SETTINGS_MODULE=project.settings.test $(PY) -m pytest tests/contract -q
+
 test-integration: ## Integration tests against the CI-parity compose topology
 	$(COMPOSE_TEST) up -d --build
 	bash scripts/wait_for_services.sh test
 	$(COMPOSE_TEST) run --rm backend-test
 	$(COMPOSE_TEST) down
 
-lint: ## ruff (format check + lint)
-	cd backend && $(PY) -m ruff check . && cd ../frontend && npx prettier --check . 2>/dev/null || true
+# The old single `lint` target ended in `|| true` on a left-associative
+# `A && B || true` chain, so it exited 0 even when ruff reported errors — a gate
+# that can never fail is worse than none, because it manufactures confidence
+# before push. Both halves now propagate their exit status, and each runs exactly
+# the command CI runs (backend: ruff check + ruff format --check; frontend: npm run
+# lint + npm run format:check).
+lint-py: ## ruff lint + format check (backend)
+	cd backend && $(PY) -m ruff check . && $(PY) -m ruff format --check .
+
+lint-fe: ## ESLint + Prettier check (frontend)
+	cd frontend && npm run lint && npm run format:check
+
+lint: lint-py lint-fe ## All lint and format checks (Python + frontend)
 
 typecheck: ## mypy with django plugin
 	cd backend && $(PY) -m mypy project apps
