@@ -242,8 +242,7 @@ describe("logger transport", () => {
     const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    setUserId("Ona@example.com");
-    await new Promise((resolve) => setTimeout(resolve, 15)); // hash is async
+    await setUserId("Ona@example.com"); // awaits the async hash — no timing race
     logger.info("session event");
     await flushLogs();
 
