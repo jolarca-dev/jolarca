@@ -2,8 +2,8 @@
 
 **Scope:** Consolidated decision registry for grant reviewers. Engineering
 detail for ADR-0001…0010 lives in [TECH_DECISIONS.md](TECH_DECISIONS.md);
-this document adds the seven platform-level decisions taken during the
-100-day sprint, continuing the existing numbering (no collisions).
+this document adds the platform-level and security-governance decisions,
+continuing the existing numbering (no collisions).
 
 **Format:** Context → Decision → Consequences. **Status:** Accepted.
 
@@ -186,6 +186,41 @@ vigilance — provided by the admin backoffice and documented in
 [GDPR_COMPLIANCE.md](GDPR_COMPLIANCE.md).
 
 **Status:** Accepted.
+
+## ADR-0018 — Risk acceptance: `braces` advisory in the frontend lint toolchain
+
+**Context.** `trivy fs --include-dev-deps` reports **`braces` 3.0.3 —
+CVE-2026-93687 (HIGH, Denial of Service via stack overflow)** as a transitive of
+the ESLint chain `eslint-config-next → @next/eslint-plugin-next → fast-glob →
+micromatch`. As of 2026-10-03 **no patched release exists** (`npm view braces
+version` = 3.0.3; Trivy status "affected", fixed-version blank;
+[AVD](https://avd.aquasec.com/nvd/cve-2026-93687)), and it is **not** carried in
+GitHub Dependabot's advisory DB (open alerts are dompurify/vitest only). `braces`
+is a **dev-only** package (`package-lock.json` `"dev": true`) reachable only
+through the lint toolchain; the production `runner` image copies only
+`.next/standalone`, `.next/static` and `public` and even strips npm
+(`frontend/Dockerfile`), so `braces` never ships and has no runtime/attacker
+surface.
+
+**Decision.** Accept the residual risk for the **build/lint surface** and keep it
+out of the **blocking** gate: the trivy CRITICAL/HIGH build gate is scoped to
+production dependencies (no `--include-dev-deps`) so an unpatchable dev-only
+advisory cannot cause a denial-of-pipeline. To keep the risk *visible rather than
+silent*, CI additionally runs a **non-blocking** (`--exit-code 0`) dev-inclusive
+trivy SARIF report that surfaces dev-only CRITICAL/HIGH (including this one) as
+code-scanning alerts. Remediate by bumping `braces` immediately once an upstream
+fix is published; do not vendor a patch or silently override the advisory.
+
+**Consequences.** (+) The shipped artifact is unaffected (dev-only, absent from
+the runner image). (+) The pipeline is not blocked by a vulnerability that has no
+fix. (+) The finding stays auditable as an open code-scanning alert rather than
+hidden. (−) A lint-time-only DoS remains in the dev toolchain until upstream
+ships a fix — accepted given zero runtime exposure and a trusted dev/CI
+environment. **Review:** re-check for an upstream `braces` fix at the next
+security review (target 2027-01) or on any environment change; retire this
+exception once a patched version is adopted.
+
+**Status:** Accepted 2026-10-03 (recorded per owner authorization; sole maintainer).
 
 ---
 
