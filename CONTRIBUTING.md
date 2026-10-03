@@ -38,7 +38,9 @@ approver on `payments_app`, `compliance_app`, `settings/`, and workflows.
 
 ## Quality gates (all enforced in CI)
 
-1. `ruff check` clean (lint + format)
+1. `ruff check` clean **and** `ruff format --check` clean — lint and formatting are
+   separate tools (`make lint` runs both, plus the frontend ESLint and Prettier
+   checks)
 2. `mypy` clean (django plugin, strict for `services.py`)
 3. Tests green — CI runs `tests/unit`, `tests/security` and `tests/contract`
    (`make test`, `make test-contract`; the contract suite needs the dev database,

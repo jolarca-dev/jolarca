@@ -294,7 +294,9 @@ Rules:
 
 | Gate | Local target | CI location | Actual threshold |
 |---|---|---|---|
-| Lint | `make lint` | backend job, `ruff check .` | **GAP locally** — see §8 G3 |
+| Lint/format (py) | `make lint-py` | backend job: "Lint (ruff)" + "Format check (ruff format)" | ENFORCED both sides — `ruff check` and `ruff format --check` are separate gates |
+| Lint/format (fe) | `make lint-fe` | `frontend-lint`: `npm run lint` + `npm run format:check` | ENFORCED |
+| Lint (all) | `make lint` | runs `lint-py` then `lint-fe` | ENFORCED; neither half can exit 0 on a violation |
 | Typecheck | `make typecheck` | backend job, `mypy project apps` | ENFORCED, both. Tests are **not** typechecked |
 | Tests | `make test` | backend job, "Unit + security + contract tests" | runs `tests/unit tests/security tests/contract` |
 | Contract | `make test-contract` | same step as Tests | **ENFORCED since 2026-10-03** (§8 G7). Needs a DB, so it is *not* in `make test` |
@@ -431,7 +433,7 @@ Closed entries stay listed: the register is the audit trail.
 |---|---|---|---|---|
 | G1 | OPEN | Backend coverage ≥ 80% is **enforced in CI** | The gate is `--cov-fail-under=20`, with an in-file `TODO: raise threshold toward 80%`. Measured 24.57% without contract tests, **68.8%** with them. The ≥80% claim recurs in `docs/TESTING_STRATEGY.md:18,56,72` ("enforced in CI"), `docs/TESTING.md:78`, `docs/GRANT_SUBMISSION.md:157` and `README.md:5`. **The 80→20 downgrade is recorded in no ADR** — unlike the `braces` risk acceptance, which was | CI backend step vs `TESTING_STRATEGY.md:18`, `TESTING.md:78`, `GRANT_SUBMISSION.md:157`, `README.md:5` |
 | G2 | OPEN | Per-path Code Owner review of `payments_app`, `compliance_app`, `settings/` | Single wildcard owner; zero teams; no independent review possible | `CODEOWNERS:4-9` vs `CONTRIBUTING.md` → *Branching & PR checklist* |
-| G3 | OPEN | `make lint` checks ruff **and** prettier | The recipe ends in `\|\| true` on a left-associative `A && B \|\| true` chain — **the target cannot fail**, ruff errors included. It also never runs `ruff format --check` | `Makefile → lint` |
+| G3 | **CLOSED** 2026-10-04 | `make lint` checks ruff **and** prettier | The old recipe ended in `\|\| true` on a left-associative `A && B \|\| true` chain — **the target could not fail**, ruff errors included. Split into `lint-py` (`ruff check` + `ruff format --check`) and `lint-fe` (`npm run lint` + `npm run format:check`); `lint` runs both and each propagates its exit status | `Makefile → lint-py`, `lint-fe`, `lint` |
 | G4 | OPEN | Playwright checkout journey is a CI gate | Job is `if: false` (disabled); when enabled it runs `smoke.spec.ts` only | `frontend-playwright-smoke` vs `CONTRIBUTING.md` → *Quality gates* item 6 |
 | G5 | OPEN | Lighthouse budgets enforced | Job is `if: false` (disabled) | `frontend-lighthouse` vs `README.md:6` |
 | G6 | **CLOSED** 2026-10-03 | App isolation is automatically rejected in CI | Was true — no fitness test existed. Now gated by `backend/tests/unit/test_architecture_boundaries.py`: stripe/zeep containment, `core` layering, bitrix24 and ai_service_app isolation, no AI/CRM on the request path. Cross-app `models` imports are a shrink-only ratchet over 16 baselined pairs | `tests/unit/test_architecture_boundaries.py`, run by `make test` and the CI backend step |
@@ -439,26 +441,13 @@ Closed entries stay listed: the register is the audit trail.
 | G8 | OPEN | ADR registry is ADR-0001…0017 | ADR-0018 exists | `README.md:62` vs `docs/ARCHITECTURE_DECISION_RECORDS.md:190` |
 | G9 | OPEN | CI badges render | Badges point at `journeyoflife-org/jolarca`; `origin` is `jolarca-dev/jolarca` | `README.md:3-4` |
 | G10 | **CLOSED** 2026-10-03 | "Only `shipping_app` imports carrier SDKs. Only `ai_service_app` imports LLM SDKs." | Neither SDK class is a dependency (`pyproject.toml:11-29`). Docs corrected to state the real boundary: `Carrier` / `LLMProvider` protocols with clients confined to `shipping_app/carriers/` and `ai_service_app/providers/`, transport over `requests`. Carrier clients are unwired stubs raising `NotImplementedError`, handled at `shipping_app/services.py:87`. That boundary stays review-gated — `requests` is shared transport and cannot be confined | `CONTRIBUTING.md` → *Architecture rules*, `01-modular-breakdown.md` → *Vendor boundaries* |
-| G11 | OPEN | "`ruff check` clean (lint + format)" is a CI gate | `ruff check` does not check formatting, and **no CI job runs `ruff format --check` or pre-commit**. Python formatting is enforced only by the local `ruff-format` hook — per-machine, installed only on 2026-10-01 (a month after most of the suite was committed), and bypassable. Frontend formatting *is* CI-gated (`frontend-lint`) | `CONTRIBUTING.md` → *Quality gates* item 1 vs the ci.yml backend job, `.pre-commit-config.yaml:18` |
+| G11 | **CLOSED** 2026-10-04 | "`ruff check` clean (lint + format)" is a CI gate | `ruff check` does not verify formatting, and **no CI job ran `ruff format --check` or pre-commit** — Python formatting was enforced only by the local hook (per-machine, installed 2026-10-01, bypassable) while the frontend had a real gate. Added a "Format check (ruff format)" step to the CI backend job and corrected the doc claim. Verified the whole tree is format-clean at the CI-pinned ruff **0.16.6** | ci.yml backend job, `Makefile → lint-py`, `CONTRIBUTING.md` → *Quality gates* item 1 |
 | G13 | **CLOSED** 2026-10-03 | A contract test asserts no live Stripe secret key is hardcoded "anywhere" | It shelled out to `grep` from a hardcoded developer-machine absolute path, so it could only ever pass on that one checkout (and would **error**, not fail, in CI), while scanning just `apps/` and `project/`. Rewritten to walk all `backend/**/*.py` in-process, with a non-empty-scan assertion so it cannot pass vacuously. Verified by mutation probe | `tests/contract/test_payments_api.py::TestStripeTestMode::test_no_live_keys_in_codebase` |
+| G14 | OPEN | A green local run means CI will be green | The local `.venv` had silently drifted from the pinned lock: `dev.txt` prescribes **ruff 0.16.6 / mypy 2.3.1 / Django 6.1.1 / DRF 3.18.1 / stripe 15.6.1**, the venv held **ruff 0.16.3 / mypy 2.3.0** and older runtime packages. Every local "pass" before that was corrected was measured against tools CI does not run. Nothing in the repo detects venv↔lock drift — `make bootstrap` installs the lock, but no check asserts the venv still matches it | `requirements/dev.txt` pins vs `.venv`; ci.yml "Install pinned deps" uses `--require-hashes` |
 
 **Remediation queue, in priority order** (highest risk per unit of effort first):
 
-1. **G3 + G11 — restore local/CI parity for lint and format.** Split `make lint`
-   into `lint-py` (`ruff check` + `ruff format --check`) and `lint-fe`
-   (`npm run lint` + `npm run format:check`), each failing loudly, then add
-   `ruff format --check .` to the CI backend job. A local gate that always exits 0
-   manufactures false confidence before push, and a CI-only gate blindsides people
-   at PR time. Note `ruff format` **rewrites** files, so a `ruff check`-clean but
-   format-dirty file still breaks the commit. Prerequisite already met: the tree is
-   153/153 format-clean, and ruff 0.9.4 and 0.16.x produce identical output.
-2. **G2 — record a formal risk acceptance** for single-operator review, in the
-   ADR-0018 style: state the compensating controls (branch protection, the G6
-   fitness tests, the now-gated contract suite, the mandatory PR checklist) and
-   the trigger for revisiting (first hire). Until then the checklist at
-   `pull_request_template.md:7-22` is the *only* human review layer, so
-   self-verify it against the diff.
-3. **G1 — record the gate, then raise it.** No ADR documents the 80%→20%
+1. **G1 — record the gate, then raise it.** No ADR documents the 80%→20%
    downgrade, while `TESTING_STRATEGY.md:18`, `TESTING.md:78` and
    `GRANT_SUBMISSION.md:157` all still describe ≥80% as enforced in CI — and one
    of those is an external funding submission. Write the ADR (the ADR-0018
@@ -466,12 +455,24 @@ Closed entries stay listed: the register is the audit trail.
    raise `--cov-fail-under` from the figure CI itself reports (contract tests now
    put measured coverage at ~68.8%), not in one jump — an unreachable gate gets
    reverted under pressure, and a silently-lowered one gets forgotten.
+2. **G14 — make venv↔lock drift visible.** CI installs from `requirements/dev.txt`
+   with `--require-hashes`, so CI is the authoritative toolchain and the local
+   venv is the loose end. Re-run `make bootstrap` after every `make lock`; a cheap
+   durable guard is a `make deps-check` target that runs
+   `pip install --require-hashes -r backend/requirements/dev.txt` and reports
+   whether anything was out of date.
+3. **G2 — record a formal risk acceptance** for single-operator review, in the
+   ADR-0018 style: state the compensating controls (branch protection, the G6
+   fitness tests, the now-gated contract suite, the mandatory PR checklist) and
+   the trigger for revisiting (first hire). Until then the checklist at
+   `pull_request_template.md:7-22` is the *only* human review layer, so
+   self-verify it against the diff.
 4. **G4/G5 — re-enable or stop advertising.** `README.md:6` claims a Lighthouse
    gate that is disabled. Correct the badge or the workflow.
 5. **G8/G9 — trivial doc corrections**, batch into one `docs:` commit.
 
-**Closed:** G6, G7, G10 and G13 — all 2026-10-03. When a real carrier or LLM SDK
-is adopted, add it to `SDK_CONTAINMENT` in
+**Closed:** G3, G6, G7, G10, G11 and G13 — 2026-10-03/04. When a real carrier or
+LLM SDK is adopted, add it to `SDK_CONTAINMENT` in
 `backend/tests/unit/test_architecture_boundaries.py` in the same PR — do **not**
 re-document a containment rule for a package that is not a dependency.
 
@@ -500,6 +501,10 @@ Before proposing a change as complete:
 - [ ] PR compliance checklist completed from the diff (`pull_request_template.md:7-22`).
 - [ ] Anything noticed but deliberately not fixed is reported, not silently dropped (§3).
 - [ ] No §8 gap was assumed to be a gate.
+- [ ] Local green is not done: CI installs a **different** toolchain than the local
+      venv holds (see §8 G14), so changes touching gates are not verified until a
+      pushed branch has run them. `git status -sb` showing unpushed commits means
+      there is no CI evidence yet.
 
 **These guidelines are working if:** diffs contain fewer unnecessary changes;
 fewer rewrites happen due to overcomplication; the PR compliance checklist passes

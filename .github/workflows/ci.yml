@@ -48,6 +48,12 @@ jobs:
         run: pip install --require-hashes -r requirements/dev.txt
       - name: Lint (ruff)
         run: ruff check .
+      # `ruff check` does not verify formatting — they are separate tools (see
+      # .pre-commit-config.yaml, which lists them as two hooks). Before this step
+      # Python formatting was enforced only by the local pre-commit hook, while the
+      # frontend had a real CI gate (npm run format:check). Parity restored.
+      - name: Format check (ruff format)
+        run: ruff format --check .
       - name: Typecheck (mypy)
         run: mypy project apps
       - name: Unit + security + contract tests
