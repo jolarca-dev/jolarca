@@ -449,6 +449,7 @@ Closed entries stay listed: the register is the audit trail.
 | G16 | OPEN | The `prettier` pre-commit hook formats only what the project wants formatted | The hook runs prettier from the **repo root**, and prettier resolves `.prettierignore` relative to **cwd** — so `frontend/.prettierignore`'s `src/generated` exclusion is never applied and the hook **rewrites committed generated files** (observed on `api.ts`: 134 insertions / 134 deletions). Proved not to be a version issue: the project's own prettier **3.9.6** flags `api.ts` when run from the root and reports it clean with `--ignore-path frontend/.prettierignore`. Consequence: the hook produces a diff **no CI gate will ever reproduce** (`npm run format:check` runs inside `frontend/` with the ignore honored), so it silently fights `make api-schema` on every commit that touches frontend files | `.pre-commit-config.yaml:25-29` (`files: ^frontend/`, `rev: v4.0.0-alpha.8`), `frontend/.prettierignore` (`src/generated`), A/B probe above |
 | G17 | OPEN | A red workflow means something broke | `Deploy Staging` fails on **every** push to `main` by design: the rollout step runs `exit 1` ("fail loudly until the deploy target is implemented — no silent no-ops", pending `docs/ASSUMPTIONS.md` §A-07). Verified 9/9 consecutive failures on `main`. The defect is **placement, not intent**: the failing step sits in a `deploy` job with `needs: build-and-push`, so it fires *after* real, irreversible side effects — each merge already publishes `ghcr.io/.../{backend,frontend}:staging-<sha>`. A permanent red X is as unactionable as G3's permanent green one: a genuine image-build failure is indistinguishable from the stub, and nobody reads the run. It is not a required check, so it blocks nothing | `deploy-staging.yml:39-53`, run history on `main` |
 | G18 | OPEN | Production deploys require a manual approval gate | Asserted in a code comment (`deploy-production.yml:14`: "REQUIRED: manual approval gate before any prod action") but **absent in configuration**: the GitHub API reports exactly one environment, `staging`, with `protection_rules: []` and `deployment_branch_policy: null`; **no `production` environment exists at all**. Tagging `v*` would therefore auto-create it unprotected and push `:latest` production images plus SBOM/provenance with **no human approval**, and only then fail on the stub `exit 1`. **Weaker than it looks even if configured**: `can_admins_bypass` defaults to `true` and the sole developer is the org owner, so an environment approval here is self-grantable — it satisfies the letter of SOC 2 CC8.1 without any independent sign-off (same root as G2). **Latent, not current**: `git ls-remote --tags` returns no `v*` tags, so this workflow has never run. Note the comment reads as verified evidence and is not — the register's core failure mode | `deploy-production.yml:12-14,42-54` vs `gh api repos/.../environments` and `/orgs/jolarca-dev` (`free` plan; repo is public, so protection rules are available) |
+| G19 | OPEN | Dependency updates reach `main` | **19** dependabot PRs are open and **none merged**, 14–17 days stale; the previous generation (#34–#37) closed **unmerged**. Two compounding causes, both verified. (a) **Fan-out:** `.github/dependabot.yml` had no `groups:` key, so each weekly cycle opens one PR per package. (b) **Stale gates:** dependabot re-runs checks on push, so a branch cut before a fix stays red indefinitely — sampled #94, #109, #113, #125 and **all four fail**, on `npm ci` EUSAGE "Missing: `@swc/helpers@0.5.23` from lock file". That desync **no longer exists on `main`** (`@swc/helpers` present at `frontend/package-lock.json:2655`; `npm ci` exits 0), so every red signal on this backlog is an artifact and no PR is mergeable on its existing evidence. With no second reviewer (§8 G2) nothing re-runs them — which is how the last cycle expired silently. Risk is concentrated where it matters: an unmerged XSS sanitiser patch (#125) and the Stripe Elements pair (#97, #113) that holds PCI SAQ-A scope. **Retraction:** an earlier claim that `open-pull-requests-limit: 10` was suppressing proposals is **false** — npm holds 11 open PRs, because security updates bypass that limit | `.github/dependabot.yml`, `gh pr checks {94,109,113,125}`, `frontend/package-lock.json:2655` |
 
 **Remediation queue, in priority order** (highest risk per unit of effort first):
 
@@ -466,7 +467,15 @@ Closed entries stay listed: the register is the audit trail.
    durable guard is a `make deps-check` target that runs
    `pip install --require-hashes -r backend/requirements/dev.txt` and reports
    whether anything was out of date.
-3. **G15 + G16 — rescope the two mis-scoped local gates.** Both fail for the same
+3. **G19 — drain the dependency backlog deliberately, not by number.** The
+   `groups:` change ships with this entry, which stops new fan-out; the existing 19
+   PRs need their checks re-run before any judgement is possible, since their recorded
+   status is stale. Order by blast radius: #125 (`dompurify`) alone and first, then the
+   `@stripe/*` pair one at a time with a manual Elements/checkout verification, then
+   pip and npm patch minors in small groups, then the majors (#93 node, #109 vitest,
+   #105 eslint-config-next) as individual decisions — and #91, a 17-day-old "land
+   outstanding WIP" catch-all, should be inspected or closed, never merged blind.
+4. **G15 + G16 — rescope the two mis-scoped local gates.** Both fail for the same
    structural reason: a local check is looking at more than it should, so its output
    is unactionable and trains the operator to ignore it.
    - **G15**: point `check_no_secrets.sh` at what git actually carries
@@ -477,26 +486,26 @@ Closed entries stay listed: the register is the audit trail.
    - **G16**: give the prettier hook `args: [--ignore-path, frontend/.prettierignore]`
      or exclude `src/generated` from its `files:` regex, so it stops rewriting
      generated files that the project deliberately excludes. One line either way.
-4. **G18 — stop the unreviewed production publish, in code not just settings.**
+5. **G18 — stop the unreviewed production publish, in code not just settings.**
    Create the `production` environment with a required reviewer — feasible because
    the repo is public, so protection rules are available on the free plan. But do not
    stop there: `can_admins_bypass` defaults to `true` and there is one admin, so the
    approval is self-grantable. The control that actually holds is removing the
    `:latest` tag (and the prod push itself) until §A-07 ratifies a target — a workflow
    cannot bypass its own steps the way a role bypasses an environment gate.
-5. **G17 — make the deploy stub visible without making it red.** Keep the refusal to
+6. **G17 — make the deploy stub visible without making it red.** Keep the refusal to
    no-op silently, but move it from `exit 1` to a `::warning::` annotation that exits
    0, and let the *real* gate be the `production` environment approval from G18. A
    signal that is always firing is a signal nobody watches.
-6. **G2 — record a formal risk acceptance** for single-operator review, in the
+7. **G2 — record a formal risk acceptance** for single-operator review, in the
    ADR-0018 style: state the compensating controls (branch protection, the G6
    fitness tests, the now-gated contract suite, the mandatory PR checklist) and
    the trigger for revisiting (first hire). Until then the checklist at
    `pull_request_template.md:7-22` is the *only* human review layer, so
    self-verify it against the diff.
-7. **G4/G5 — re-enable or stop advertising.** `README.md:6` claims a Lighthouse
+8. **G4/G5 — re-enable or stop advertising.** `README.md:6` claims a Lighthouse
    gate that is disabled. Correct the badge or the workflow.
-8. **G8/G9 — trivial doc corrections**, batch into one `docs:` commit.
+9. **G8/G9 — trivial doc corrections**, batch into one `docs:` commit.
 
 **Closed:** G3, G6, G7, G10, G11 and G13 — 2026-10-03/04. When a real carrier or
 LLM SDK is adopted, add it to `SDK_CONTAINMENT` in
