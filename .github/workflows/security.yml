@@ -63,6 +63,10 @@ jobs:
         if: always()
         with:
           sarif_file: trivy-dev.sarif
+          # upload-sarif allows one upload per tool+category per job; give this
+          # second Trivy upload a distinct category so it does not collide with
+          # the production SARIF upload above (empty default category).
+          category: trivy-dev-dependencies
       # Hard policy gate: fail the build on CRITICAL/HIGH in the PRODUCTION
       # dependency surface only (NO --include-dev-deps). Dev-only build/lint
       # transitives (e.g. braces via eslint-config-next) are not shipped (frontend
