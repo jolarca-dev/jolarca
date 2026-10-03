@@ -45,12 +45,25 @@ approver on `payments_app`, `compliance_app`, `settings/`, and workflows.
 5. No secrets (`scripts/check_no_secrets.sh`, Gitleaks)
 6. Playwright checkout journey passes (frontend e2e)
 
-## Architecture rules (rejections are automatic)
+## Architecture rules
 
-- Only `payments_app` imports `stripe`. Only `shipping_app` imports carrier SDKs.
-  Only `ai_service_app` imports LLM SDKs.
-- Cross-app access is via the target app's `services.py` only.
+Enforced by `backend/tests/unit/test_architecture_boundaries.py` (runs in
+`make test` and CI) unless marked *review-gated*.
+
+- Only `payments_app` imports `stripe` — the backend's sole vendor SDK
+  (`backend/pyproject.toml:27`). Only `tax_app` imports `zeep` (VIES SOAP).
+- There is **no** carrier SDK and **no** LLM SDK. Carriers sit behind the
+  `Carrier` protocol with clients confined to `shipping_app/carriers/`; LLM
+  providers sit behind `LLMProvider` with clients confined to
+  `ai_service_app/providers/`, transport over plain `requests`. See
+  `docs/architecture/01-modular-breakdown.md` → *Vendor boundaries*.
+- `core` imports no domain app; `bitrix24_integration_app` is not imported by
+  marketplace apps; `ai_service_app` is reachable only via its `tasks.py`.
 - No AI/inference calls in request/response code — enqueue to the `ai` queue.
+- Cross-app access is via the target app's `services.py` only. *Review-gated:*
+  16 pre-existing direct model imports are baselined in the fitness test as a
+  shrink-only ratchet — route new calls through `services.py`, don't extend the
+  baseline.
 - Never hand-edit: `requirements/*.txt`, `docs/api/openapi.yaml`,
   `frontend/src/lib/api/generated/`, `CHANGELOG.md`, `LICENSE`.
 - New PII fields: use `core.encryption.EncryptedTextField` and annotate the
