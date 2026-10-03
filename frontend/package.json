@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^6.9.0",
-    "@stripe/stripe-js": "^9.13.0",
+    "@stripe/stripe-js": "^9.17.0",
     "@tanstack/react-query": "^5.102.8",
     "@tanstack/react-table": "^8.21.3",
     "isomorphic-dompurify": "^4.2.0",
