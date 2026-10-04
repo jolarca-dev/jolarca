@@ -17,7 +17,7 @@ Frontend separately (if not using compose):
 cd frontend && npm ci && npm run dev
 ```
 
-## Commit style — Conventional Commits (enforced; CHANGELOG is generated from these)
+## Commit style — Conventional Commits (convention; not machine-enforced)
 
 ```
 <type>(<scope>): <imperative summary>
@@ -30,13 +30,38 @@ scope:  users | sellers | products | orders | payments | tax | shipping | ai | b
 Breaking changes: append `!` (`feat(payments)!: ...`) and describe migration in the body.
 Security fixes MUST reference the internal incident ID, never the vulnerability detail.
 
+**Nothing machine-checks this format.** `.pre-commit-config.yaml` installs no
+`commit-msg` hook and no commitlint runs in any workflow, so the convention is
+*review-gated*. `CHANGELOG.md` is likewise **not generated** from these commits:
+no generator is wired to any make target or workflow. It is hand-maintained.
+
 ## Branching & PR checklist
 
 Branch from `main`; one concern per PR. Every PR template includes a **compliance
-checklist** — it is not ceremonial. Reviewers: `CODEOWNERS` forces a second
-approver on `payments_app`, `compliance_app`, `settings/`, and workflows.
+checklist** — it is not ceremonial.
 
-## Quality gates (all enforced in CI)
+**Review is self-review.** `.github/CODEOWNERS` is a single wildcard
+(`* @JourneyOfLife`): there are no per-path owners for `payments_app`,
+`compliance_app`, `settings/` or workflows. Branch protection sets
+`require_code_owner_reviews: false` and `required_approving_review_count: 0`, so
+CODEOWNERS is inert and no second approver is required — or possible, with one
+operator and `enforce_admins: true`. The PR checklist is therefore the *only*
+human review layer: complete it from the diff, not from memory. Tracked as
+`QODER.md` §8 G2.
+
+## Quality gates
+
+**Required contexts** — a failure blocks the merge (11 as of 2026-10-05):
+`backend`, `secrets`, `frontend-typecheck`, `frontend-lint`, `frontend-unit`,
+`frontend-openapi-drift`, `gitleaks`, `trivy`, `codeql`, `dependency-audit`,
+`docker-scan`.
+
+**Runs but does not block:** `frontend-build` — the only job that boots the
+standalone bundle. It also declares `needs: [frontend-typecheck, frontend-lint,
+frontend-unit]`, so a lint failure skips it entirely (§8 G21).
+
+**Disabled (`if: false`):** `frontend-lighthouse`, `frontend-playwright-smoke`
+(§8 G4/G5).
 
 1. `ruff check` clean **and** `ruff format --check` clean — lint and formatting are
    separate tools (`make lint` runs both, plus the frontend ESLint and Prettier
@@ -48,7 +73,8 @@ approver on `payments_app`, `compliance_app`, `settings/`, and workflows.
    `--cov-fail-under=20`; 80% is the target, not the current gate.
 4. OpenAPI snapshot regenerated if API surface changed (`make api-schema`)
 5. No secrets (`scripts/check_no_secrets.sh`, Gitleaks)
-6. Playwright checkout journey passes (frontend e2e)
+6. Playwright checkout journey — **not currently a gate**; the job is `if: false`
+   (§8 G4). Do not cite it as coverage for a frontend change.
 
 ## Architecture rules
 
@@ -69,13 +95,18 @@ Enforced by `backend/tests/unit/test_architecture_boundaries.py` (runs in
   16 pre-existing direct model imports are baselined in the fitness test as a
   shrink-only ratchet — route new calls through `services.py`, don't extend the
   baseline.
-- Never hand-edit: `requirements/*.txt`, `docs/api/openapi.yaml`,
-  `frontend/src/lib/api/generated/`, `CHANGELOG.md`, `LICENSE`.
+- Never hand-edit: `backend/requirements/*.txt`, `docs/api/openapi.yaml`,
+  `frontend/src/generated/api.ts`, `LICENSE`. Regenerate instead — `make lock`
+  for the pins, `make api-schema` for the snapshot and client. (`CHANGELOG.md`
+  was listed here in error: nothing generates it, so it is hand-maintained. The
+  previously cited path `frontend/src/lib/api/generated/` does not exist.)
 - New PII fields: use `core.encryption.EncryptedTextField` and annotate the
   RoPA classification; update `docs/COMPLIANCE_MATRIX.md` in the same PR.
 
 ## Adding dependencies
 
 Runtime deps go in `backend/pyproject.toml`, then `make lock` regenerates the
-pinned, hash-checked requirement files. PRs that edit `requirements/*.txt`
-directly are rejected by CI.
+pinned, hash-checked requirement files. **No CI job rejects a hand-edited
+`requirements/*.txt`** — that rule is review-gated only. Check it yourself: a
+lockfile edit not accompanied by a matching `pyproject.toml` edit is a defect,
+and it undermines the `--require-hashes` install CI depends on.

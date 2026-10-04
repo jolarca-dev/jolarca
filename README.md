@@ -1,9 +1,9 @@
 # jolarca
 
-[![CI](https://github.com/journeyoflife-org/jolarca/actions/workflows/ci.yml/badge.svg)](https://github.com/journeyoflife-org/jolarca/actions/workflows/ci.yml)
-[![Security](https://github.com/journeyoflife-org/jolarca/actions/workflows/security.yml/badge.svg)](https://github.com/journeyoflife-org/jolarca/actions/workflows/security.yml)
-![Coverage](https://img.shields.io/badge/coverage-%E2%89%A580%25-success)
-![Lighthouse](https://img.shields.io/badge/lighthouse-budgets%20enforced-success)
+[![CI](https://github.com/jolarca-dev/jolarca/actions/workflows/ci.yml/badge.svg)](https://github.com/jolarca-dev/jolarca/actions/workflows/ci.yml)
+[![Security](https://github.com/jolarca-dev/jolarca/actions/workflows/security.yml/badge.svg)](https://github.com/jolarca-dev/jolarca/actions/workflows/security.yml)
+![Coverage](https://img.shields.io/badge/coverage-enforced%20gate%2020%25-yellow)
+![Lighthouse](https://img.shields.io/badge/lighthouse-CI%20gate%20disabled-lightgrey)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
 
 Baltic-first B2C/B2B2C marketplace (LT · LV · EE · EN): seller onboarding with
@@ -59,7 +59,7 @@ make migrate && make seed
 | --- | --- |
 | [EXECUTIVE_SUMMARY.md](docs/EXECUTIVE_SUMMARY.md) | One-page mission, value, and status |
 | [GRANT_APPLICATION.md](docs/GRANT_APPLICATION.md) · [GRANT_SUBMISSION.md](docs/GRANT_SUBMISSION.md) | Work packages, Gantt, budget, risks, metrics · narrative |
-| [ARCHITECTURE_DECISION_RECORDS.md](docs/ARCHITECTURE_DECISION_RECORDS.md) | Consolidated ADR registry (ADR-0001…0017) |
+| [ARCHITECTURE_DECISION_RECORDS.md](docs/ARCHITECTURE_DECISION_RECORDS.md) | Consolidated ADR registry |
 | [TECHNICAL_SPECIFICATION.md](docs/TECHNICAL_SPECIFICATION.md) | Architecture, data flows, API contract, caching |
 | [SECURITY_POSTURE.md](docs/SECURITY_POSTURE.md) · [SECURITY.md](docs/SECURITY.md) | STRIDE model, compliance mapping, IR · operational policy |
 | [PERFORMANCE_REPORT.md](docs/PERFORMANCE_REPORT.md) | CWV budgets, techniques, scalability plan |
