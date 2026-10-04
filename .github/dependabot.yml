@@ -34,6 +34,18 @@ updates:
     # `@stripe/*` pair (Stripe Elements is what keeps the merchant out of CHD
     # scope under PCI DSS SAQ-A; a silent regression there is a scope change,
     # not a chore).
+    #
+    # Two families are grouped WITH majors, because they cannot be bumped apart.
+    # Verified from each branch's own files with a local `npm ci --dry-run`:
+    #   vitest-5.0.3            ERESOLVE While resolving: @vitest/coverage-v8@4.1.10,
+    #                           Found: vitest@5.0.3   (and mirrored for coverage-v8)
+    #   eslint-10.11.0          ERESOLVE While resolving: eslint-config-next@15.5.23,
+    #                           Found: eslint@10.11.0
+    # `eslint-config-next` is peer-coupled to BOTH `next` and `eslint`, so the
+    # toolchain moves as one ring — splitting it into a `next` group and an `eslint`
+    # group would leave each still unsatisfiable on its own. Groups are therefore kept
+    # disjoint and their patterns excluded from the catch-all, so no update can match
+    # two groups at once.
     groups:
       weekly-minor-patch:
         applies-to: version-updates
@@ -42,7 +54,33 @@ updates:
         exclude-patterns:
           - dompurify
           - "@stripe/*"
+          - vitest
+          - "@vitest/*"
+          - next
+          - eslint
+          - eslint-config-next
+          - "@eslint/*"
         update-types:
+          - minor
+          - patch
+      vitest:
+        applies-to: version-updates
+        patterns:
+          - vitest
+          - "@vitest/*"
+        update-types:
+          - major
+          - minor
+          - patch
+      next-toolchain:
+        applies-to: version-updates
+        patterns:
+          - next
+          - eslint
+          - eslint-config-next
+          - "@eslint/*"
+        update-types:
+          - major
           - minor
           - patch
   - package-ecosystem: docker
