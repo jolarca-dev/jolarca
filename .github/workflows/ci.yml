@@ -46,6 +46,17 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gdal-bin libgdal-dev
       - name: Install pinned deps
         run: pip install --require-hashes -r requirements/dev.txt
+      # No other job in this repo parses .github/dependabot.yml, so a mis-shaped
+      # `groups:` set is currently invisible to every gate and only surfaces days
+      # later as a missing or unmergeable PR (QODER.md §8 G20). Runs here rather
+      # than as a new job on purpose: branch protection requires nine *named*
+      # checks, so a new job could fail without blocking anything. It also needs
+      # PyYAML, which the pinned dev requirements above install provides.
+      # --self-test runs first so a neutered checker cannot keep the step green.
+      - name: Dependabot group config check
+        run: |
+          python ../scripts/check_dependabot_groups.py --self-test
+          python ../scripts/check_dependabot_groups.py
       - name: Lint (ruff)
         run: ruff check .
       # `ruff check` does not verify formatting — they are separate tools (see

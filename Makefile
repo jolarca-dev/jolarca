@@ -18,7 +18,7 @@ LOAD_ENV := set -a; if [ -f .env ]; then . ./.env; fi; set +a;
 
 .PHONY: help bootstrap sysdeps dev-up dev-down logs migrate makemigrations seed \
         test test-contract test-integration lint lint-py lint-fe typecheck check lock \
-        api-schema check-secrets wait
+        api-schema check-secrets check-deps-groups wait
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  %-18s %s\n", $$1, $$2}'
@@ -100,6 +100,15 @@ api-schema: ## Regenerate OpenAPI snapshot + frontend client (never hand-edit)
 check-secrets: ## Scan for accidentally staged secrets
 	bash scripts/check_no_secrets.sh
 	bash scripts/check_secrets_dir.sh
+
+# Nothing else in this repo parses .github/dependabot.yml, so a mis-shaped
+# `groups:` set is accepted silently and only surfaces days later as a missing or
+# unmergeable PR (QODER.md §8 G20). --self-test runs first on purpose: it injects
+# three violations and requires them to be detected, so a neutered checker cannot
+# keep this target green — the always-green failure mode recorded as gap G3.
+check-deps-groups: ## Validate dependabot group topology (no CI job does this)
+	$(PY) scripts/check_dependabot_groups.py --self-test
+	$(PY) scripts/check_dependabot_groups.py
 
 wait: ## Block until local services are reachable
 	bash scripts/wait_for_services.sh
