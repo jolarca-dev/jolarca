@@ -16,11 +16,17 @@ What it verifies
                   group, so matching never depends on declaration order
 3. policy       — the repo's deliberate exceptions actually hold:
                   `dompurify` / `@stripe/*` / `django` / `stripe` match NO group
-                  (they must land alone and promptly); coupled families are
-                  grouped at every type (a lone `vitest` major is unsatisfiable
-                  against `@vitest/coverage-v8` — verified ERESOLVE), AND each
-                  family's minor/patch route is a DIFFERENT group from its major
-                  route, so a security patch can never wait on a major release.
+                  (they must land alone and promptly); a family's members agree on
+                  the group handling a given update-type and that group declares
+                  every pattern of the route (a lone `vitest` major is unsatisfiable
+                  against `@vitest/coverage-v8` — verified ERESOLVE); AND a family's
+                  minor/patch route is a DIFFERENT group from its major route, so a
+                  security patch can never wait on a major release.
+4. major ceiling — a name whose major is blocked by an upstream constraint must be
+                  `ignore:`d and must appear in NO major group. Grouped-and-ignored,
+                  grouped-only, and neither (an unsatisfiable single-package major PR
+                  that stays red forever) are each reported. PR #154 is the measured
+                  case: `eslint` 10 cannot load with `eslint-config-next` 16.
 
 Limits — read before trusting a green run
 -----------------------------------------
@@ -66,17 +72,43 @@ MAX_GROUP_NAME_LEN = 75
 MUST_STAY_DISCRETE = ("dompurify", "@stripe/stripe-js", "@stripe/react-stripe-js")
 MUST_STAY_DISCRETE_PIP = ("django", "stripe")
 
-# Coupled families: members cannot be bumped apart (verified ERESOLVE), so
-# majors must be grouped together; but minor/patch must be a separate group so
-# a patch-level security fix is never held hostage to a major release (G20).
-FAMILIES: dict[str, tuple[str, ...]] = {
-    "vitest": ("vitest", "@vitest/*"),
-    "next-toolchain": ("next", "eslint", "eslint-config-next", "@eslint/*"),
+# Coupled families, described PER UPDATE-TYPE, because the two routes legitimately have
+# different members: minor/patch can group a whole family, while a major may only group
+# packages whose majors are actually compatible. Members cannot be bumped apart
+# (verified ERESOLVE) and a grouped PR is atomic, so patch must never wait on a major
+# (G20) and an impossible major must never be grouped at all (G19, PR #154).
+FAMILIES: dict[str, dict[str, dict[str, tuple[str, ...]]]] = {
+    "vitest": {
+        "major": {
+            "patterns": ("vitest", "@vitest/*"),
+            "members": ("vitest", "@vitest/mocker", "@vitest/coverage-v8"),
+        },
+        "patch": {
+            "patterns": ("vitest", "@vitest/*"),
+            "members": ("vitest", "@vitest/mocker", "@vitest/coverage-v8"),
+        },
+    },
+    "next-toolchain": {
+        # Major ring = the version-locked pair only: eslint-config-next@16.3.8
+        # depends on @next/eslint-plugin-next@16.3.8 exactly.
+        "major": {
+            "patterns": ("next", "eslint-config-next"),
+            "members": ("next", "eslint-config-next"),
+        },
+        "patch": {
+            "patterns": ("next", "eslint", "eslint-config-next", "@eslint/*"),
+            "members": ("next", "eslint", "eslint-config-next", "@eslint/js"),
+        },
+    },
 }
-FAMILY_MEMBERS = {
-    "vitest": ("vitest", "@vitest/mocker", "@vitest/coverage-v8"),
-    "next-toolchain": ("next", "eslint", "eslint-config-next", "@eslint/js"),
-}
+
+# Majors blocked by an upstream ceiling, not by choice. eslint-config-next@16 bundles
+# eslint-plugin-react 7.37.5, whose newest published peer is still eslint "^3 .. ^9.7",
+# and ESLint 10 removed context.getFilename(); measured on PR #154 the plugin cannot
+# even load. Such a name must have no major route and must be covered by `ignore:`, so
+# deleting the ignore cannot silently recreate #154.
+MAJOR_CEILING = ("eslint", "@eslint/js")
+MAJOR_IGNORE_TYPE = "version-update:semver-major"
 
 
 def fail(problems: list[str], msg: str) -> None:
@@ -235,11 +267,58 @@ def check_discrete(
                 )
 
 
-def check_families(groups: dict[str, dict], problems: list[str]) -> None:
-    for family, patterns in FAMILIES.items():
-        members = FAMILY_MEMBERS[family]
-        route = {}
-        for utype in SEMVER_TYPES:
+def _ignored_major_patterns(ignores: list | None) -> set[str]:
+    """dependency-name patterns whose major updates are ignored."""
+    names: set[str] = set()
+    for rule in ignores or []:
+        if MAJOR_IGNORE_TYPE not in (rule.get("update-types") or []):
+            continue
+        declared = rule.get("dependency-name")
+        if isinstance(declared, str):
+            names.add(declared)
+        elif isinstance(declared, list):
+            names.update(declared)
+    return names
+
+
+def check_major_ceiling(
+    groups: dict[str, dict], ignores: list | None, problems: list[str]
+) -> None:
+    """A ceiling-blocked major must be ignored, not grouped, and never neither."""
+    ignored = _ignored_major_patterns(ignores)
+    for name in MAJOR_CEILING:
+        route = matching_groups(groups, name, "major")
+        covered = any(fnmatch.fnmatchcase(name, pat) for pat in ignored)
+        if route and covered:
+            fail(
+                problems,
+                f"{name}: major is BOTH routed to {route} and ignored; delete one — an "
+                "ignored update can never reach that group, so the config claims an "
+                "arrangement it will never produce",
+            )
+        elif route and not covered:
+            fail(
+                problems,
+                f"{name}: major routes to {route} with no ignore; that combination is "
+                "unbuildable (eslint-plugin-react peers eslint <=9.7 and ESLint 10 "
+                "removed context.getFilename — PR #154 proved it)",
+            )
+        elif not route and not covered:
+            fail(
+                problems,
+                f"{name}: major has no group and no ignore, so dependabot will open an "
+                "unsatisfiable single-package major PR that stays red forever",
+            )
+
+
+def check_families(
+    groups: dict[str, dict], ignores: list | None, problems: list[str]
+) -> None:
+    for family, routes in FAMILIES.items():
+        chosen: dict[str, tuple[str, ...]] = {}
+        for route_name, spec in routes.items():
+            utype = "major" if route_name == "major" else "patch"
+            members = spec["members"]
             hits = {tuple(matching_groups(groups, m, utype)) for m in members}
             if len(hits) != 1:
                 fail(
@@ -248,10 +327,23 @@ def check_families(groups: dict[str, dict], problems: list[str]) -> None:
                     f"{hits}; a grouped PR is atomic, so members that must move "
                     "together cannot be split across PRs",
                 )
-            route[utype] = next(iter(hits)) if len(hits) == 1 else ()
+            chosen[route_name] = next(iter(hits)) if len(hits) == 1 else ()
 
-        majors = route.get("major") or ()
-        patches = route.get("patch") or ()
+            # The group owning a route must declare EVERY pattern of that route.
+            # Otherwise narrowing a group silently drops a sibling back to a
+            # single-package PR and resurrects the verified ERESOLVE failure.
+            for gname in chosen[route_name]:
+                declared = set(groups.get(gname, {}).get("patterns") or [])
+                missing = set(spec["patterns"]) - declared
+                if missing:
+                    fail(
+                        problems,
+                        f"{family}: group '{gname}' handles {utype} but does not "
+                        f"declare {sorted(missing)}; that sibling would be raised alone",
+                    )
+
+        majors = chosen.get("major", ())
+        patches = chosen.get("patch", ())
         if not majors:
             fail(
                 problems,
@@ -269,19 +361,7 @@ def check_families(groups: dict[str, dict], problems: list[str]) -> None:
                 "(QODER.md §8 G20 / CVE-2026-84373)",
             )
 
-        # The group that owns a family must declare EVERY member pattern. Without
-        # this, narrowing a group's patterns would silently drop a sibling back to a
-        # single-package PR and resurrect the verified ERESOLVE failure.
-        for utype, route_groups in route.items():
-            for gname in route_groups:
-                declared = set(groups.get(gname, {}).get("patterns") or [])
-                missing = set(patterns) - declared
-                if missing:
-                    fail(
-                        problems,
-                        f"{family}: group '{gname}' handles {utype} but does not declare "
-                        f"{sorted(missing)}; that sibling would be raised alone",
-                    )
+    check_major_ceiling(groups, ignores, problems)
 
 
 def resolve_ecosystem(data: dict, ecosystem: str) -> dict:
@@ -318,7 +398,7 @@ def run() -> int:
     check_no_ambiguity(pip_groups, pip_names(), "pip", problems)
     check_discrete(npm_groups, list(MUST_STAY_DISCRETE), "npm", problems)
     check_discrete(pip_groups, list(MUST_STAY_DISCRETE_PIP), "pip", problems)
-    check_families(npm_groups, problems)
+    check_families(npm_groups, npm.get("ignore"), problems)
 
     if problems:
         for p in problems:
@@ -338,7 +418,8 @@ def self_test() -> int:
     """Prove the gate can fail, by checking a deliberately broken config.
 
     Without this, a checker that silently passes everything is indistinguishable
-    from the always-green `make lint` recorded as gap G3.
+    from the always-green `make lint` recorded as gap G3. A control case is included
+    so the inverse failure — a checker that always reports problems — is caught too.
     """
     hostage = {
         "family": {
@@ -354,28 +435,74 @@ def self_test() -> int:
     grouped_sensitive = {
         "everything": {"patterns": ["*"], "update-types": ["minor", "patch"]}
     }
+    ceiling_groups = {
+        "ring-major": {
+            "patterns": ["next", "eslint-config-next"],
+            "update-types": ["major"],
+        },
+        "ring-patch": {
+            "patterns": ["next", "eslint", "eslint-config-next", "@eslint/*"],
+            "update-types": ["minor", "patch"],
+        },
+    }
+    ceiling_ignores = [
+        {"dependency-name": "eslint", "update-types": [MAJOR_IGNORE_TYPE]},
+        {"dependency-name": "@eslint/*", "update-types": [MAJOR_IGNORE_TYPE]},
+    ]
 
-    cases = []
+    cases: list[tuple[str, bool, bool]] = []
     problems: list[str] = []
-    check_families(hostage, problems)
-    cases.append(("patch held hostage by major", bool(problems), problems))
+    check_families(hostage, None, problems)
+    cases.append(("patch held hostage by major", bool(problems), True))
 
     problems = []
     check_no_ambiguity(ambiguous, ["vitest"], "self-test", problems)
-    cases.append(("two groups match one update", bool(problems), problems))
+    cases.append(("two groups match one update", bool(problems), True))
 
     problems = []
     check_discrete(grouped_sensitive, ["dompurify"], "self-test", problems)
-    cases.append(("security control got grouped", bool(problems), problems))
+    cases.append(("security control got grouped", bool(problems), True))
+
+    problems = []
+    check_major_ceiling(
+        {"ring": {"patterns": ["eslint"], "update-types": ["major"]}}, None, problems
+    )
+    cases.append(("ceiling major grouped with no ignore", bool(problems), True))
+
+    problems = []
+    check_major_ceiling(
+        {"ring": {"patterns": ["next"], "update-types": ["major"]}}, None, problems
+    )
+    cases.append(("ceiling major grouped nowhere and unignored", bool(problems), True))
+
+    problems = []
+    check_major_ceiling(
+        {"ring": {"patterns": ["eslint"], "update-types": ["major"]}},
+        ceiling_ignores,
+        problems,
+    )
+    cases.append(("ceiling major both grouped and ignored", bool(problems), True))
+
+    problems = []
+    check_major_ceiling(ceiling_groups, ceiling_ignores, problems)
+    cases.append(("control: correct arrangement stays silent", bool(problems), False))
 
     ok = True
-    for label, detected, found in cases:
-        status = "DETECTED" if detected else "MISSED"
-        if not detected:
+    for label, detected, want in cases:
+        verdict = "DETECTED" if detected else "silent"
+        if detected != want:
             ok = False
-        print(f"self-test {label}: {status} ({len(found)} problem(s))")
+            verdict += (
+                " <- WRONG (expected " + ("detection" if want else "silence") + ")"
+            )
+        print(f"self-test {label}: {verdict}")
     print(
-        "self_test " + ("OK - the gate can fail" if ok else "FAILED - gate is vacuous")
+        "self_test "
+        + (
+            "OK - the gate can fail and can pass"
+            if ok
+            else "FAILED - the gate is not trustworthy"
+        )
     )
     return 0 if ok else 1
 
