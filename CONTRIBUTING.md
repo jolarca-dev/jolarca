@@ -72,9 +72,17 @@ frontend-unit]`, so a lint failure skips it entirely (§8 G21).
    so it is not part of `make test`). The coverage gate today is
    `--cov-fail-under=20`; 80% is the target, not the current gate.
 4. OpenAPI snapshot regenerated if API surface changed (`make api-schema`)
-5. No secrets (`scripts/check_no_secrets.sh`, Gitleaks)
+5. No secrets — `make check-secrets` scans what **git carries** (`git ls-files`),
+   the same set CI sees, alongside Gitleaks (which scans history).
 6. Playwright checkout journey — **not currently a gate**; the job is `if: false`
    (§8 G4). Do not cite it as coverage for a frontend change.
+7. Documentation claims — `make check-docs` fails when a contributor-facing doc
+   asserts a control that configuration does not implement (badge org vs `origin`,
+   cited paths that do not exist, claims proven false, volatile ADR counts, gap-
+   register integrity, cited `make` targets). Runs in the CI backend job, preceded
+   by `--self-test`. This gate exists because every code invariant here is
+   machine-checked while the *claims about* those controls were checked by nothing,
+   so docs drifted and each drift became a new §8 entry.
 
 ## Architecture rules
 

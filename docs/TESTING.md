@@ -80,10 +80,11 @@ rather than skipping — the suite doubles as a contract-completion meter.
    Vitest coverage → `next build`.
 3. **Contract**: OpenAPI snapshot comparison.
 4. **Secrets**: Gitleaks scan (repo-wide).
-5. **Lighthouse CI** (`lighthouserc.js`): production build served locally;
+5. **Lighthouse CI** (`frontend/lighthouserc.js`): production build served locally;
    mobile-emulated runs assert **error-level** budgets for LCP/CLS/TBT/
-   Speed-Index; `scripts/lighthouse-budget.json` adds resource budgets —
-   breach fails the pipeline.
+   Speed-Index; `frontend/scripts/lighthouse-budget.json` adds resource budgets.
+   **Not currently enforced:** the `frontend-lighthouse` CI job is `if: false`, so a
+   breach does not fail the pipeline (`QODER.md` §8 G5).
 6. **Playwright smoke** (`smoke.spec.ts`) against the built frontend on
    chromium + webkit; the full journey suite runs against the Docker
    Compose stack (`PLAYWRIGHT_BASE_URL`), producing HTML + JSON report
