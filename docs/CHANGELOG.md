@@ -80,7 +80,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   image optimizer wrapper, `StreamedSection` (Suspense + error boundary),
   preconnect/dns-prefetch hints, consent-gated Core Web Vitals.
 - Lighthouse budgets hardened: Speed Index promoted to error;
-  `scripts/lighthouse-budget.json` wired into LHCI. **No longer a gate:** the
+  `frontend/scripts/lighthouse-budget.json` wired into LHCI. **No longer a gate:** the
   `frontend-lighthouse` job is `if: false` (`QODER.md` §8 G5), so these budgets
   are not measured in CI.
 

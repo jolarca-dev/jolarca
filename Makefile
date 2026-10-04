@@ -18,7 +18,7 @@ LOAD_ENV := set -a; if [ -f .env ]; then . ./.env; fi; set +a;
 
 .PHONY: help bootstrap sysdeps dev-up dev-down logs migrate makemigrations seed \
         test test-contract test-integration lint lint-py lint-fe typecheck check lock \
-        api-schema check-secrets check-deps-groups wait
+        api-schema check-secrets check-deps-groups check-docs wait
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  %-18s %s\n", $$1, $$2}'
@@ -97,18 +97,37 @@ api-schema: ## Regenerate OpenAPI snapshot + frontend client (never hand-edit)
 	$(LOAD_ENV) cd backend && $(PY) manage.py spectacular --file ../docs/api/openapi.yaml --validate
 	cd frontend && npm run generate:api
 
-check-secrets: ## Scan for accidentally staged secrets
+# check_no_secrets.sh audits the **tracked** set (`git ls-files`), which is the
+# same set CI sees, so local and CI now answer the identical question — "does git
+# carry a credential?". It previously grepped the whole working tree and therefore
+# failed on the operator's own gitignored .env.prod, meaning it could never pass
+# on a real checkout and trained the operator to ignore it (§8 G15).
+check-secrets: ## Scan what git carries for staged secrets
 	bash scripts/check_no_secrets.sh
 	bash scripts/check_secrets_dir.sh
 
-# Nothing else in this repo parses .github/dependabot.yml, so a mis-shaped
-# `groups:` set is accepted silently and only surfaces days later as a missing or
-# unmergeable PR (QODER.md §8 G20). --self-test runs first on purpose: it injects
-# three violations and requires them to be detected, so a neutered checker cannot
-# keep this target green — the always-green failure mode recorded as gap G3.
-check-deps-groups: ## Validate dependabot group topology (no CI job does this)
+# Dependabot group semantics are invisible to every other tool here: no job parsed
+# .github/dependabot.yml, so a mis-shaped `groups:` set was accepted silently and
+# only surfaced days later as a missing or unmergeable PR (QODER.md §8 G20).
+# --self-test runs first on purpose: it injects six violations plus one control
+# case and requires each to behave, so a neutered checker cannot keep this target
+# green — the always-green failure mode recorded as gap G3. (The comment here used
+# to claim "three violations" and "no CI job does this"; both were stale, and the
+# backend job does invoke it — which is exactly what check_doc_claims.py now
+# guards against, so a drifting comment fails the build instead of rotting.)
+check-deps-groups: ## Validate dependabot group topology (also runs in CI)
 	$(PY) scripts/check_dependabot_groups.py --self-test
 	$(PY) scripts/check_dependabot_groups.py
+
+# The structural fix for the 2026-10-05 audit: every code invariant in this repo is
+# machine-checked, but the *claims about* those controls were checked by nothing, so
+# docs drifted freely and each drift became a new §8 register entry. This gate fails
+# when a document asserts a control that configuration does not implement, so the
+# next false claim breaks a build rather than being rediscovered by hand weeks later.
+# It self-tests first for the same reason as check-deps-groups.
+check-docs: ## Fail when docs assert a control that does not exist
+	$(PY) scripts/check_doc_claims.py --self-test
+	$(PY) scripts/check_doc_claims.py
 
 wait: ## Block until local services are reachable
 	bash scripts/wait_for_services.sh
