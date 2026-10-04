@@ -222,6 +222,95 @@ exception once a patched version is adopted.
 
 **Status:** Accepted 2026-10-03 (recorded per owner authorization; sole maintainer).
 
+## ADR-0019 — `JOL` identifier freeze-map, and deferral of the consumer-brand rename
+
+**Context.** The repository, organisation and Django/Node packages are named
+`jolarca`, but **46 tracked files still carry the string `JOL Marketplace`** —
+measured 2026-10-05 by `git grep -lI 'JOL Marketplace'`: 17 under `frontend/`,
+14 under `docs/`, 2 under `backend/`, and 13 across root, `nginx/` and
+`scripts/`. An infrastructure-level rename was executed on 2026-08-31 (incident
+`JOL-RENAME-20260831-01`, merged as PR #20) covering package names, compose
+project and image names, database and bucket names, host paths and fallback
+URLs. **That rename is recorded in no ADR**, and its scope boundary was never
+written down, which is why the branding layer it deliberately or accidentally
+left behind cannot now be distinguished from an oversight.
+
+Two classes of `JOL`-prefixed identifier are **load-bearing rather than
+cosmetic**, and renaming either would cause a production incident:
+
+1. **Persisted order numbering.** `orders_app/services.py:58` derives the next
+   sequence via `Order.objects.filter(number__startswith="JOL-<year>-")`. If the
+   prefix changes, that filter matches **zero existing rows**, `seq` resets to
+   `offset`, and the first new order collides with an existing `unique=True`
+   order number — a 500 on the checkout money path. The function's own docstring
+   warns of exactly this failure. `migrations/0001_initial.py:42` also documents
+   the format in a **shipped migration**, which must never be edited.
+2. **HMAC wire-protocol headers.** `X-JOL-Caller`, `X-JOL-Timestamp` and
+   `X-JOL-Signature` (`payments_app/internal_auth.py:40-42`,
+   `internal_forward.py:78-79`) are the internal payment-API authentication
+   contract and the signed per-product webhook forwarding envelope. They are
+   identifiers on the wire, not branding; renaming them breaks every caller,
+   including the sibling `jol-hub` platform.
+
+A third class must be **kept as-is** because it names a *different* product:
+`.env.example:33`, `docker-compose.dev.yml:5,26` and `.sops.yaml:1` reference the
+**JOL Church / `jol-hub`** platform that shares the host, and the `.sops.yaml`
+cross-project segregation rule is intentional.
+
+The remaining class is the **consumer brand**, and it is not a documentation
+problem. It includes `frontend/src/app/layout.tsx:123` (the HTML `<title>`
+default *and* template), `frontend/src/app/manifest.ts:10` (PWA manifest name),
+`frontend/src/app/[locale]/page.tsx:49,72` (SEO `siteName` and JSON-LD),
+`frontend/src/components/site-footer.tsx:13` (visible footer), and
+`frontend/messages/{en,et,lt,lv}.json` — four locales, one of which carries the
+copyright line `"© 2026 JOL Marketplace. All rights reserved."`
+`frontend/e2e/seo.spec.ts:114` asserts the manifest name, and because
+`frontend-playwright-smoke` is `if: false` (QODER.md §8 G4) **CI would not catch
+that assertion breaking**.
+
+**Decision.**
+
+1. **The wire-protocol headers and the persisted order-number prefix are frozen
+   permanently.** They are not branding and are excluded from any future rename,
+   regardless of what the brand is decided to be. The same applies to the shipped
+   migration's `help_text` and to the sibling `jol-hub` / JOL Church references.
+2. **No global search-and-replace of `JOL` is permitted.** Any future rename must
+   work from this classification, class by class.
+3. **The consumer-brand question is deferred to the owner and is explicitly NOT
+   decided by this ADR.** It is entirely possible that `jolarca` is the
+   repository/organisation identity while `JOL Marketplace` remains the intended
+   consumer-facing brand; nothing in the repository states which is
+   authoritative, and this record will not invent a decision. What is defective
+   is the *ambiguity*, not necessarily the divergence.
+4. **If and when the brand is decided to change**, the sequence is: amend this
+   ADR with the decision and its rationale → execute the brand class only →
+   regenerate `docs/api/openapi.yaml` and `frontend/src/generated/api.ts` via
+   `make api-schema`, because `settings/base.py:167` sets the OpenAPI `TITLE` and
+   a title change *is* a contract change (and `frontend-openapi-drift` is now a
+   required context, §8 G22) → update `frontend/e2e/seo.spec.ts:114` in the same
+   commit → provide **translated** equivalents for all four locales rather than
+   substituting the string → prove the order-number sequence still advances
+   against a database that already holds `JOL-<year>-` rows. SEO and copyright
+   impact must be assessed before the change ships, not after.
+
+**Consequences.** (+) The two paths to a production incident are closed off in
+writing, so a well-intentioned cleanup cannot reach them. (+) The scope boundary
+that PR #20 never recorded now exists, so the residual divergence is a known,
+classified state rather than an unexplained inconsistency. (+) The brand question
+is surfaced as the owner's decision with its real cost attached — legal
+(copyright notice in four languages), SEO (`<title>`, JSON-LD, manifest) and
+i18n — instead of being executed silently as a hygiene task. (−) The repository
+remains visibly inconsistent between `jolarca` and `JOL Marketplace` until the
+owner decides; this is accepted, because a wrong rename of a copyright notice or
+an SEO title is materially worse than a visible inconsistency. (−) The e2e
+assertion that guards the brand string is in a disabled job, so the guard is
+nominal until §8 G4 is closed. **Review:** revisit when the owner rules on the
+consumer brand, or when §8 G4 re-enables the Playwright suite, whichever is
+first.
+
+**Status:** Accepted 2026-10-05 as to items 1–2 (the freeze-map). Item 3 is
+recorded as **deferred to the owner**, not decided.
+
 ---
 
 *Spec-to-registry mapping for reviewers: spec labels ADR-001…ADR-007
