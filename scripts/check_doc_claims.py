@@ -48,6 +48,20 @@ Limits — read before trusting a green run
   `backend/`). A path that exists but is not the one intended still passes.
 - A green run means "these known classes of drift are absent", never
   "the documentation is accurate".
+- **CI-only.** This runs in the backend CI job, not as a pre-commit hook, so a false
+  claim can be committed locally without complaint and first surfaces on the pull
+  request. Deliberate — a whole-tree doc scan firing on every unrelated commit would
+  be the G15 failure mode again — but it means `git commit` is not where you find
+  out. `make check-docs` is the local equivalent and is fast.
+
+Proven blocking, not merely present (2026-10-05, throwaway PR #168): injecting the
+single falsified sentence "PRs that edit `requirements/*.txt` directly are rejected
+by CI" into CONTRIBUTING.md turned the **required** `backend` job red at the
+"Doc-claims check" step while the preceding "Dependabot group config check" step
+stayed green, and left `mergeable=MERGEABLE` with `mergeStateStatus=BLOCKED` — the
+content could merge and the gate stopped it. The probe PR was closed unmerged and
+its branch deleted. Local mutation matrix (7 injected claims, one per check, in a
+disposable worktree): all 7 exit 1; removing QODER.md exits 2 rather than passing.
 
 Exit codes: 0 pass, 1 a claim is contradicted by configuration, 2 cannot verify
 (missing input, no git remote, unparsable register). A vacuous pass is
@@ -548,7 +562,8 @@ def self_test() -> int:
         "CONTRIBUTING.md",
         (
             "## Architecture rules\n",
-            "## Architecture rules\n`frontend/src/generated/api_nope2.ts` does not exist.\n",
+            "## Architecture rules\n"
+            "`frontend/src/generated/api_nope2.ts` does not exist.\n",
         ),
         check_paths,
         False,
@@ -578,7 +593,10 @@ def self_test() -> int:
     case(
         "C4 detects volatile count",
         "README.md",
-        ("Consolidated ADR registry |", "Consolidated ADR registry (ADR-0001…0017) |"),
+        (
+            "Consolidated ADR registry |",
+            "Consolidated ADR registry (ADR-0001…0017) |",
+        ),
         check_adr_ranges,
         True,
         "0017",

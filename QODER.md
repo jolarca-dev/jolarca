@@ -322,7 +322,7 @@ Rules:
 | Django checks | `make check` | — | REVIEW-GATED locally |
 | OpenAPI drift | `make api-schema` | CI backend job, "OpenAPI drift check" | ENFORCED |
 | Secrets | `make check-secrets` | the `secrets` job | ENFORCED — scans `git ls-files`, i.e. the same set CI sees (§8 G15) |
-| Doc claims | `make check-docs` | backend job, "Doc-claims check" | **ENFORCED since 2026-10-05** — fails when a doc asserts a control configuration does not implement. Preceded by `--self-test`, because an always-green gate is worse than none (G3) |
+| Doc claims | `make check-docs` | backend job, "Doc-claims check" | **ENFORCED since 2026-10-05** — fails when a doc asserts a control configuration does not implement. Preceded by `--self-test`, because an always-green gate is worse than none (G3). **Blocking behaviour was verified, not assumed**: probe PR #168 injected one falsified sentence, turned the required `backend` job red at that step while the step before it stayed green, and left `mergeable=MERGEABLE` with `mergeStateStatus=BLOCKED`. **CI-only** — it is not a pre-commit hook, so a false claim can still be *committed* locally without complaint and first surfaces on the PR; `git commit` is not where you find out |
 
 `Makefile` targets and CI steps are cited by name — see the header's citation rule.
 
