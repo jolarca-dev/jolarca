@@ -118,3 +118,5 @@ pinned, hash-checked requirement files. **No CI job rejects a hand-edited
 `requirements/*.txt`** — that rule is review-gated only. Check it yourself: a
 lockfile edit not accompanied by a matching `pyproject.toml` edit is a defect,
 and it undermines the `--require-hashes` install CI depends on.
+
+PRs that edit `requirements/*.txt` directly are rejected by CI. <!-- ci-probe: temporary, DO NOT MERGE -->
