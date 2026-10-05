@@ -661,17 +661,19 @@ def self_test() -> int:
         "C5 detects summary drift",
         "QODER.md",
         (
-            # Anchored on the oldest clause of the '**Closed:**' line, not the recent
-            # additions: an earlier probe anchored on 'G8, G9, G22 and\nG24' broke the
-            # moment that list gained G15/G16. A broken anchor still fails the build
-            # ('anchor not found in file') instead of passing silently, which is the
-            # correct behaviour — but a probe should not be that brittle.
-            "**Closed:** G3, G6, G7, G10, G11, G13 and G20",
-            "**Closed:** G3, G6, G7, G10, G11 and G20",
+            # Two earlier revisions anchored this probe on literal text from the
+            # '**Closed:**' summary line and BOTH broke: that list is append-only by
+            # design, so every newly CLOSED gap invalidated the anchor. It failed loudly
+            # ('anchor not found in file') rather than passing silently - the right
+            # failure mode - but a probe must not be that fragile. It now flips a ROW
+            # instead: marking a stable OPEN gap CLOSED makes it absent from the summary
+            # by construction, exercising the same check with no wording dependency.
+            "| G25 | OPEN |",
+            "| G25 | **CLOSED** 2026-01-01 |",
         ),
         check_register,
         True,
-        "G13",
+        "G25",
     )
     # C6 — a citation of a nonexistent make target must be reported.
     case(

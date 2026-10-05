@@ -83,6 +83,10 @@ frontend-unit]`, so a lint failure skips it entirely (§8 G21).
    by `--self-test`. This gate exists because every code invariant here is
    machine-checked while the *claims about* those controls were checked by nothing,
    so docs drifted and each drift became a new §8 entry.
+8. Toolchain parity — `make check-toolchain` fails if the interpreter running the gates does not
+   match the `backend/requirements/dev.txt` pins, or if a stray `.venv` exists anywhere in the
+   tree (gitignored at every depth, so invisible to `git status`). Local-only by design: CI
+   installs from the lock. `make verify` runs it first.
 
 ## Architecture rules
 

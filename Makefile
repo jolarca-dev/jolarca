@@ -4,8 +4,14 @@
 SHELL := /bin/bash
 COMPOSE_DEV := docker compose -f docker-compose.dev.yml
 COMPOSE_TEST := docker compose -f docker-compose.test.yml
-PY := $(CURDIR)/.venv/bin/python
-PIP := $(CURDIR)/.venv/bin/pip
+# ROOT is derived from this Makefile's own location, not from the invocation
+# directory. $(CURDIR) changes under `make -C`, which would silently rebind
+# $(PY) - and backend/.venv exists as a stale decoy (ruff 0.16.3 / mypy 2.3.0 /
+# django 5.2.17 against the pinned 0.16.6 / 2.3.1 / 6.1.1). scripts/check_toolchain.py
+# enforces the invariant; `make bootstrap` rebuilds the one true venv.
+ROOT := $(patsubst %/,%,$(dir $(realpath $(firstword $(MAKEFILE_LIST)))))
+PY := $(ROOT)/.venv/bin/python
+PIP := $(ROOT)/.venv/bin/pip
 
 # Host-side Django targets need .env (DATABASE_URL, DJANGO_SETTINGS_MODULE,
 # POSTGRES_*); without it Django silently falls back to 127.0.0.1:5432 with no
@@ -18,7 +24,7 @@ LOAD_ENV := set -a; if [ -f .env ]; then . ./.env; fi; set +a;
 
 .PHONY: help bootstrap sysdeps dev-up dev-down logs migrate makemigrations seed \
         test test-contract test-integration lint lint-py lint-fe typecheck check lock \
-        api-schema check-secrets check-deps-groups check-docs verify wait
+        api-schema check-secrets check-toolchain check-deps-groups check-docs verify wait
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  %-18s %s\n", $$1, $$2}'
@@ -126,6 +132,11 @@ check-deps-groups: ## Validate dependabot group topology (also runs in CI)
 # when a document asserts a control that configuration does not implement, so the
 # next false claim breaks a build rather than being rediscovered by hand weeks later.
 # It self-tests first for the same reason as check-deps-groups.
+# Fails when the interpreter running the gates is not the one the lock pins, or a
+# stray .venv exists (gitignored at any depth, so invisible to git status). G14.
+check-toolchain: ## Assert interpreter == lock pins and no stray venv
+	$(PY) scripts/check_toolchain.py
+
 check-docs: ## Fail when docs assert a control that does not exist
 	$(PY) scripts/check_doc_claims.py --self-test
 	$(PY) scripts/check_doc_claims.py
@@ -140,7 +151,7 @@ verify: ## Run every fast gate and write a dated evidence report to .state/
 	  echo "branch:    $$(git rev-parse --abbrev-ref HEAD) @ $$(git rev-parse --short HEAD)"; \
 	  echo "remote:    $$(git remote get-url origin)"; \
 	  echo "dirty:     $$(git status --porcelain | wc -l) path(s)"; echo; \
-	  for t in lint-py check-secrets check-docs check-deps-groups test; do \
+	  for t in check-toolchain lint-py check-secrets check-docs check-deps-groups test; do \
 	    printf '%-18s ' "$$t"; \
 	    if $(MAKE) --no-print-directory $$t >/dev/null 2>&1; then echo PASS; else echo FAIL; fi; \
 	  done; \
