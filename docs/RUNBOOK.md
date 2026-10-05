@@ -118,6 +118,25 @@ Celery broker + cache only — it is *not* the cart store.
 Follow [runbooks/ai-outage.md](./runbooks/ai-outage.md). Listings stay
 publishable without AI; enrichment queues retry.
 
+### 2.6 Which written playbook to open
+
+Four playbooks live in `docs/runbooks/`. Each is the long form of one incident class
+above; `docs/README.md` is the inventory of record for the set.
+
+- [ai-outage.md](./runbooks/ai-outage.md) — the AI provider is down or returning
+  garbage: translation and enrichment degrade, listings stay publishable (§2.5).
+- [stripe-webhook-failure.md](./runbooks/stripe-webhook-failure.md) — webhook
+  deliveries are failing, missing, or look forged: signature verification, replay from
+  the Stripe dashboard, order and payment state reconciliation (§2.3).
+- [restore-from-backup.md](./runbooks/restore-from-backup.md) — data loss, corruption or
+  a bad migration: which backup to take, how to verify it, what to re-run afterwards.
+- [dependabot-lock-peer-repair.md](./runbooks/dependabot-lock-peer-repair.md) — a
+  dependabot npm PR is red on a lock entry it dropped (`QODER.md` §8 G19). Not a
+  production incident, but the repair is scripted and must not be improvised per PR.
+
+For behaviour during any of them — severity, response clocks, status-page wording,
+post-mortem — [INCIDENT_RESPONSE.md](./INCIDENT_RESPONSE.md) is the procedure of record.
+
 ---
 
 ## 3. Log locations
@@ -193,7 +212,7 @@ renewed cert into `./ssl/` before reloading nginx):
 Single-operator self-hosted topology — the escalation ladder is about
 **response posture**, not headcount.
 
-| Severity | Definition (see INCIDENT_RESPONSE.md)                | Action                                            |
+| Severity | Definition (see [INCIDENT_RESPONSE.md](./INCIDENT_RESPONSE.md) §1) | Action                                            |
 | -------- | ---------------------------------------------------- | ------------------------------------------------ |
 | **P1**   | Money path down (checkout/payment), full outage, data-loss risk | Drop everything; respond ≤ 15 min; page via MONITOR_WEBHOOK_URL + MONITOR_EMAIL; status page up within 30 min |
 | **P2**   | Degraded but usable (search down, email delayed, one seller blocked) | Respond ≤ 1 h; fix in working hours |
