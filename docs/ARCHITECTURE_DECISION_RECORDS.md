@@ -78,20 +78,48 @@ ticket id tracked in `docs/MVP_REMAINING_WORK.md`; config-gated features raise
 
 ## ADR-0008 — Frontend scope: storefront, seller dashboard, moderation backoffice
 
-**Status: NO RECORD.** The title above is transcribed from the Registry Overview table,
-which is the only place this ADR appears. No context, decision or consequences text
-exists in any tracked file (measured 2026-10-05: `git grep -n 'ADR-0008'` returns this
-file's overview row only). Recorded as absent rather than reconstructed; if the owner
-holds the original decision, append it here with its date and source.
+**Status: NO RECORD.** No `## ADR-0008` decision text exists in any tracked file; the
+title above is transcribed from the Registry Overview table, which is the only place the
+*title* appears.
+
+**Correction (2026-10-06).** This section originally asserted that "`git grep -n
+'ADR-0008'` returns this file's overview row only". **That was false, and it had not been
+run.** Measured on `main`: `git grep -l 'ADR-0008'` returns **6 files**, five of them
+frontend source — `frontend/src/app/[locale]/admin/layout.tsx:17`,
+`frontend/src/app/[locale]/funeral-services/page.tsx:28`,
+`frontend/src/components/client/funeral/service-card.tsx:4`,
+`frontend/src/lib/api/contract-gaps.ts:194,292`,
+and `frontend/src/lib/funeral.ts:2`. The id is load-bearing in shipped code: those
+comments assert the funeral vertical is *directory and lead generation only, not
+e-commerce* and that the admin surface is role-gated, and cite this ADR as the authority
+for both. So the absent record is not a documentation gap — it is the only written basis
+for two architectural boundaries that code already depends on. Recorded as absent rather
+than reconstructed; if the owner holds the original decision, append it here with its
+date and source.
 
 ## ADR-0009 — Frontend compliance & UX posture (sacred-modern)
 
-**Status: NO RECORD — but the decision is substantively documented elsewhere.** The
-overview row is the only `## ADR-0009` mention; the substance survives as
-`docs/DESIGN_SYSTEM.md`, and three documents cite the id: `docs/EXECUTIVE_SUMMARY.md:20`,
-`docs/POST_MVP_ROADMAP.md:9`, `docs/TESTING_STRATEGY.md:58`, plus ADR-0016's context
-below. Those citations resolve to a title, not to a record. Do not treat this section as
-the decision text.
+**Status: NO RECORD — but the decision is substantively documented elsewhere.** There is
+no `## ADR-0009` record; the substance survives as `docs/DESIGN_SYSTEM.md`, and ADR-0016's
+context below paraphrases it.
+
+**Measured 2026-10-06, superseding the "three documents" figure this section first
+carried — which was a count of `docs/` only and understated the exposure by an order of
+magnitude.** `git grep -l 'ADR-0009' main` returns **26 tracked files**:
+
+| Area | Files | Examples |
+| --- | --- | --- |
+| `docs/` | 3 | `docs/EXECUTIVE_SUMMARY.md:20`, `docs/POST_MVP_ROADMAP.md:9`, `docs/TESTING_STRATEGY.md:58` |
+| `backend/` | 3 | `backend/apps/search_app/views.py:3`, `backend/apps/products_app/views.py:174`, `backend/apps/sellers_app/serializers.py:4` |
+| `docs/api/` | 1 | `docs/api/openapi.yaml:302` |
+| `frontend/` | 18 | `frontend/lighthouserc.js:2`, `frontend/src/lib/security.ts:45`, `frontend/src/styles/tokens.css:2` |
+| registry | 1 | this file's overview row |
+
+Production code cites this id for its privacy posture ("the main query travels as a JSON
+BODY via POST", "phone, address never leave private surfaces"), for the Stripe origin
+allowlist that holds the merchant at SAQ-A scope, and for the "sacred-modern" design
+language. **Each of those citations resolves to a title, not to a decision text.** Do not
+treat this section as the decision text.
 
 ## ADR-0010 — Risk acceptance: js-yaml advisory in codegen toolchain
 
