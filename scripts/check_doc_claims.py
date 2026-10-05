@@ -113,6 +113,11 @@ GOVERNANCE_FILES = [
     "docs/TESTING_STRATEGY.md",
     "docs/ARCHITECTURE.md",
     "docs/DEPLOYMENT.md",
+    # Added 2026-10-05 (t8). The archive index states how this gate selects its input,
+    # so it is in scope; the archived records themselves are deliberately NOT listed —
+    # frozen history would fail a denylist of falsified claims forever. Its rule 3
+    # documents both halves and the grep that proves them.
+    "docs/archive/README.md",
 ]
 
 PATH_ROOTS = ["", "backend"]
