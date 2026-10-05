@@ -90,8 +90,15 @@ LIVE_CLAIM_FILES = [
     "CHANGELOG.md",
     "docs/SECURITY.md",
     "docs/CHANGELOG.md",
+    "docs/ASSUMPTIONS.md",
+    "docs/TESTING.md",
+    "docs/TESTING_STRATEGY.md",
     ".github/CODEOWNERS",
     "Makefile",
+    # Workflow comments are contributor-facing claims too. G18 and G26 both began
+    # with a comment asserting a control the surrounding config does not implement.
+    ".github/workflows/deploy-staging.yml",
+    ".github/workflows/deploy-production.yml",
 ]
 
 # Everything humans read for rules, including the register (for path/ID checks).
@@ -125,6 +132,27 @@ FALSIFIED = (
     ("frontend/src/lib/api/generated", "that path does not exist; see G24"),
     ("lighthouse-budgets enforced", "frontend-lighthouse is if:false; see G5"),
     ("coverage-%E2%89%A580", "the gate is --cov-fail-under=20; see G1"),
+    # Added with G17/G26: deployment claims that the staging workflow does not honour.
+    (
+        "audit log of every deploy",
+        "a build job wrote deployment records that were never deployments; see G26",
+    ),
+    (
+        "rollout gates on the health endpoint",
+        "no deploy workflow runs a rollout or a health gate; §A-07 undecided",
+    ),
+    (
+        "fail loudly at the rollout step",
+        "staging warns and exits 0 since 2026-10-05; "
+        "only production still fails; see G17",
+    ),
+    ("deploy-staging.yml → staging VM", "no staging target exists; §A-07 undecided"),
+    (
+        "manual approval gate before any prod action",
+        "no production environment exists "
+        "and can_admins_bypass defaults to "
+        "true; see G18",
+    ),
 )
 
 ADR_RANGE = re.compile(r"ADR-0001[\u2026\-.]+ADR-?0\d{3}|ADR-0001[\u2026\-.]+0?\d{3}\b")
