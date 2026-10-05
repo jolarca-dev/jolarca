@@ -209,7 +209,8 @@ FALSIFIED = (
     # Added with t9 (2026-10-05), from measured gate values: the backend coverage floor
     # is --cov-fail-under=20 (.github/workflows/ci.yml:97), while 80 is the frontend
     # Vitest threshold and applies only to the 17 modules in coverage.include
-    # (frontend/vitest.config.mts:38-62). Both testing docs restated "80% for both
+    # (frontend/vitest.config.mts:55-60 for the thresholds, :36-54 for that list).
+    # Both testing docs restated "80% for both
     # stacks" as enforced; the numbers now have one home in docs/TESTING_STRATEGY.md §1.
     # These entries are deliberately short: the scan is line-based, so a long phrase a
     # writer wraps across two lines evades it - which is how the original
@@ -465,6 +466,27 @@ def check_register(problems: list[str]) -> int:
             "Markdown table silently detaches the rows below it"
         )
         n += 1
+
+    # Every row must carry as many cells as the header. A row missing one renders with an
+    # empty column on GitHub, which in this table reads as "no evidence recorded" - G14's
+    # row lacked both its Evidence cell and its terminating pipe, and no gate could see
+    # it: contiguity held, the ID parsed, the summary agreed. Escaped pipes (\|, legal
+    # inside a cell and used by several rows' grep patterns) are not separators.
+    for start, end in register_runs:
+        row_lines = text.splitlines()[start - 1 : end]
+        counts = {
+            start + k: len(re.split(r"(?<!\\)\|", ln.strip().strip("|")))
+            for k, ln in enumerate(row_lines)
+        }
+        expected = counts[start]
+        odd = {ln: c for ln, c in counts.items() if c != expected}
+        if odd:
+            problems.append(
+                f"C5 register: rows {sorted(odd)} carry {sorted(set(odd.values()))} cells "
+                f"but the table header carries {expected} — a row missing a cell renders "
+                "as an empty column, which reads as 'no evidence recorded'"
+            )
+            n += 1
 
     nums = sorted(int(i[1:]) for i in ids)
     holes = [x for x in range(nums[0], nums[-1] + 1) if x not in set(nums)]
@@ -799,6 +821,18 @@ def self_test() -> int:
             True,
             f"{gid} is CLOSED",
         )
+    # C5 — a register row missing a cell must be reported. Anchor: the register's own
+    # separator, which is the only five-column separator in QODER.md (measured 2026-10-05),
+    # so shortening it by one column makes every row disagree with the header without
+    # touching a row another probe anchors on.
+    case(
+        "C5 detects a short row",
+        "QODER.md",
+        ("|---|---|---|---|---|", "|---|---|---|---|"),
+        check_register,
+        True,
+        "cells",
+    )
     # C6 — a citation of a nonexistent make target must be reported.
     case(
         "C6 detects missing target",
