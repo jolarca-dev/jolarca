@@ -126,6 +126,15 @@ GOVERNANCE_FILES = [
     # frozen history would fail a denylist of falsified claims forever. Its rule 3
     # documents both halves and the grep that proves them.
     "docs/archive/README.md",
+    # Added 2026-10-05 (t9). The index cites every document path in the repository, so
+    # C2 becomes an inventory check: a renamed or deleted doc fails the gate instead of
+    # leaving a dead link behind. The ADR registry and the pointer file that links to it
+    # are deliberately NOT listed yet: putting the registry in scope immediately reports
+    # two pre-existing C4 violations in it (its Scope sentence and its Registry Overview
+    # heading both name ADR-0001…0010 as the registry's extent, while ADR-0020 exists),
+    # and this branch fixes those in the same commit that widens the scope rather than
+    # landing a red gate. Tracked as §8 G27.
+    "docs/README.md",
 ]
 
 PATH_ROOTS = ["", "backend"]
@@ -655,17 +664,34 @@ def self_test() -> int:
         "(all enforced in CI)",
     )
     # C4 — a hardcoded ADR range understating the registry must be reported.
-    case(
-        "C4 detects volatile count",
-        "README.md",
-        (
-            "Consolidated ADR registry |",
-            "Consolidated ADR registry (ADR-0001…0017) |",
-        ),
-        check_adr_ranges,
-        True,
-        "0017",
-    )
+    # Anchor chosen at run time, for the reason documented on the C5 probe below: this
+    # case hardcoded the literal README.md table cell "Consolidated ADR registry |", and
+    # the t9 index work replaced that table with entry points, which killed the probe
+    # ("anchor not found in file"). check_adr_ranges reads lines, not tables, so any
+    # heading will carry the injected claim — the H1 is the one line README.md is
+    # guaranteed to keep.
+    readme_h1 = next((ln for ln in read("README.md").splitlines() if ln.startswith("# ")), "")
+    if not readme_h1:
+        results.append(
+            (
+                "C4 detects volatile count",
+                False,
+                (
+                    "no '# ' heading in README.md to anchor on - the structure this "
+                    "probe needs has changed"
+                ),
+                True,
+            )
+        )
+    else:
+        case(
+            "C4 detects volatile count",
+            "README.md",
+            (readme_h1, f"{readme_h1} — registry ends at ADR-0001…0017"),
+            check_adr_ranges,
+            True,
+            "0017",
+        )
     # C4 control — a register row quoting the claim it retracted stays legal.
     case(
         "C4 accepts a register quote",
