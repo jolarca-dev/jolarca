@@ -88,7 +88,11 @@ LIVE_CLAIM_FILES = [
     "README.md",
     "CONTRIBUTING.md",
     "SECURITY.md",
-    "CHANGELOG.md",
+    # "CHANGELOG.md" was listed here until 2026-10-05, when the root stub was deleted
+    # rather than backfilled: docs/CHANGELOG.md plus `git log` is the change record.
+    # The entry had to go with the file - assert_inputs_present() now fails closed on a
+    # listed path that no longer exists, so a stale entry is loud instead of silently
+    # dropping the document out of every check.
     "docs/SECURITY.md",
     "docs/CHANGELOG.md",
     "docs/ASSUMPTIONS.md",
@@ -239,6 +243,21 @@ def read(path: str) -> str:
 
 def existing_governance_files() -> list[str]:
     return [f for f in GOVERNANCE_FILES if (REPO_ROOT / f).is_file()]
+
+
+def assert_inputs_present() -> None:
+    """Fail closed when a listed input no longer exists (G15's principle, applied here).
+
+    Every check skips a file it cannot read, so a listed path that was deleted silently
+    drops out of C2/C3/C4/C6 while the run still prints "clean" - a false green measured
+    against nothing, which is the same failure mode the secrets scanner had before G15.
+    A document removed from the tree must be removed from these lists in the same
+    commit; the root CHANGELOG.md stub was, on 2026-10-05.
+    """
+    listed = list(dict.fromkeys([*LIVE_CLAIM_FILES, *GOVERNANCE_FILES]))
+    missing = [f for f in listed if not (REPO_ROOT / f).is_file()]
+    if missing:
+        raise CannotVerify(f"listed input(s) missing from the tree: {', '.join(missing)}")
 
 
 def check_origin(problems: list[str]) -> int:
@@ -540,6 +559,7 @@ CHECKS = {
 
 
 def run() -> int:
+    assert_inputs_present()
     if not existing_governance_files():
         raise CannotVerify("no governance documents found")
     problems: list[str] = []
@@ -771,6 +791,21 @@ def self_test() -> int:
         False,
         "deps-checkx",
     )
+
+    # Input presence - a listed path that no longer exists must fail closed rather than
+    # be skipped. Probed by appending a phantom entry to the live list in memory: the
+    # tree is never touched, and the entry is popped whichever way the probe exits.
+    LIVE_CLAIM_FILES.append("docs/NOPE-selftest.md")
+    try:
+        assert_inputs_present()
+    except CannotVerify as exc:
+        results.append(
+            ("missing input fails closed", "NOPE-selftest" in str(exc), str(exc)[:120], True)
+        )
+    else:
+        results.append(("missing input fails closed", False, "no CannotVerify raised", True))
+    finally:
+        LIVE_CLAIM_FILES.pop()
 
     width = max(len(r[0]) for r in results)
     failures = 0

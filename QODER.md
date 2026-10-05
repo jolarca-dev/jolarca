@@ -13,7 +13,7 @@ in §8 — never assume a GAP is enforced.
 `.github/CODEOWNERS`, `.github/pull_request_template.md`, `.github/workflows/ci.yml`,
 `.github/workflows/security.yml`, `.github/workflows/deploy-staging.yml`,
 `.github/workflows/deploy-production.yml`, `.github/dependabot.yml`, `CONTRIBUTING.md`,
-`README.md`, `CHANGELOG.md`, `docs/CHANGELOG.md`,
+`README.md`, `docs/CHANGELOG.md`, `docs/README.md`,
 `docs/architecture/01-modular-breakdown.md`, `backend/pyproject.toml`,
 `backend/tests/unit/test_architecture_boundaries.py`, `frontend/package.json`,
 `frontend/package-lock.json`, `frontend/vitest.config.mts`, `docker-compose.test.yml`,
@@ -95,8 +95,9 @@ Test: *every changed line traces directly to the request.*
 **Generated files are off-limits.** Never hand-edit (`CONTRIBUTING.md` →
 *Architecture rules*):
 `backend/requirements/*.txt`, `docs/api/openapi.yaml`,
-`frontend/src/generated/api.ts`, `LICENSE`. **Not** `CHANGELOG.md` — nothing
-generates it (§8 G24). The path previously cited here,
+`frontend/src/generated/api.ts`, `LICENSE`. **Not** `docs/CHANGELOG.md` — nothing
+generates it (§8 G24); the root stub once listed here was deleted on 2026-10-05
+(§8). The path previously cited here,
 `frontend/src/lib/api/generated/`, **does not exist** (§8 G24).
 
 ## 4. Goal-Driven Execution
@@ -424,8 +425,10 @@ database, so the non-blocking report is the only thing that surfaces them.
 
 Format (`CONTRIBUTING.md` → *Commit style*). **Not machine-enforced:** no
 `commit-msg` hook is installed and no commitlint runs in any workflow. **No
-generator consumes these commits either** — `CHANGELOG.md` is a hand-maintained
-stub that stops at the repository scaffold (§8 G24). This section was previously
+generator consumes these commits either** — `docs/CHANGELOG.md` is a
+hand-maintained sprint record (§8 G24). The root `CHANGELOG.md` stub that stopped at
+the repository scaffold was deleted on 2026-10-05 rather than backfilled (§8). This
+section was previously
 tiered **ENFORCED**, which contradicted the tier definition in *Enforcement
 tiers* above:
 

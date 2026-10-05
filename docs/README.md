@@ -51,7 +51,6 @@ Not under `docs/`, listed here so the inventory has no blind spot.
 | [`CONTRIBUTING.md`](../CONTRIBUTING.md) | Contributing | Developer guide, commit style, PR compliance checklist |
 | [`SECURITY.md`](../SECURITY.md) | Security Policy | Vulnerability disclosure: scope, severity, what to include, supported versions |
 | [`QODER.md`](../QODER.md) | Engineering guidelines | Enforcement tiers, module invariants, and the §8 gap register |
-| [`CHANGELOG.md`](../CHANGELOG.md) | Changelog | Hand-maintained release-notes stub; the sprint record is `docs/CHANGELOG.md` |
 
 ## Governance and decisions
 
