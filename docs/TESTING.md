@@ -90,9 +90,11 @@ rather than skipping — the suite doubles as a contract-completion meter.
    Compose stack (`PLAYWRIGHT_BASE_URL`), producing HTML + JSON report
    artifacts.
 
-Deployment workflows (`deploy-staging.yml`, `deploy-production.yml`) build
-images from committed lockfiles; rollout gates on the health endpoint
-(`scripts/wait_for_services.sh`).
+Deployment workflows (`deploy-staging.yml`, `deploy-production.yml`) build images
+from committed lockfiles and push them to ghcr.io. **No rollout is performed and no
+health gate runs in them** — the rollout steps are sanctioned stubs pending
+`ASSUMPTIONS.md` §A-07. `scripts/wait_for_services.sh` gates local and compose
+service startup; it is not a deployment gate.
 
 ## 3. Performance Budgets
 

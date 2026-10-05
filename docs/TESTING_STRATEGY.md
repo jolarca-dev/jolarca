@@ -65,8 +65,8 @@ flowchart TD
     LH --> MERGE
     BA --> MERGE
     SEC --> MERGE
-    MERGE --> STG["deploy-staging.yml → staging VM"]
-    STG --> PROD["deploy-production.yml<br/>(scripts/deploy.sh: tag · migrate · health gate · smoke · rollback)"]
+    MERGE --> STG["deploy-staging.yml → images to ghcr.io<br/>(rollout NOT implemented — §A-07 stub)"]
+    STG --> PROD["deploy-production.yml → attested images<br/>(rollout stub fails loudly; scripts/deploy.sh is NOT wired into CI)"]
 ```
 
 **Gate conditions:** every box above must pass; coverage below 80%, any
