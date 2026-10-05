@@ -38,8 +38,8 @@ flowchart TB
 - **Frontend** (`frontend/tests/unit/`, Vitest): domain libraries are the
   coverage focus — cart, checkout, seller, admin, funeral, search, consent,
   security headers. Thresholds are **80% for branches, functions, lines and
-  statements**, enforced by `frontend/vitest.config.mts:57-62` over the 17 modules
-  named in `coverage.include` (`:38-56`) — not over the whole app, so an aggregate
+  statements**, enforced by `frontend/vitest.config.mts:55-60` over the 17 modules
+  named in `coverage.include` (`:36-54`) — not over the whole app, so an aggregate
   "frontend is 80% covered" claim does not follow. Per-module percentages and test
   counts are deliberately not restated here: they move on every run, and
   [TESTING_STRATEGY.md](TESTING_STRATEGY.md) §1 owns the measured inventory.

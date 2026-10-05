@@ -28,9 +28,9 @@ state — re-measure before quoting one.
 | Stack | Enforced value | Where | Applies to |
 | --- | --- | --- | --- |
 | Backend | `--cov-fail-under=20` | `.github/workflows/ci.yml:97` | `pytest tests/unit tests/security tests/contract --cov=.` |
-| Frontend | `80` for branches, functions, lines and statements | `frontend/vitest.config.mts:57-62` | only the 17 modules named in `coverage.include` (`:38-56`) |
+| Frontend | `80` for branches, functions, lines and statements | `frontend/vitest.config.mts:55-60` | only the 17 modules named in `coverage.include` (`:36-54`) |
 
-The backend figure is **20%, not 80%**. The in-file comment at `ci.yml:99-103` records the
+The backend figure is **20%, not 80%**. The in-file comment at `ci.yml:98-103` records the
 intent to raise it in steps from the figure CI itself reports, and measured coverage at
 68.8% locally once contract tests joined the suite. The frontend floor is real but narrow:
 it is not an aggregate over the app, so "the frontend is 80% covered" does not follow from

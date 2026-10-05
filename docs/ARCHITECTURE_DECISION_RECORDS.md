@@ -89,7 +89,7 @@ holds the original decision, append it here with its date and source.
 **Status: NO RECORD — but the decision is substantively documented elsewhere.** The
 overview row is the only `## ADR-0009` mention; the substance survives as
 `docs/DESIGN_SYSTEM.md`, and three documents cite the id: `docs/EXECUTIVE_SUMMARY.md:20`,
-`docs/POST_MVP_ROADMAP.md:9`, `docs/TESTING_STRATEGY.md:36`, plus ADR-0016's context
+`docs/POST_MVP_ROADMAP.md:9`, `docs/TESTING_STRATEGY.md:58`, plus ADR-0016's context
 below. Those citations resolve to a title, not to a record. Do not treat this section as
 the decision text.
 
@@ -475,7 +475,7 @@ same command in `b4b0483` (#131, 2026-10-04), which added the in-file rationale 
 | unit + security | **24%** (3012 statements, 2282 missed) | 41 | `pytest tests/unit tests/security -q --cov=. --cov-report=term` with `DJANGO_SETTINGS_MODULE=project.settings.test` |
 | unit + security + contract (CI's set) | **69%** (3012 statements, 941 missed) | 162 | the same command with `tests/contract` added |
 
-The 69% corroborates the 68.8% that `ci.yml:99-103` records from 2026-10-03. It is
+The 69% corroborates the 68.8% that `ci.yml:98-103` records from 2026-10-03. It is
 restated here as a measurement rather than a citation even though the two are only days
 apart, because a suite that changes daily makes a quoted figure stale faster than a
 quoted line number does.
