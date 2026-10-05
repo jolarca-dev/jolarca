@@ -1,17 +1,51 @@
-# Repo-wide ruff config. Added because NONE existed: with no config, each tool
-# version applies its own defaults, so `scripts/` was "clean" under venv 0.16.6
-# and had 7 E402 errors under the pre-commit hook's 0.9.4, while CI saw neither
-# (it cds into backend/). QODER.md §8 G25. Pinning the rule set here makes the
-# hook, CI, the venv and every future upgrade agree.
+# THE single definition of the repo's Python rule set. backend/ does NOT redeclare
+# these values; it inherits them with `extend = "../ruff.toml"` in
+# backend/pyproject.toml and adds only Django-specific deltas. One rule set, one
+# source of truth — the two-rule-sets-in-one-repo condition that produced §8 G25
+# cannot reappear by editing one file and forgetting the other.
+#
+# Why a config here at all: none did. With no config each tool version applies its
+# own defaults, so scripts/ read as clean under the venv's ruff 0.16.6 while the
+# pre-commit hook's 0.9.4 reported 7 E402 errors, and CI saw neither because
+# `make lint-py` and the CI ruff steps cd into backend/. QODER.md §8 G25.
+#
+# Why 100 and not 88 — measured on 2026-10-05, not assumed (`ruff format --check`
+# and `ruff check --statistics` over backend/, run from backend/ so backend's real
+# excludes apply):
+#   * `ruff format --check` at 88 wants to reflow **0** files. Formatting is not
+#     the reason; a claim that it was is false and was corrected here.
+#   * `ruff check` at 88 reports **206 E501** findings, because those lines are
+#     long string literals, URLs and comments the formatter cannot split.
+#   * so 88 is unattainable in backend/ without rewrapping content by hand, and it
+#     would also drift the line-number citations QODER.md makes into backend
+#     source (e.g. internal_auth.py:40-42). 100 is therefore the repo standard,
+#     and scripts/ was raised to it (4 files, all local to scripts/).
 
-line-length = 88
+line-length = 100
+target-version = "py312"
 
 [lint]
-select = ["E4", "E7", "E9", "F", "I", "ISC", "EXE"]
-ignore = []
+select = [
+  "E", "W",  # pycodestyle
+  "F",       # pyflakes
+  "I",       # isort
+  "B",       # bugbear
+  "S",       # bandit (security)
+  "C4",      # comprehensions
+  "UP",      # pyupgrade
+  "ISC",     # implicit string concatenation (a missing comma here is silent)
+  "EXE",     # shebang vs executable bit
+]
+ignore = [
+  "S101",  # assert used in tests
+]
 
 [lint.per-file-ignores]
-# seed_data.py bootstraps Django before importing app models; the import order is
+# S603 (subprocess call without shell=True) is scoped to scripts/ on purpose: every
+# call there passes a literal argv list built from constants, never user input. It
+# is NOT a repo-wide exemption — backend/ inherits this file and must not lose it.
+"scripts/**" = ["S603"]
+# seed_data.py bootstraps Django before importing app models; that import order is
 # required, not careless. Ignored here so the file needs no per-line `# noqa`,
-# which RUF100 would then flag as unused under some versions.
+# which RUF100 would then report as unused under some versions.
 "scripts/seed_data.py" = ["E402"]

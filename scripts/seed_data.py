@@ -46,7 +46,10 @@ SELLERS = [
         Country.LT,
         "LT100000000000",
         "Vilnius",
-        "Family workshop crafting amber jewellery and linen homeware since 2012. Every piece is made in our Vilnius studio.",
+        (
+            "Family workshop crafting amber jewellery and linen homeware since "
+            "2012. Every piece is made in our Vilnius studio."
+        ),
     ),
     (
         "demo-lv@example.com",
@@ -105,9 +108,7 @@ def seed() -> None:
     ensure_role_groups()
 
     for slug, name, rank in CATEGORIES:
-        Category.objects.update_or_create(
-            slug=slug, defaults={"name": name, "homepage_rank": rank}
-        )
+        Category.objects.update_or_create(slug=slug, defaults={"name": name, "homepage_rank": rank})
 
     for email, company, country, vat, city, description in SELLERS:
         user, _ = User.objects.get_or_create(email=email)

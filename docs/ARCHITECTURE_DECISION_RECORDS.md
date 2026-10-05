@@ -311,6 +311,74 @@ first.
 **Status:** Accepted 2026-10-05 as to items 1–2 (the freeze-map). Item 3 is
 recorded as **deferred to the owner**, not decided.
 
+## ADR-0020 — Risk acceptance: single-operator change control and deployment evidence
+
+**Context.** ISO 27001 A.5.15 / SOC 2 CC6.2 / PCI Req. 7 assume separation between
+the person who changes code and the person who authorises it. jolarca has one
+maintainer and no team, so that separation is structurally unavailable, and
+`docs/COMPLIANCE_MATRIX.md` had been mapping those clauses to two controls that do
+not exist. Verified against configuration and the GitHub API on 2026-10-05:
+
+- `.github/CODEOWNERS` is a single wildcard `* @JourneyOfLife`; branch protection
+  reports `require_code_owner_reviews: false` and `required_approving_review_count: 0`.
+  The file is inert, not merely coarse-grained (§8 G2).
+- Exactly one environment, `staging`, with `protection_rules: []` and
+  `can_admins_bypass: true`; no `production` environment exists. An approval gate on
+  a single-admin repo is self-grantable, so it would satisfy the letter of CC8.1
+  without any independent sign-off (§8 G18).
+- Setting `required_approving_review_count: 1` is **not** available as a fix: GitHub
+  does not allow self-approval, and `enforce_admins: true` means the sole operator
+  would be unable to merge anything.
+
+What *is* enforced, and was re-verified rather than assumed:
+
+- Eleven required status checks (`backend`, `secrets`, `gitleaks`, `trivy`, `codeql`,
+  `dependency-audit`, `docker-scan`, `frontend-typecheck`, `frontend-lint`,
+  `frontend-unit`, `frontend-openapi-drift`), `strict: false`, with
+  `allow_squash_merge` the only merge mode, force-push and branch deletion blocked,
+  and `delete_branch_on_merge` on.
+- `scripts/check_doc_claims.py` (CI-required, via the `backend` job) fails the build
+  when documentation asserts a control configuration does not implement, and runs a
+  self-test first so it cannot become an always-green gate.
+- Self-testing AST boundary tests for app isolation, a dependabot topology gate, and
+  a standalone-bundle boot check.
+- Images are published only with immutable `staging-<sha>` / release tags.
+
+Separately, the staging environment's deployment log is **not** usable as evidence
+for this period: both staging jobs previously declared `environment: staging`, so a
+*build* job recorded about 58 `success` deployment entries for deployments that
+never happened (111 objects, 2 per merged SHA across 58 SHAs). Those labels are now
+removed, but GitHub does not delete deployment records, so the false history remains
+permanently visible on a public repository (§8 G26).
+
+**Decision.** Accept the residual risk of absent segregation of duties and absent
+deployment approval gates, on the basis that the enforced automated gate set above is
+the compensating control, and that adding a nominal approval gate would create a
+false record rather than a real control. Correct `COMPLIANCE_MATRIX.md` to state what
+exists instead of what does not. This acceptance covers **only** the human-approval
+dimension. It does **not** accept, and explicitly excludes:
+
+- the production `:latest` publish path, which must be disabled before the first
+  `v*` tag rather than approved by a self-grantable gate (§8 G18, queue item 5);
+- presenting the pre-2026-10-05 staging deployment history as evidence of
+  deployments (§8 G26);
+- treating CODEOWNERS as a review control in any document.
+
+**Consequences.** (+) The compliance matrix stops asserting controls that do not
+exist, which is itself the defect class this repo's §8 register exists to catch.
+(+) The compensating controls are enumerated and re-verified, so the acceptance is
+reviewable rather than a rubber stamp. (+) No fake approval gate is created to
+satisfy an auditor's checkbox. (−) Segregation of duties remains unmet, and on a
+single-operator repository it cannot be met by configuration; the residual risk is
+real, not mitigated. (−) Automated gates are enforced by the same person they would
+otherwise constrain. **Review:** mandatory on the first additional maintainer or
+contractor with merge rights, and at the next security review regardless - at which
+point real review, a `production` environment with a required reviewer who is not the
+author, and deployment approval become implementable rather than nominal.
+
+**Status:** Accepted 2026-10-05 (recorded per owner authorization; sole maintainer).
+
+
 ---
 
 *Spec-to-registry mapping for reviewers: spec labels ADR-001…ADR-007

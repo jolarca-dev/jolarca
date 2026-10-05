@@ -11,6 +11,7 @@
 4. [OWASP Top 10 Mitigations](#4-owasp-top-10-mitigations)
 5. [Payments & PCI Scope](#5-payments--pci-scope)
 6. [Incident Response Plan](#6-incident-response-plan)
+7. [Change and Deployment Controls](#7-change-and-deployment-controls)
 
 ---
 
@@ -137,4 +138,32 @@ escalation to the organization director is mandatory at Sev 1.
 ---
 
 **Cross-references:** [ARCHITECTURE.md](./ARCHITECTURE.md) ·
+## 7. Change and Deployment Controls
+
+**Segregation of duties is not achieved by configuration and is formally accepted as
+a residual risk** — see [ADR-0020](ARCHITECTURE_DECISION_RECORDS.md). The repository
+has one maintainer; GitHub does not permit self-approval, and `enforce_admins: true`
+means requiring an approval would make `main` unmergeable rather than safer.
+
+What is enforced instead, verified 2026-10-05 against the branch-protection API:
+
+| Control | Enforcement |
+|---|---|
+| Automated gates | 11 required status checks: backend, secrets, gitleaks, trivy, codeql, dependency-audit, docker-scan, frontend-typecheck, frontend-lint, frontend-unit, frontend-openapi-drift |
+| Merge discipline | squash only; force-push blocked; branch deletion blocked; `enforce_admins: true` |
+| Docs-to-config truth | `scripts/check_doc_claims.py` fails the build when a document asserts a control that configuration does not implement |
+| Release evidence | images published under immutable SHA / release tags; SBOM and SLSA provenance on the production build path |
+
+**Not a control, and not to be cited as one:** `.github/CODEOWNERS` is a single
+wildcard and `require_code_owner_reviews` is `false`; no `production` environment
+exists, and `can_admins_bypass` defaults to `true`, so any environment approval here
+would be self-grantable.
+
+**Deployment-log caveat for auditors.** Environment deployment history for `staging`
+before 2026-10-05 records about 58 `success` deployments that never occurred - they
+were emitted by a *build* job that declared `environment: staging`. The labels are
+removed and no new entries are created, but GitHub does not delete deployment
+records, so that history remains and must not be relied on as deployment evidence.
+Use the container registry tags and `git log` instead. See §8 G26.
+
 [DEPLOYMENT.md](./DEPLOYMENT.md) · [GDPR_COMPLIANCE.md](./GDPR_COMPLIANCE.md)

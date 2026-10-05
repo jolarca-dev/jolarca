@@ -73,9 +73,7 @@ def check_pins(pins: dict[str, str], problems: list[str]) -> int:
     for pkg in WATCHED:
         want = pins.get(canonical(pkg))
         if want is None:
-            problems.append(
-                f"toolchain: {pkg} is not pinned in dev.txt - cannot compare"
-            )
+            problems.append(f"toolchain: {pkg} is not pinned in dev.txt - cannot compare")
             bad += 1
             continue
         got = installed(pkg)
