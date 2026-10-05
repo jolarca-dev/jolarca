@@ -35,6 +35,14 @@ C5 register     — the §8 table is contiguous, every gap ID between min and ma
                   right in an editor.
 C6 make targets — every `make <target>` cited in docs exists, and a Makefile
                   comment claiming "no CI job does this" is actually true.
+C7 tables       — every Markdown table git tracks is one contiguous run with
+                  exactly one separator row and one cell count per row, and no
+                  row has lost its leading pipe. Structural, so it scans all
+                  tracked Markdown rather than the two claim lists below:
+                  G30 and G32 were both documents nobody had remembered to add
+                  to a list. A malformed table renders silently wrong on GitHub
+                  while looking right in an editor — in an evidence column that
+                  reads as "none recorded" (G31).
 
 Limits — read before trusting a green run
 -----------------------------------------
@@ -46,6 +54,9 @@ Limits — read before trusting a green run
   differently will pass. It prevents regression; it does not prove truth.
 - C2 resolves a cited path against a small set of roots (repo root, then
   `backend/`). A path that exists but is not the one intended still passes.
+- C7 checks structure only. A table whose cells are uniform and contiguous can
+  still assert something false; that is C3's job, and C3 only sees the files in
+  LIVE_CLAIM_FILES.
 - A green run means "these known classes of drift are absent", never
   "the documentation is accurate".
 - **CI-only.** This runs in the backend CI job, not as a pre-commit hook, so a false
@@ -88,7 +99,11 @@ LIVE_CLAIM_FILES = [
     "README.md",
     "CONTRIBUTING.md",
     "SECURITY.md",
-    "CHANGELOG.md",
+    # "CHANGELOG.md" was listed here until 2026-10-05, when the root stub was deleted
+    # rather than backfilled: docs/CHANGELOG.md plus `git log` is the change record.
+    # The entry had to go with the file - assert_inputs_present() now fails closed on a
+    # listed path that no longer exists, so a stale entry is loud instead of silently
+    # dropping the document out of every check.
     "docs/SECURITY.md",
     "docs/CHANGELOG.md",
     "docs/ASSUMPTIONS.md",
@@ -101,6 +116,21 @@ LIVE_CLAIM_FILES = [
     # CONTRIBUTING.md had already been corrected. Scope, not wording, was the defect.
     "docs/COMPLIANCE_MATRIX.md",
     "docs/TECH_DECISIONS.md",
+    # Added 2026-10-05 (t9) after the index this branch introduced shipped a false
+    # claim: its generated-artifacts table said LICENSE is produced by a make target
+    # that does not exist. C6 scans this list only, and the index sat in
+    # GOVERNANCE_FILES alone, so the check built to catch exactly that stayed silent.
+    # Being in scope for paths (C2) is not the same as being in scope for claims
+    # (C3/C6). Tracked as §8 G30.
+    "docs/README.md",
+    # Added 2026-10-05 (t9) at final review of this branch. The performance report called
+    # its Lighthouse budget "CI-enforced", named a "Budget job" as the enforcement for four
+    # metrics, and footed itself with "CI wiring: ci.yml (Lighthouse job fails on budget
+    # exceedance)" - while frontend-lighthouse is `if: false` and neither the budget file
+    # nor bundle-analyze.ts has any invoker in .github/ or the Makefile. It sat in neither
+    # list, so no check could see it: the same scope hole as G30, in the next document.
+    # Tracked as §8 G32.
+    "docs/PERFORMANCE_REPORT.md",
     ".github/CODEOWNERS",
     "Makefile",
     # Workflow comments are contributor-facing claims too. G18 and G26 both began
@@ -126,6 +156,30 @@ GOVERNANCE_FILES = [
     # frozen history would fail a denylist of falsified claims forever. Its rule 3
     # documents both halves and the grep that proves them.
     "docs/archive/README.md",
+    # Added 2026-10-05 (t9). The index cites every document path in the repository, so
+    # C2 becomes an inventory check: a renamed or deleted doc fails the gate instead of
+    # leaving a dead link behind.
+    "docs/README.md",
+    # Added one commit later in the same branch, together with the fixes they expose:
+    # the registry was read only by registry_max(), so its own citations and any range
+    # it claimed were never checked. That is how two live C4 violations survived in it
+    # (its Scope sentence and its Registry Overview heading both named the first ten ids
+    # as the registry's extent while ADR-0020 existed) and how three ids came to have no
+    # record at all. Tracked as §8 G27.
+    "docs/ARCHITECTURE_DECISION_RECORDS.md",
+    "docs/TECH_DECISIONS.md",
+    # Added 2026-10-05 (t9) with §8 G32. The two grant documents are external funding
+    # text whose instruments this branch measured as absent; both now carry a dated
+    # annotation citing repository paths, so C2 should verify those citations. They are
+    # added here and NOT to LIVE_CLAIM_FILES, for the reason already recorded as G30's
+    # residual: a submitted document quotes the claim it is diverging from, and a denylist
+    # pointed at frozen external text can never pass. The annotation is the compensating
+    # control. docs/PERFORMANCE_REPORT.md is in BOTH lists on purpose - it is an internal
+    # report, so its claims are checkable, and its corrected text is written to satisfy
+    # the three FALSIFIED entries below rather than to dodge them.
+    "docs/PERFORMANCE_REPORT.md",
+    "docs/GRANT_APPLICATION.md",
+    "docs/GRANT_SUBMISSION.md",
 ]
 
 PATH_ROOTS = ["", "backend"]
@@ -183,6 +237,50 @@ FALSIFIED = (
         "enforced in review + codeowners",
         "CODEOWNERS is inert; review is self-review with one maintainer; see G2",
     ),
+    # Added with t9 (2026-10-05), from measured gate values: the backend coverage floor
+    # is --cov-fail-under=20 (.github/workflows/ci.yml:97), while 80 is the frontend
+    # Vitest threshold and applies only to the 17 modules in coverage.include
+    # (frontend/vitest.config.mts:55-60 for the thresholds, :36-54 for that list).
+    # Both testing docs restated "80% for both
+    # stacks" as enforced; the numbers now have one home in docs/TESTING_STRATEGY.md §1.
+    # These entries are deliberately short: the scan is line-based, so a long phrase a
+    # writer wraps across two lines evades it - which is how the original
+    # "enforced in CI for both stacks" sentence survived in the first place.
+    (
+        "≥80% coverage floor",
+        "the backend gate is --cov-fail-under=20; the 80% floor is frontend-only; see G1",
+    ),
+    (
+        "coverage below 80%",
+        "the backend gate is --cov-fail-under=20 (ci.yml:97); see G1",
+    ),
+    (
+        "deploys are health-gated",
+        "no deploy workflow runs a rollout or a health gate; see G17/G26",
+    ),
+    (
+        "bundle gate: ≤150kb",
+        "no CI job asserts a bundle size; frontend-build only boots the bundle; see G21",
+    ),
+    # Added with §8 G32 (2026-10-05). docs/PERFORMANCE_REPORT.md asserted a Lighthouse
+    # budget gate that does not run: frontend-lighthouse is `if: false`
+    # (.github/workflows/ci.yml:227-232), frontend-playwright-smoke is `if: false`
+    # (:258-263), and `git grep -nE 'lighthouse-budget|bundle-analyze|analyze:bundle'` over
+    # .github/ and Makefile returns zero hits. Each entry below is a fragment of that claim
+    # which cannot appear in an honest correction: the corrected sentences say the budget is
+    # asserted by nothing, that no job reads it, and that no artifacts are retained.
+    (
+        "(CI-enforced)",
+        "no workflow reads frontend/scripts/lighthouse-budget.json; the job is if:false; see G5",
+    ),
+    (
+        "fails over budget",
+        "frontend-lighthouse is if:false, so no job asserts any budget; see G5",
+    ),
+    (
+        "artifacts retained per build",
+        "no Lighthouse job runs, so no artifacts exist; see G5",
+    ),
 )
 
 ADR_RANGE = re.compile(r"ADR-0001[\u2026\-.]+ADR-?0\d{3}|ADR-0001[\u2026\-.]+0?\d{3}\b")
@@ -227,6 +325,21 @@ def read(path: str) -> str:
 
 def existing_governance_files() -> list[str]:
     return [f for f in GOVERNANCE_FILES if (REPO_ROOT / f).is_file()]
+
+
+def assert_inputs_present() -> None:
+    """Fail closed when a listed input no longer exists (G15's principle, applied here).
+
+    Every check skips a file it cannot read, so a listed path that was deleted silently
+    drops out of C2/C3/C4/C6 while the run still prints "clean" - a false green measured
+    against nothing, which is the same failure mode the secrets scanner had before G15.
+    A document removed from the tree must be removed from these lists in the same
+    commit; the root CHANGELOG.md stub was, on 2026-10-05.
+    """
+    listed = list(dict.fromkeys([*LIVE_CLAIM_FILES, *GOVERNANCE_FILES]))
+    missing = [f for f in listed if not (REPO_ROOT / f).is_file()]
+    if missing:
+        raise CannotVerify(f"listed input(s) missing from the tree: {', '.join(missing)}")
 
 
 def check_origin(problems: list[str]) -> int:
@@ -404,6 +517,27 @@ def check_register(problems: list[str]) -> int:
         )
         n += 1
 
+    # Every row must carry as many cells as the header. A row missing one renders with an
+    # empty column on GitHub, which in this table reads as "no evidence recorded" - G14's
+    # row lacked both its Evidence cell and its terminating pipe, and no gate could see
+    # it: contiguity held, the ID parsed, the summary agreed. Escaped pipes (\|, legal
+    # inside a cell and used by several rows' grep patterns) are not separators.
+    for start, end in register_runs:
+        row_lines = text.splitlines()[start - 1 : end]
+        counts = {
+            start + k: len(re.split(r"(?<!\\)\|", ln.strip().strip("|")))
+            for k, ln in enumerate(row_lines)
+        }
+        expected = counts[start]
+        odd = {ln: c for ln, c in counts.items() if c != expected}
+        if odd:
+            problems.append(
+                f"C5 register: rows {sorted(odd)} carry {sorted(set(odd.values()))} cells "
+                f"but the table header carries {expected} — a row missing a cell renders "
+                "as an empty column, which reads as 'no evidence recorded'"
+            )
+            n += 1
+
     nums = sorted(int(i[1:]) for i in ids)
     holes = [x for x in range(nums[0], nums[-1] + 1) if x not in set(nums)]
     for h in holes:
@@ -517,6 +651,146 @@ def check_make_targets(problems: list[str]) -> int:
     return n
 
 
+SEPARATOR_ROW = re.compile(r"^\|[\s\-:|]+\|$")
+UNESCAPED_PIPE = re.compile(r"(?<!\\)\|")
+
+
+def _cell_count(line: str) -> int:
+    """Cells in a table row, ignoring pipes escaped as '\\|'.
+
+    An escaped pipe is legal inside a cell and renders as a literal bar; several rows in
+    docs/RUNBOOK.md and the 2026-08 audit report carry them inside grep patterns in code
+    spans. Counting one as a separator reported well-formed rows as broken - a checker
+    false positive, which is how checkers get ignored.
+    """
+    body = line.strip()
+    body = body[1:] if body.startswith("|") else body
+    body = body[:-1] if body.endswith("|") else body
+    return len(UNESCAPED_PIPE.split(body))
+
+
+def _outside_fences(text: str) -> list[tuple[int, str]]:
+    """(lineno, line) for lines not inside a fenced code block.
+
+    A fence can legitimately contain pipe-leading lines that are not table rows, and
+    flagging one would make this check cry wolf - the failure mode recorded as G3 and G15.
+    """
+    out: list[tuple[int, str]] = []
+    fence: str | None = None
+    for lineno, line in enumerate(text.splitlines(), 1):
+        stripped = line.lstrip()
+        if fence is None and (stripped.startswith("```") or stripped.startswith("~~~")):
+            fence = stripped[:3]
+            continue
+        if fence is not None:
+            if stripped.startswith(fence):
+                fence = None
+            continue
+        out.append((lineno, line))
+    return out
+
+
+def tracked_markdown() -> list[str]:
+    """Every Markdown file git tracks, or raise.
+
+    Tracked, not walked: node_modules, .venv and .next all contain Markdown that is not
+    this repository's, and a scan that reads them reports defects nobody can fix.
+    """
+    git = shutil.which("git")
+    if git is None:
+        raise CannotVerify("git executable not found on PATH")
+    try:
+        out = subprocess.run(
+            [git, "-C", str(REPO_ROOT), "ls-files", "-z", "*.md"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    except (subprocess.CalledProcessError, OSError) as exc:
+        raise CannotVerify("cannot list tracked Markdown files") from exc
+    files = [f for f in out.split("\0") if f]
+    if not files:
+        raise CannotVerify("git tracks no Markdown files - refusing to report a clean tree")
+    return files
+
+
+def check_tables(problems: list[str]) -> int:
+    """C7: every tracked Markdown table is one run, one separator, one cell count per row.
+
+    Structural rather than claim-based, so it scans every tracked Markdown file instead of
+    the two claim lists: a malformed table is a defect wherever it sits, and a list someone
+    has to remember to extend is how both §8 G30 and §8 G32 happened. Two failure modes are
+    covered because both render silently wrong on GitHub and both were committed by the
+    person writing the checker:
+
+      - a blank line inside a table detaches every row below it (§8 G31, a register row
+        wrapped across five physical lines);
+      - a row that loses its leading '|' leaves the run entirely, so a contiguity check and
+        a cell-count check both see a shorter, well-formed table and pass. Measured on this
+        branch: an edit to docs/GRANT_APPLICATION.md dropped the pipe from a risk-register
+        row, and the only thing that noticed was a human reading the diff.
+    """
+    n = 0
+    for rel in tracked_markdown():
+        lines = _outside_fences(read(rel))
+        runs: list[list[tuple[int, str]]] = []
+        current: list[tuple[int, str]] = []
+        for item in lines:
+            if item[1].startswith("|"):
+                current.append(item)
+            elif current:
+                runs.append(current)
+                current = []
+        if current:
+            runs.append(current)
+
+        for run in runs:
+            first, last = run[0][0], run[-1][0]
+            if len(run) < 2:
+                problems.append(
+                    f"C7 table: {rel}:{first} is a one-line table run — a row detached "
+                    "from its header renders as prose, not as a record"
+                )
+                n += 1
+                continue
+            seps = [ln for ln, text in run if SEPARATOR_ROW.match(text)]
+            if len(seps) != 1:
+                problems.append(
+                    f"C7 table: {rel}:{first}-{last} carries {len(seps)} separator rows, "
+                    "expected exactly 1 — a blank line inside a Markdown table silently "
+                    "detaches every row below it"
+                )
+                n += 1
+            counts = {ln: _cell_count(text) for ln, text in run if not SEPARATOR_ROW.match(text)}
+            if counts:
+                expected = counts[run[0][0]]
+                odd = {ln: c for ln, c in counts.items() if c != expected}
+                if odd:
+                    problems.append(
+                        f"C7 table: {rel} rows {sorted(odd)} carry "
+                        f"{sorted(set(odd.values()))} cells but the table's own header "
+                        f"carries {expected} — a row missing a cell renders as an empty "
+                        "column, which in an evidence table reads as 'none recorded'"
+                    )
+                    n += 1
+
+        # A row that lost its leading pipe is not part of any run, so the checks above
+        # cannot see it. Recognise it by shape: it ends with a pipe and carries at least
+        # three pipe-separated pieces.
+        for lineno, text in lines:
+            stripped = text.rstrip()
+            if stripped.startswith("|") or not stripped.endswith("|"):
+                continue
+            if len(UNESCAPED_PIPE.split(stripped)) >= 3:
+                problems.append(
+                    f"C7 table: {rel}:{lineno} ends with '|' but does not start with one — "
+                    "a table row that lost its leading pipe renders as prose and drops "
+                    "out of every other table check"
+                )
+                n += 1
+    return n
+
+
 CHECKS = {
     "C1 origin": check_origin,
     "C2 real paths": check_paths,
@@ -524,10 +798,12 @@ CHECKS = {
     "C4 no ADR counts": check_adr_ranges,
     "C5 register integrity": check_register,
     "C6 make targets/CI claims": check_make_targets,
+    "C7 table integrity": check_tables,
 }
 
 
 def run() -> int:
+    assert_inputs_present()
     if not existing_governance_files():
         raise CannotVerify("no governance documents found")
     problems: list[str] = []
@@ -655,17 +931,34 @@ def self_test() -> int:
         "(all enforced in CI)",
     )
     # C4 — a hardcoded ADR range understating the registry must be reported.
-    case(
-        "C4 detects volatile count",
-        "README.md",
-        (
-            "Consolidated ADR registry |",
-            "Consolidated ADR registry (ADR-0001…0017) |",
-        ),
-        check_adr_ranges,
-        True,
-        "0017",
-    )
+    # Anchor chosen at run time, for the reason documented on the C5 probe below: this
+    # case hardcoded the literal README.md table cell "Consolidated ADR registry |", and
+    # the t9 index work replaced that table with entry points, which killed the probe
+    # ("anchor not found in file"). check_adr_ranges reads lines, not tables, so any
+    # heading will carry the injected claim — the H1 is the one line README.md is
+    # guaranteed to keep.
+    readme_h1 = next((ln for ln in read("README.md").splitlines() if ln.startswith("# ")), "")
+    if not readme_h1:
+        results.append(
+            (
+                "C4 detects volatile count",
+                False,
+                (
+                    "no '# ' heading in README.md to anchor on - the structure this "
+                    "probe needs has changed"
+                ),
+                True,
+            )
+        )
+    else:
+        case(
+            "C4 detects volatile count",
+            "README.md",
+            (readme_h1, f"{readme_h1} — registry ends at ADR-0001…0017"),
+            check_adr_ranges,
+            True,
+            "0017",
+        )
     # C4 control — a register row quoting the claim it retracted stays legal.
     case(
         "C4 accepts a register quote",
@@ -719,6 +1012,18 @@ def self_test() -> int:
             True,
             f"{gid} is CLOSED",
         )
+    # C5 — a register row missing a cell must be reported. Anchor: the register's own
+    # separator, which is the only five-column separator in QODER.md (measured 2026-10-05),
+    # so shortening it by one column makes every row disagree with the header without
+    # touching a row another probe anchors on.
+    case(
+        "C5 detects a short row",
+        "QODER.md",
+        ("|---|---|---|---|---|", "|---|---|---|---|"),
+        check_register,
+        True,
+        "cells",
+    )
     # C6 — a citation of a nonexistent make target must be reported.
     case(
         "C6 detects missing target",
@@ -742,6 +1047,68 @@ def self_test() -> int:
         False,
         "deps-checkx",
     )
+    # C7 — a blank line inside a table detaches every row below it. Anchored on the index's
+    # authority-map header plus separator, which is the only three-column separator in
+    # docs/README.md preceded by that exact heading.
+    case(
+        "C7 detects a detached row",
+        "docs/README.md",
+        (
+            "| Topic | Single home | Links, never restates |\n| --- | --- | --- |\n",
+            "| Topic | Single home | Links, never restates |\n| --- | --- | --- |\n\n",
+        ),
+        check_tables,
+        True,
+        "separator rows",
+    )
+    # C7 — a row that loses its leading pipe leaves the run, so contiguity and cell counts
+    # both still pass. This is the defect committed on this branch and caught only by a
+    # human reading the diff; it is a probe now.
+    case(
+        "C7 detects a lost leading pipe",
+        "docs/README.md",
+        ("| Document inventory | ", " Document inventory | "),
+        check_tables,
+        True,
+        "leading pipe",
+    )
+    # C7 control — an escaped pipe inside a cell is legal and renders as a literal bar.
+    # Counting it as a separator is the false positive that makes a table check get
+    # switched off; the real tree carries such rows in docs/RUNBOOK.md and in the 2026-08
+    # audit report, so this probe and the gate itself must both stay silent. `about` names
+    # the file as well as the finding, because C7 scans every tracked Markdown file: with
+    # a bare "cells" this control reported FALSE POSITIVE the first time it ran, matching a
+    # genuine defect in a QODER.md row rather than anything the probe had injected.
+    inventory_row = (
+        "| Document inventory | [`docs/README.md`](README.md) (this file) "
+        "| `README.md` (entry points only) |\n"
+    )
+    case(
+        "C7 accepts an escaped pipe",
+        "docs/README.md",
+        (
+            inventory_row,
+            inventory_row + "| Escaped-pipe control | `grep -E 'a\\|b'` | none |\n",
+        ),
+        check_tables,
+        False,
+        "docs/README.md rows",
+    )
+
+    # Input presence - a listed path that no longer exists must fail closed rather than
+    # be skipped. Probed by appending a phantom entry to the live list in memory: the
+    # tree is never touched, and the entry is popped whichever way the probe exits.
+    LIVE_CLAIM_FILES.append("docs/NOPE-selftest.md")
+    try:
+        assert_inputs_present()
+    except CannotVerify as exc:
+        results.append(
+            ("missing input fails closed", "NOPE-selftest" in str(exc), str(exc)[:120], True)
+        )
+    else:
+        results.append(("missing input fails closed", False, "no CannotVerify raised", True))
+    finally:
+        LIVE_CLAIM_FILES.pop()
 
     width = max(len(r[0]) for r in results)
     failures = 0

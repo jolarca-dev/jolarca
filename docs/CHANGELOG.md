@@ -1,9 +1,10 @@
 # JOL Marketplace — Sprint Changelog (100-Day Sprint)
 
-**Scope:** Human-curated sprint record and grant-period narrative. The root
-`CHANGELOG.md` is **not** machine-generated — nothing generates it, and it is a
-stub that stops at the repository scaffold. For actual change history use
-`git log` and the GitHub PR list.
+**Scope:** Human-curated sprint record and grant-period narrative. Nothing
+machine-generates it; it is hand-maintained. For actual change history use
+`git log` and the GitHub PR list. A root `CHANGELOG.md` stub that stopped at the
+repository scaffold was deleted on 2026-10-05 rather than backfilled, so this
+file and `git log` are the record.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Table of Contents
@@ -130,6 +131,5 @@ marked:
 
 ---
 
-**Cross-references:** root `CHANGELOG.md` (hand-maintained stub) ·
-`docs/MVP_REMAINING_WORK.md` · `docs/ASSUMPTIONS.md` ·
-`docs/TECH_DECISIONS.md`
+**Cross-references:** `docs/MVP_REMAINING_WORK.md` · `docs/ASSUMPTIONS.md` ·
+`docs/TECH_DECISIONS.md` · `docs/README.md`

@@ -32,8 +32,11 @@ Security fixes MUST reference the internal incident ID, never the vulnerability 
 
 **Nothing machine-checks this format.** `.pre-commit-config.yaml` installs no
 `commit-msg` hook and no commitlint runs in any workflow, so the convention is
-*review-gated*. `CHANGELOG.md` is likewise **not generated** from these commits:
-no generator is wired to any make target or workflow. It is hand-maintained.
+*review-gated*. `docs/CHANGELOG.md` is likewise **not generated** from these
+commits: no generator is wired to any make target or workflow — it is
+hand-maintained. A root `CHANGELOG.md` stub that used to sit beside this file was
+deleted on 2026-10-05 rather than backfilled; `docs/CHANGELOG.md` plus `git log`
+is the record.
 
 ## Branching & PR checklist
 
@@ -109,8 +112,9 @@ Enforced by `backend/tests/unit/test_architecture_boundaries.py` (runs in
   baseline.
 - Never hand-edit: `backend/requirements/*.txt`, `docs/api/openapi.yaml`,
   `frontend/src/generated/api.ts`, `LICENSE`. Regenerate instead — `make lock`
-  for the pins, `make api-schema` for the snapshot and client. (`CHANGELOG.md`
-  was listed here in error: nothing generates it, so it is hand-maintained. The
+  for the pins, `make api-schema` for the snapshot and client. (`docs/CHANGELOG.md`
+  was once listed here in error: nothing generates it, so it is hand-maintained — and
+  the root stub that caused the confusion was deleted on 2026-10-05. The
   previously cited path `frontend/src/lib/api/generated/` does not exist.)
 - New PII fields: use `core.encryption.EncryptedTextField` and annotate the
   RoPA classification; update `docs/COMPLIANCE_MATRIX.md` in the same PR.

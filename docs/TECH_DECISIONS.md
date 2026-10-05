@@ -1,50 +1,23 @@
-# Technical decisions (ADRs)
+# Technical decisions (ADRs) — pointer
 
-Format: context → decision → consequences. Status: accepted unless noted.
+**The ADR registry lives in
+[ARCHITECTURE_DECISION_RECORDS.md](ARCHITECTURE_DECISION_RECORDS.md).** The first seven
+records were moved there on 2026-10-05 so that one file holds every record and the doc
+gate's `registry_max()` reads the same file humans do. This page keeps only the summary
+table; the Record column says whether a full decision text exists at all.
 
-## ADR-0001 — Monorepo with domain-bounded Django apps
-**Context:** Marketplace spans 11 domains with strict compliance boundaries.
-**Decision:** Single repo; per-domain apps; cross-app access via `services.py` only;
-`payments_app` is the only Stripe importer; AI runs only in Celery `ai` queue.
-**Consequences:** Review-gated only. CODEOWNERS is a single wildcard and branch
-protection reports `require_code_owner_reviews=false`, so it enforces nothing — see
-QODER.md §8 G2 and ADR-0020; import-linter contracts to follow.
+| ID | Decision | Record |
+| --- | --- | --- |
+| ADR-0001 | Monorepo with domain-bounded Django apps | [full text](ARCHITECTURE_DECISION_RECORDS.md#adr-0001--monorepo-with-domain-bounded-django-apps) |
+| ADR-0002 | AGPL-3.0 licensing | [full text](ARCHITECTURE_DECISION_RECORDS.md#adr-0002--agpl-30-licensing) |
+| ADR-0003 | Dual i18n: DB content vs UI strings | [full text](ARCHITECTURE_DECISION_RECORDS.md#adr-0003--dual-i18n-db-content-vs-ui-strings) |
+| ADR-0004 | Field-level encryption (Fernet → pgcrypto path) | [full text](ARCHITECTURE_DECISION_RECORDS.md#adr-0004--field-level-encryption-with-fernet-pgcrypto-migration-path) |
+| ADR-0005 | Object storage: MinIO dev / S3-compatible prod | [full text](ARCHITECTURE_DECISION_RECORDS.md#adr-0005--object-storage-minio-in-dev-s3-compatible-in-prod) |
+| ADR-0006 | Django admin retained, edge-restricted | [full text](ARCHITECTURE_DECISION_RECORDS.md#adr-0006--django-admin-retained-edge-restricted) |
+| ADR-0007 | Sanctioned stubs over silent fakes | [full text](ARCHITECTURE_DECISION_RECORDS.md#adr-0007--sanctioned-stubs-over-silent-fakes) |
+| ADR-0008 | Frontend scope: storefront, seller dashboard, moderation backoffice | **no record** — see the registry |
+| ADR-0009 | Frontend compliance & UX posture (sacred-modern) | **no record** — substance in `docs/DESIGN_SYSTEM.md` |
+| ADR-0010 | Risk acceptance: js-yaml advisory in codegen toolchain | **no record** — acceptance row in `docs/SECURITY.md` §3 |
 
-## ADR-0002 — AGPL-3.0 licensing
-**Context:** Organization policy for public-facing platform code.
-**Decision:** AGPL-3.0, never modified. Network-use copyleft acknowledged: if the
-platform is ever offered to third parties for self-hosting, source must ship.
-**Consequences:** Legal review required before bundling incompatible dependencies.
-
-## ADR-0003 — Dual i18n: DB content vs UI strings
-**Context:** Catalog content is authored per-listing; UI chrome is static.
-**Decision:** `django-modeltranslation` for catalog (lt/lv/et/en columns);
-`next-intl` messages for UI. The two systems are never unified.
-**Consequences:** Two translation workflows; documented in CONTRIBUTING.
-
-## ADR-0004 — Field-level encryption with Fernet; pgcrypto migration path
-**Context:** GDPR Art. 32 defense-in-depth for PII at rest.
-**Decision:** `core.EncryptedTextField` (Fernet, key rotation via MultiFernet,
-fail-closed without key). Trade-off: ciphertext not queryable. Searchable
-encrypted columns migrate to pgcrypto PGP functions (extension provisioned).
-**Consequences:** No LIKE/filters on encrypted columns; analytics uses derived
-non-PII columns.
-
-## ADR-0005 — Object storage: MinIO in dev, S3-compatible in prod
-**Context:** Media + documents + invoice PDFs need private signed access.
-**Decision:** `django-storages` S3 API against MinIO (dev) / managed S3 (prod).
-Dev compose uses `latest` tag; production MUST pin release tags.
-**Consequences:** Signed URLs by default (`AWS_QUERYSTRING_AUTH=True`).
-
-## ADR-0006 — Django admin retained, edge-restricted
-**Context:** Ops tooling vs attack surface.
-**Decision:** Keep admin; production gates it behind edge IP allowlist + SSO.
-CSP and rate limits apply.
-**Consequences:** Deploy topology must enforce the gate before GA.
-
-## ADR-0007 — Sanctioned stubs over silent fakes
-**Context:** MVP scope cannot implement every integration at scaffold time.
-**Decision:** Unfinished integrations raise `NotImplementedError("MVP-*")` with a
-ticket id tracked in `docs/MVP_REMAINING_WORK.md`; config-gated features raise
-`*NotConfigured`. Nothing pretends to succeed.
-**Consequences:** Callers must handle the loud-failure states explicitly.
+Anchors are derived from headings, so a re-worded heading silently breaks every link
+above; `make check-docs` verifies the paths but not the anchors.
