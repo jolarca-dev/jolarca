@@ -60,7 +60,7 @@ flowchart TD
     FE --> E2E["Playwright vs docker-compose stack<br/>(66 scenarios, 3 viewports)"]
     FE --> LH["Lighthouse CI vs budget<br/>(fails on exceedance)"]
     FE --> BA["Bundle gate: ≤150KB/chunk gzipped"]
-    CT --> MERGE["Merge gate (CODEOWNERS review)"]
+    CT --> MERGE["Merge gate (11 required status checks)"]
     E2E --> MERGE
     LH --> MERGE
     BA --> MERGE

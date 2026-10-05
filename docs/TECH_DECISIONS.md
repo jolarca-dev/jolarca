@@ -6,7 +6,9 @@ Format: context → decision → consequences. Status: accepted unless noted.
 **Context:** Marketplace spans 11 domains with strict compliance boundaries.
 **Decision:** Single repo; per-domain apps; cross-app access via `services.py` only;
 `payments_app` is the only Stripe importer; AI runs only in Celery `ai` queue.
-**Consequences:** Enforced in review + CODEOWNERS; import-linter contracts to follow.
+**Consequences:** Review-gated only. CODEOWNERS is a single wildcard and branch
+protection reports `require_code_owner_reviews=false`, so it enforces nothing — see
+QODER.md §8 G2 and ADR-0020; import-linter contracts to follow.
 
 ## ADR-0002 — AGPL-3.0 licensing
 **Context:** Organization policy for public-facing platform code.

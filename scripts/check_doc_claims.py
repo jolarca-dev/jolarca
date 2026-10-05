@@ -74,6 +74,7 @@ Usage: python scripts/check_doc_claims.py [--self-test]
 from __future__ import annotations
 
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -93,6 +94,13 @@ LIVE_CLAIM_FILES = [
     "docs/ASSUMPTIONS.md",
     "docs/TESTING.md",
     "docs/TESTING_STRATEGY.md",
+    # Added 2026-10-05 with G26. The compliance matrix is the document an auditor
+    # reads first, and it was the one file outside this list: `CODEOWNERS +
+    # environment approval gates on deploys` survived there mapping ISO A.5.15 and
+    # SOC 2 CC6.2 to two controls that do not exist, after the identical claim in
+    # CONTRIBUTING.md had already been corrected. Scope, not wording, was the defect.
+    "docs/COMPLIANCE_MATRIX.md",
+    "docs/TECH_DECISIONS.md",
     ".github/CODEOWNERS",
     "Makefile",
     # Workflow comments are contributor-facing claims too. G18 and G26 both began
@@ -116,9 +124,7 @@ GOVERNANCE_FILES = [
 ]
 
 PATH_ROOTS = ["", "backend"]
-PATH_PREFIX = re.compile(
-    r"^(?:backend|frontend|docs|scripts|\.github|nginx|secrets|audits|apps)/"
-)
+PATH_PREFIX = re.compile(r"^(?:backend|frontend|docs|scripts|\.github|nginx|secrets|audits|apps)/")
 BACKTICK = re.compile(r"`([^`\n]+)`")
 
 # Exact strings proven false on 2026-10-05. Reappearing in a live-claim file
@@ -143,15 +149,34 @@ FALSIFIED = (
     ),
     (
         "fail loudly at the rollout step",
-        "staging warns and exits 0 since 2026-10-05; "
-        "only production still fails; see G17",
+        ("staging warns and exits 0 since 2026-10-05; only production still fails; see G17"),
     ),
     ("deploy-staging.yml → staging VM", "no staging target exists; §A-07 undecided"),
     (
         "manual approval gate before any prod action",
-        "no production environment exists "
-        "and can_admins_bypass defaults to "
-        "true; see G18",
+        ("no production environment exists and can_admins_bypass defaults to true; see G18"),
+    ),
+    # Added with G26 queue item 12: the A.5.15 / CC6.2 evidence row and its two
+    # sibling restatements. All three assert a human review or approval control that
+    # the branch-protection API reports as absent (re-verified 2026-10-05:
+    # require_code_owner_reviews=false, required_approving_review_count=0, one
+    # environment `staging` with protection_rules=[] and can_admins_bypass=true).
+    # The residual risk is accepted in ADR-0020, not hidden.
+    (
+        "codeowners + environment approval gates",
+        "neither control exists; see G2/G18/G26 and ADR-0020",
+    ),
+    (
+        "environment approval gates",
+        "protection_rules=[] on the only environment and can_admins_bypass=true; see G18",
+    ),
+    (
+        "codeowners review",
+        "require_code_owner_reviews=false, so CODEOWNERS gates nothing; see G2",
+    ),
+    (
+        "enforced in review + codeowners",
+        "CODEOWNERS is inert; review is self-review with one maintainer; see G2",
     ),
 )
 
@@ -201,15 +226,20 @@ def existing_governance_files() -> list[str]:
 
 def check_origin(problems: list[str]) -> int:
     """C1: badge and link URLs must point at the repository's real remote."""
+    # Resolve via PATH so the argv[0] is an absolute path (S607) and a missing git
+    # is reported as CANNOT VERIFY rather than surfacing as an OSError traceback.
+    git = shutil.which("git")
+    if git is None:
+        raise CannotVerify("git executable not found on PATH")
     try:
         remote = subprocess.run(
-            ["git", "-C", str(REPO_ROOT), "remote", "get-url", "origin"],
+            [git, "-C", str(REPO_ROOT), "remote", "get-url", "origin"],
             capture_output=True,
             text=True,
             check=True,
         ).stdout.strip()
-    except (subprocess.CalledProcessError, OSError):
-        raise CannotVerify("cannot read the 'origin' remote")
+    except (subprocess.CalledProcessError, OSError) as exc:
+        raise CannotVerify("cannot read the 'origin' remote") from exc
     m = re.search(r"github\.com[:/]([^/]+)/([^/.]+)", remote)
     if not m:
         raise CannotVerify(f"origin remote is not a github.com URL: {remote!r}")
@@ -280,9 +310,7 @@ def check_live_claims(problems: list[str]) -> int:
                 continue  # a quotation of a retracted claim is legitimate
             for phrase, why in FALSIFIED:
                 if phrase.lower() in low:
-                    problems.append(
-                        f"C3 claim: {f}:{lineno} asserts {phrase!r} — {why}"
-                    )
+                    problems.append(f"C3 claim: {f}:{lineno} asserts {phrase!r} — {why}")
                     hits += 1
     return hits
 
@@ -290,9 +318,7 @@ def check_live_claims(problems: list[str]) -> int:
 def registry_max() -> int:
     """Largest ADR number actually present in the registry, or raise."""
     text = read("docs/ARCHITECTURE_DECISION_RECORDS.md")
-    nums = [
-        int(m.group(1)) for m in re.finditer(r"^## ADR-(\d{4})", text, re.MULTILINE)
-    ]
+    nums = [int(m.group(1)) for m in re.finditer(r"^## ADR-(\d{4})", text, re.MULTILINE)]
     if not nums:
         raise CannotVerify("ADR registry has no '## ADR-NNNN' headings")
     return max(nums)
@@ -395,8 +421,15 @@ def check_register(problems: list[str]) -> int:
         problems.append("C5 register: no '**Closed:**' summary line found")
         n += 1
     else:
-        for gid, status in zip(ids, statuses):
-            if "CLOSED" in status.upper() and gid not in closed_summary:
+        # Membership is tested on whole tokens, never by substring. `gid not in
+        # closed_summary` silently reported G2, G3, G6 and G7 as present whenever the
+        # summary contained any of G20/G22/G24/G25/G26 — so a real drift for a short
+        # ID was undetectable. Found by making the self-test probe pick its own target
+        # row rather than hardcoding one; the hardcoded probe had been sitting on a
+        # short-ID-adjacent ID and passing for the wrong reason (the G3 class).
+        closed_ids = set(re.findall(r"G\d+", closed_summary))
+        for gid, status in zip(ids, statuses, strict=True):
+            if "CLOSED" in status.upper() and gid not in closed_ids:
                 problems.append(
                     f"C5 register: {gid} is CLOSED in the table but absent from "
                     "the '**Closed:**' summary (the audit trail disagrees with itself)"
@@ -590,8 +623,7 @@ def self_test() -> int:
         "CONTRIBUTING.md",
         (
             "## Architecture rules\n",
-            "## Architecture rules\n"
-            "`frontend/src/generated/api_nope2.ts` does not exist.\n",
+            ("## Architecture rules\n`frontend/src/generated/api_nope2.ts` does not exist.\n"),
         ),
         check_paths,
         False,
@@ -651,22 +683,37 @@ def self_test() -> int:
         "contiguous",
     )
     # C5 — a CLOSED gap dropped from the summary must be reported.
-    case(
-        "C5 detects summary drift",
-        "QODER.md",
-        (
-            # Anchored on the oldest clause of the '**Closed:**' line, not the recent
-            # additions: an earlier probe anchored on 'G8, G9, G22 and\nG24' broke the
-            # moment that list gained G15/G16. A broken anchor still fails the build
-            # ('anchor not found in file') instead of passing silently, which is the
-            # correct behaviour — but a probe should not be that brittle.
-            "**Closed:** G3, G6, G7, G10, G11, G13 and G20",
-            "**Closed:** G3, G6, G7, G10, G11 and G20",
-        ),
-        check_register,
-        True,
-        "G13",
-    )
+    # The anchor is chosen at run time, not written down. Three earlier revisions
+    # hardcoded it and all three broke: two on the wording of the '**Closed:**'
+    # summary line (append-only by design, so every newly CLOSED gap invalidated it)
+    # and the third on a specific row's status, which broke the moment that gap was
+    # honestly closed by #171. A probe that dies when the work it guards gets done is
+    # a probe that will be deleted rather than fixed. Any row currently reading
+    # '| Gn | OPEN |' will do: flipping it to CLOSED makes it absent from the summary
+    # by construction, exercising the same check with no wording dependency.
+    open_rows = re.findall(r"^\|\s*(G\d+)\s*\|\s*OPEN\s*\|", read("QODER.md"), re.MULTILINE)
+    if not open_rows:
+        results.append(
+            (
+                "C5 detects summary drift",
+                False,
+                (
+                    "no '| Gn | OPEN |' row available to anchor on - the register "
+                    "structure this probe needs has changed"
+                ),
+                True,
+            )
+        )
+    else:
+        gid = open_rows[0]
+        case(
+            "C5 detects summary drift",
+            "QODER.md",
+            (f"| {gid} | OPEN |", f"| {gid} | **CLOSED** 2026-01-01 |"),
+            check_register,
+            True,
+            f"{gid} is CLOSED",
+        )
     # C6 — a citation of a nonexistent make target must be reported.
     case(
         "C6 detects missing target",
