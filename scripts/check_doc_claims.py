@@ -35,6 +35,14 @@ C5 register     — the §8 table is contiguous, every gap ID between min and ma
                   right in an editor.
 C6 make targets — every `make <target>` cited in docs exists, and a Makefile
                   comment claiming "no CI job does this" is actually true.
+C7 tables       — every Markdown table git tracks is one contiguous run with
+                  exactly one separator row and one cell count per row, and no
+                  row has lost its leading pipe. Structural, so it scans all
+                  tracked Markdown rather than the two claim lists below:
+                  G30 and G32 were both documents nobody had remembered to add
+                  to a list. A malformed table renders silently wrong on GitHub
+                  while looking right in an editor — in an evidence column that
+                  reads as "none recorded" (G31).
 
 Limits — read before trusting a green run
 -----------------------------------------
@@ -46,6 +54,9 @@ Limits — read before trusting a green run
   differently will pass. It prevents regression; it does not prove truth.
 - C2 resolves a cited path against a small set of roots (repo root, then
   `backend/`). A path that exists but is not the one intended still passes.
+- C7 checks structure only. A table whose cells are uniform and contiguous can
+  still assert something false; that is C3's job, and C3 only sees the files in
+  LIVE_CLAIM_FILES.
 - A green run means "these known classes of drift are absent", never
   "the documentation is accurate".
 - **CI-only.** This runs in the backend CI job, not as a pre-commit hook, so a false
@@ -112,6 +123,14 @@ LIVE_CLAIM_FILES = [
     # Being in scope for paths (C2) is not the same as being in scope for claims
     # (C3/C6). Tracked as §8 G30.
     "docs/README.md",
+    # Added 2026-10-05 (t9) at final review of this branch. The performance report called
+    # its Lighthouse budget "CI-enforced", named a "Budget job" as the enforcement for four
+    # metrics, and footed itself with "CI wiring: ci.yml (Lighthouse job fails on budget
+    # exceedance)" - while frontend-lighthouse is `if: false` and neither the budget file
+    # nor bundle-analyze.ts has any invoker in .github/ or the Makefile. It sat in neither
+    # list, so no check could see it: the same scope hole as G30, in the next document.
+    # Tracked as §8 G32.
+    "docs/PERFORMANCE_REPORT.md",
     ".github/CODEOWNERS",
     "Makefile",
     # Workflow comments are contributor-facing claims too. G18 and G26 both began
@@ -149,6 +168,18 @@ GOVERNANCE_FILES = [
     # record at all. Tracked as §8 G27.
     "docs/ARCHITECTURE_DECISION_RECORDS.md",
     "docs/TECH_DECISIONS.md",
+    # Added 2026-10-05 (t9) with §8 G32. The two grant documents are external funding
+    # text whose instruments this branch measured as absent; both now carry a dated
+    # annotation citing repository paths, so C2 should verify those citations. They are
+    # added here and NOT to LIVE_CLAIM_FILES, for the reason already recorded as G30's
+    # residual: a submitted document quotes the claim it is diverging from, and a denylist
+    # pointed at frozen external text can never pass. The annotation is the compensating
+    # control. docs/PERFORMANCE_REPORT.md is in BOTH lists on purpose - it is an internal
+    # report, so its claims are checkable, and its corrected text is written to satisfy
+    # the three FALSIFIED entries below rather than to dodge them.
+    "docs/PERFORMANCE_REPORT.md",
+    "docs/GRANT_APPLICATION.md",
+    "docs/GRANT_SUBMISSION.md",
 ]
 
 PATH_ROOTS = ["", "backend"]
@@ -230,6 +261,25 @@ FALSIFIED = (
     (
         "bundle gate: ≤150kb",
         "no CI job asserts a bundle size; frontend-build only boots the bundle; see G21",
+    ),
+    # Added with §8 G32 (2026-10-05). docs/PERFORMANCE_REPORT.md asserted a Lighthouse
+    # budget gate that does not run: frontend-lighthouse is `if: false`
+    # (.github/workflows/ci.yml:227-232), frontend-playwright-smoke is `if: false`
+    # (:258-263), and `git grep -nE 'lighthouse-budget|bundle-analyze|analyze:bundle'` over
+    # .github/ and Makefile returns zero hits. Each entry below is a fragment of that claim
+    # which cannot appear in an honest correction: the corrected sentences say the budget is
+    # asserted by nothing, that no job reads it, and that no artifacts are retained.
+    (
+        "(CI-enforced)",
+        "no workflow reads frontend/scripts/lighthouse-budget.json; the job is if:false; see G5",
+    ),
+    (
+        "fails over budget",
+        "frontend-lighthouse is if:false, so no job asserts any budget; see G5",
+    ),
+    (
+        "artifacts retained per build",
+        "no Lighthouse job runs, so no artifacts exist; see G5",
     ),
 )
 
@@ -601,6 +651,146 @@ def check_make_targets(problems: list[str]) -> int:
     return n
 
 
+SEPARATOR_ROW = re.compile(r"^\|[\s\-:|]+\|$")
+UNESCAPED_PIPE = re.compile(r"(?<!\\)\|")
+
+
+def _cell_count(line: str) -> int:
+    """Cells in a table row, ignoring pipes escaped as '\\|'.
+
+    An escaped pipe is legal inside a cell and renders as a literal bar; several rows in
+    docs/RUNBOOK.md and the 2026-08 audit report carry them inside grep patterns in code
+    spans. Counting one as a separator reported well-formed rows as broken - a checker
+    false positive, which is how checkers get ignored.
+    """
+    body = line.strip()
+    body = body[1:] if body.startswith("|") else body
+    body = body[:-1] if body.endswith("|") else body
+    return len(UNESCAPED_PIPE.split(body))
+
+
+def _outside_fences(text: str) -> list[tuple[int, str]]:
+    """(lineno, line) for lines not inside a fenced code block.
+
+    A fence can legitimately contain pipe-leading lines that are not table rows, and
+    flagging one would make this check cry wolf - the failure mode recorded as G3 and G15.
+    """
+    out: list[tuple[int, str]] = []
+    fence: str | None = None
+    for lineno, line in enumerate(text.splitlines(), 1):
+        stripped = line.lstrip()
+        if fence is None and (stripped.startswith("```") or stripped.startswith("~~~")):
+            fence = stripped[:3]
+            continue
+        if fence is not None:
+            if stripped.startswith(fence):
+                fence = None
+            continue
+        out.append((lineno, line))
+    return out
+
+
+def tracked_markdown() -> list[str]:
+    """Every Markdown file git tracks, or raise.
+
+    Tracked, not walked: node_modules, .venv and .next all contain Markdown that is not
+    this repository's, and a scan that reads them reports defects nobody can fix.
+    """
+    git = shutil.which("git")
+    if git is None:
+        raise CannotVerify("git executable not found on PATH")
+    try:
+        out = subprocess.run(
+            [git, "-C", str(REPO_ROOT), "ls-files", "-z", "*.md"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    except (subprocess.CalledProcessError, OSError) as exc:
+        raise CannotVerify("cannot list tracked Markdown files") from exc
+    files = [f for f in out.split("\0") if f]
+    if not files:
+        raise CannotVerify("git tracks no Markdown files - refusing to report a clean tree")
+    return files
+
+
+def check_tables(problems: list[str]) -> int:
+    """C7: every tracked Markdown table is one run, one separator, one cell count per row.
+
+    Structural rather than claim-based, so it scans every tracked Markdown file instead of
+    the two claim lists: a malformed table is a defect wherever it sits, and a list someone
+    has to remember to extend is how both §8 G30 and §8 G32 happened. Two failure modes are
+    covered because both render silently wrong on GitHub and both were committed by the
+    person writing the checker:
+
+      - a blank line inside a table detaches every row below it (§8 G31, a register row
+        wrapped across five physical lines);
+      - a row that loses its leading '|' leaves the run entirely, so a contiguity check and
+        a cell-count check both see a shorter, well-formed table and pass. Measured on this
+        branch: an edit to docs/GRANT_APPLICATION.md dropped the pipe from a risk-register
+        row, and the only thing that noticed was a human reading the diff.
+    """
+    n = 0
+    for rel in tracked_markdown():
+        lines = _outside_fences(read(rel))
+        runs: list[list[tuple[int, str]]] = []
+        current: list[tuple[int, str]] = []
+        for item in lines:
+            if item[1].startswith("|"):
+                current.append(item)
+            elif current:
+                runs.append(current)
+                current = []
+        if current:
+            runs.append(current)
+
+        for run in runs:
+            first, last = run[0][0], run[-1][0]
+            if len(run) < 2:
+                problems.append(
+                    f"C7 table: {rel}:{first} is a one-line table run — a row detached "
+                    "from its header renders as prose, not as a record"
+                )
+                n += 1
+                continue
+            seps = [ln for ln, text in run if SEPARATOR_ROW.match(text)]
+            if len(seps) != 1:
+                problems.append(
+                    f"C7 table: {rel}:{first}-{last} carries {len(seps)} separator rows, "
+                    "expected exactly 1 — a blank line inside a Markdown table silently "
+                    "detaches every row below it"
+                )
+                n += 1
+            counts = {ln: _cell_count(text) for ln, text in run if not SEPARATOR_ROW.match(text)}
+            if counts:
+                expected = counts[run[0][0]]
+                odd = {ln: c for ln, c in counts.items() if c != expected}
+                if odd:
+                    problems.append(
+                        f"C7 table: {rel} rows {sorted(odd)} carry "
+                        f"{sorted(set(odd.values()))} cells but the table's own header "
+                        f"carries {expected} — a row missing a cell renders as an empty "
+                        "column, which in an evidence table reads as 'none recorded'"
+                    )
+                    n += 1
+
+        # A row that lost its leading pipe is not part of any run, so the checks above
+        # cannot see it. Recognise it by shape: it ends with a pipe and carries at least
+        # three pipe-separated pieces.
+        for lineno, text in lines:
+            stripped = text.rstrip()
+            if stripped.startswith("|") or not stripped.endswith("|"):
+                continue
+            if len(UNESCAPED_PIPE.split(stripped)) >= 3:
+                problems.append(
+                    f"C7 table: {rel}:{lineno} ends with '|' but does not start with one — "
+                    "a table row that lost its leading pipe renders as prose and drops "
+                    "out of every other table check"
+                )
+                n += 1
+    return n
+
+
 CHECKS = {
     "C1 origin": check_origin,
     "C2 real paths": check_paths,
@@ -608,6 +798,7 @@ CHECKS = {
     "C4 no ADR counts": check_adr_ranges,
     "C5 register integrity": check_register,
     "C6 make targets/CI claims": check_make_targets,
+    "C7 table integrity": check_tables,
 }
 
 
@@ -855,6 +1046,53 @@ def self_test() -> int:
         check_make_targets,
         False,
         "deps-checkx",
+    )
+    # C7 — a blank line inside a table detaches every row below it. Anchored on the index's
+    # authority-map header plus separator, which is the only three-column separator in
+    # docs/README.md preceded by that exact heading.
+    case(
+        "C7 detects a detached row",
+        "docs/README.md",
+        (
+            "| Topic | Single home | Links, never restates |\n| --- | --- | --- |\n",
+            "| Topic | Single home | Links, never restates |\n| --- | --- | --- |\n\n",
+        ),
+        check_tables,
+        True,
+        "separator rows",
+    )
+    # C7 — a row that loses its leading pipe leaves the run, so contiguity and cell counts
+    # both still pass. This is the defect committed on this branch and caught only by a
+    # human reading the diff; it is a probe now.
+    case(
+        "C7 detects a lost leading pipe",
+        "docs/README.md",
+        ("| Document inventory | ", " Document inventory | "),
+        check_tables,
+        True,
+        "leading pipe",
+    )
+    # C7 control — an escaped pipe inside a cell is legal and renders as a literal bar.
+    # Counting it as a separator is the false positive that makes a table check get
+    # switched off; the real tree carries such rows in docs/RUNBOOK.md and in the 2026-08
+    # audit report, so this probe and the gate itself must both stay silent. `about` names
+    # the file as well as the finding, because C7 scans every tracked Markdown file: with
+    # a bare "cells" this control reported FALSE POSITIVE the first time it ran, matching a
+    # genuine defect in a QODER.md row rather than anything the probe had injected.
+    inventory_row = (
+        "| Document inventory | [`docs/README.md`](README.md) (this file) "
+        "| `README.md` (entry points only) |\n"
+    )
+    case(
+        "C7 accepts an escaped pipe",
+        "docs/README.md",
+        (
+            inventory_row,
+            inventory_row + "| Escaped-pipe control | `grep -E 'a\\|b'` | none |\n",
+        ),
+        check_tables,
+        False,
+        "docs/README.md rows",
     )
 
     # Input presence - a listed path that no longer exists must fail closed rather than

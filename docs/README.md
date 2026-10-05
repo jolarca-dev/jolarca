@@ -29,6 +29,7 @@ restated in two or three files, corrected in one, and left false in the others.
 | Topic | Single home | Links, never restates |
 | --- | --- | --- |
 | Coverage floors and gate values | [`docs/TESTING_STRATEGY.md`](TESTING_STRATEGY.md) | `docs/TESTING.md`, `README.md`, `QODER.md` |
+| Performance budgets and whether anything enforces them | [`docs/PERFORMANCE_REPORT.md`](PERFORMANCE_REPORT.md) | `docs/TESTING.md`, `docs/GRANT_APPLICATION.md`, `docs/GRANT_SUBMISSION.md` |
 | ADR records and numbering | [`docs/ARCHITECTURE_DECISION_RECORDS.md`](ARCHITECTURE_DECISION_RECORDS.md) | `docs/TECH_DECISIONS.md`, `README.md` |
 | Vulnerability disclosure | [`SECURITY.md`](../SECURITY.md) (repository root) | `docs/SECURITY.md`, `README.md` |
 | Security controls (headers, CSP, supply chain, PCI) | [`docs/SECURITY.md`](SECURITY.md) | `docs/SECURITY_POSTURE.md` |
@@ -94,7 +95,7 @@ Not under `docs/`, listed here so the inventory has no blind spot.
 | --- | --- | --- |
 | [`docs/TESTING_STRATEGY.md`](TESTING_STRATEGY.md) | Testing Strategy | Test pyramid and inventory, accessibility assurance, security testing, CI/CD pipeline — and the only home of the coverage gate values |
 | [`docs/TESTING.md`](TESTING.md) | Testing Documentation | How to run each suite: unit, integration, end-to-end, CI map, performance budgets, accessibility, security testing |
-| [`docs/PERFORMANCE_REPORT.md`](PERFORMANCE_REPORT.md) | Performance Report | Benchmarks: budget versus verified gates, techniques, scalability plan |
+| [`docs/PERFORMANCE_REPORT.md`](PERFORMANCE_REPORT.md) | Performance Report | Benchmarks: budget versus verified gates, techniques, scalability plan — and the only home of the Core Web Vitals budgets plus their measured enforcement status |
 
 ## Operations
 

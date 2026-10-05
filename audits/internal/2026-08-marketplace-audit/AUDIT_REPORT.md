@@ -224,7 +224,7 @@ Every `NotImplementedError` carries an MVP ticket id and raises loudly, consiste
 | Check | Result | Evidence |
 |---|---|---|
 | PII encrypted at rest — raw-SQL proof | **PASS** | wrote profile via ORM, read via `psql` bypassing ORM: column holds `gAAAAABqf68…` (120-char Fernet token), no plaintext. Implementation is **Fernet (app-layer), not pgcrypto** — substitution documented in ADR-0004; pgcrypto extension provisioned in `init-extensions.sql` |
-| ERD annotation ↔ model match | **PASS** | ERD names exactly `full_name|phone|date_of_birth|street_address` → matches `UserProfile` fields |
+| ERD annotation ↔ model match | **PASS** | ERD names exactly `full_name\|phone\|date_of_birth\|street_address` → matches `UserProfile` fields |
 | Fail-closed encryption | **PASS** | empty key → `EncryptionNotConfigured`; rotation via MultiFernet tested. Caveat: `.env` ships `FIELD_ENCRYPTION_KEY=CHANGE_ME` which is **invalid** (not empty) → raw `ValueError` on first PII write in the default dev stack (documented generation command exists in `.env.example`) |
 | Consent ledger | **BROKEN** | `ConsentRecord` append-only guard blocks its **own creation** (AUD-01) — the ledger can never be written |
 | Consent enforced server-side | **FAIL** | no middleware/view checks consent for non-essential processing; banner message keys exist, banner component does not |
