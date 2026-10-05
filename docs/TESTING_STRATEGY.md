@@ -36,7 +36,10 @@ intent to raise it in steps from the figure CI itself reports, and measured cove
 it is not an aggregate over the app, so "the frontend is 80% covered" does not follow from
 it. This table is the only place in `docs/` that states these numbers; every other document
 links here rather than restating them (`QODER.md` §8 G1 — the restatements were the drift).
-The 80→20 backend decision is recorded in no ADR — see §8 G1.
+The 80→20 backend decision is recorded as ADR-0021, retroactively: the value was lowered in
+an unrelated revert PR and had no decision record until 2026-10-05. That ADR also carries
+the ratchet rule and the fact that it is already triggered — measured 69% against a gate of
+20% — so the next CI edit owes either a raised flag or a stated reason.
 
 **Rule of composition:** deterministic tests only — no sleeps-as-sync, no
 network to third parties (Stripe mocked), seeded fixtures, and test data

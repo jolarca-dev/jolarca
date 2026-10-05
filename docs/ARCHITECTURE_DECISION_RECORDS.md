@@ -457,6 +457,54 @@ author, and deployment approval become implementable rather than nominal.
 
 **Status:** Accepted 2026-10-05 (recorded per owner authorization; sole maintainer).
 
+## ADR-0021 — Backend coverage gate: recorded at 20%, with a ratchet rule
+
+**Context.** The backend coverage gate is `--cov-fail-under=20`
+(`.github/workflows/ci.yml:97`). It was never *decided* at that value. The flag shipped at
+**80** in the initial commit `2d9109e` (#1, 2026-08-16) and was lowered to **20** in
+`22117ff` (#45, 2026-09-03) — a commit titled "revert: restore original api.ts (OpenAPI
+snapshot incomplete for catalog)", so the downgrade rode inside an unrelated revert and
+was recorded nowhere. Three documents went on describing ≥80% as enforced in CI
+(`QODER.md` §8 G1), one of them an external funding submission. Contract tests joined the
+same command in `b4b0483` (#131, 2026-10-04), which added the in-file rationale and a
+`TODO: raise threshold toward 80%` while leaving the value at 20. Measured on this tree on
+2026-10-05, with the command that produces each figure:
+
+| Test set | Coverage | Tests | Command |
+| --- | --- | --- | --- |
+| unit + security | **24%** (3012 statements, 2282 missed) | 41 | `pytest tests/unit tests/security -q --cov=. --cov-report=term` with `DJANGO_SETTINGS_MODULE=project.settings.test` |
+| unit + security + contract (CI's set) | **69%** (3012 statements, 941 missed) | 162 | the same command with `tests/contract` added |
+
+The 69% corroborates the 68.8% that `ci.yml:99-103` records from 2026-10-03. It is
+restated here as a measurement rather than a citation even though the two are only days
+apart, because a suite that changes daily makes a quoted figure stale faster than a
+quoted line number does.
+
+**Decision.** Record the gate as 20% — retroactively, since that has been the configured
+value since #45 — and adopt a ratchet rule in place of a target date: **whenever CI's own
+reported coverage exceeds `--cov-fail-under` by 10 points or more, the PR that observes it
+raises the flag to measured − 5.** Taking the figure from CI rather than from a local run
+is the rule `ci.yml:101` already states; the 5-point margin absorbs per-run variation so
+the gate cannot be tripped by one deleted test. This ADR changes no configuration: the
+flag is still 20.
+
+**Consequences.** (+) The 80→20 downgrade finally has a record, its mechanism is named (an
+unrelated revert PR, which is how a gate value changes without anyone deciding to change
+it), and the three documents that restated ≥80% were corrected in the same branch as this
+ADR. (+) The ratchet is self-triggering: it needs no owner and no calendar entry, which is
+precisely what a "raise it later" TODO lacks on a single-maintainer repository. (−) **The
+rule is already triggered and nothing has been done about it.** Measured 69% against a gate
+of 20% is 49 points of slack, so about 70% of the covered statements could be deleted and
+CI would still pass. The next CI edit must therefore raise the flag to 64 (69 − 5) or state
+why not; that edit is a configuration change on protected `main` and belongs to the owner,
+not to this ADR, which is why it is recorded here as an obligation rather than applied.
+(−) The frontend floor is a different mechanism — 80% over 17 named modules in
+`frontend/vitest.config.mts` — and is out of scope: it is not comparable to a backend
+aggregate and must never be quoted as though it were. (−) Coverage is a proxy. A raised
+gate makes deletion visible; it does not make any assertion meaningful.
+
+**Status:** Accepted 2026-10-05 (recorded retroactively; sole maintainer).
+
 
 ---
 
