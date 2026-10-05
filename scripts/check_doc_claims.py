@@ -105,6 +105,13 @@ LIVE_CLAIM_FILES = [
     # CONTRIBUTING.md had already been corrected. Scope, not wording, was the defect.
     "docs/COMPLIANCE_MATRIX.md",
     "docs/TECH_DECISIONS.md",
+    # Added 2026-10-05 (t9) after the index this branch introduced shipped a false
+    # claim: its generated-artifacts table said LICENSE is produced by a make target
+    # that does not exist. C6 scans this list only, and the index sat in
+    # GOVERNANCE_FILES alone, so the check built to catch exactly that stayed silent.
+    # Being in scope for paths (C2) is not the same as being in scope for claims
+    # (C3/C6). Tracked as §8 G30.
+    "docs/README.md",
     ".github/CODEOWNERS",
     "Makefile",
     # Workflow comments are contributor-facing claims too. G18 and G26 both began
