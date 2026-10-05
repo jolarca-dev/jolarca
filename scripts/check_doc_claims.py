@@ -206,6 +206,30 @@ FALSIFIED = (
         "enforced in review + codeowners",
         "CODEOWNERS is inert; review is self-review with one maintainer; see G2",
     ),
+    # Added with t9 (2026-10-05), from measured gate values: the backend coverage floor
+    # is --cov-fail-under=20 (.github/workflows/ci.yml:97), while 80 is the frontend
+    # Vitest threshold and applies only to the 17 modules in coverage.include
+    # (frontend/vitest.config.mts:38-62). Both testing docs restated "80% for both
+    # stacks" as enforced; the numbers now have one home in docs/TESTING_STRATEGY.md §1.
+    # These entries are deliberately short: the scan is line-based, so a long phrase a
+    # writer wraps across two lines evades it - which is how the original
+    # "enforced in CI for both stacks" sentence survived in the first place.
+    (
+        "≥80% coverage floor",
+        "the backend gate is --cov-fail-under=20; the 80% floor is frontend-only; see G1",
+    ),
+    (
+        "coverage below 80%",
+        "the backend gate is --cov-fail-under=20 (ci.yml:97); see G1",
+    ),
+    (
+        "deploys are health-gated",
+        "no deploy workflow runs a rollout or a health gate; see G17/G26",
+    ),
+    (
+        "bundle gate: ≤150kb",
+        "no CI job asserts a bundle size; frontend-build only boots the bundle; see G21",
+    ),
 )
 
 ADR_RANGE = re.compile(r"ADR-0001[\u2026\-.]+ADR-?0\d{3}|ADR-0001[\u2026\-.]+0?\d{3}\b")

@@ -19,16 +19,16 @@
 flowchart TB
     subgraph "Unit (fast, no services)"
         U1["Backend: pytest + security tests — make test"]
-        U2["Frontend: Vitest — 164 tests, ≥80% branch floors"]
+        U2["Frontend: Vitest — 80% floors on the modules in coverage.include"]
     end
     subgraph "Integration (compose topology)"
         I1["Backend: make test-integration (CI-parity compose)"]
         I2["Contract tests: OpenAPI snapshot drift gate"]
     end
     subgraph "E2E (full stack)"
-        E1["Playwright: 7 spec files × chromium / iPhone 14 / Pixel 7"]
+        E1["Playwright: 14 spec files × chromium / iPhone 14 / Pixel 7 — no CI job runs them (§8 G4)"]
         E2["axe-core WCAG 2.2 AA scans"]
-        E3["Lighthouse CI budgets"]
+        E3["Lighthouse CI budgets — job is if:false (§8 G5)"]
     end
     U1 & U2 --> I1 & I2 --> E1 & E2 & E3
 ```
@@ -37,9 +37,12 @@ flowchart TB
 
 - **Frontend** (`frontend/tests/unit/`, Vitest): domain libraries are the
   coverage focus — cart, checkout, seller, admin, funeral, search, consent,
-  security headers. Aggregate thresholds: **80% branches / statements**,
-  with each compliance-critical module individually above that floor
-  (e.g. search 95.7%, admin 82.8%, seller 81.8% branches at last run).
+  security headers. Thresholds are **80% for branches, functions, lines and
+  statements**, enforced by `frontend/vitest.config.mts:57-62` over the 17 modules
+  named in `coverage.include` (`:38-56`) — not over the whole app, so an aggregate
+  "frontend is 80% covered" claim does not follow. Per-module percentages and test
+  counts are deliberately not restated here: they move on every run, and
+  [TESTING_STRATEGY.md](TESTING_STRATEGY.md) §1 owns the measured inventory.
 - **Backend** (`backend/tests/`): unit + security suites runnable without
   external services (`make test`).
 - Test-side discipline: no network, mocked API client, deterministic
@@ -63,7 +66,14 @@ flowchart TB
 | `accessibility.spec.ts` | axe-core on home, category, product, search, cart, checkout, funeral |
 | `gdpr.spec.ts` | Reject-all blocks Plausible; accept-analytics mounts it |
 | `performance.spec.ts` | Category grid LCP < 2000ms via PerformanceObserver |
-| `smoke.spec.ts` | All launch locales render — the CI smoke gate |
+| `smoke.spec.ts` | All launch locales render — the smoke gate whenever `frontend-playwright-smoke` runs, which it does not: the job is `if: false` (§8 G4) |
+
+**This table is a subset, not an inventory.** Seven further spec files exist and are not
+described here: `cart-journey`, `category-journey`, `checkout-journey`, `error-handling`,
+`security-headers`, `seller-storefront` and `seo`. Measured 2026-10-05: 14 spec files
+holding 43 `test()` declarations, run against 3 Playwright projects.
+[TESTING_STRATEGY.md](TESTING_STRATEGY.md) §1 owns those counts and the commands that
+produce them.
 
 Practices: no hardcoded waits (auto-waiting only); unique stamped test
 accounts per run; API-based auth setup; failures leave screenshots,
@@ -75,7 +85,9 @@ rather than skipping — the suite doubles as a contract-completion meter.
 
 `.github/workflows/ci.yml` gates, in order:
 
-1. **Backend**: ruff (format+lint), mypy, pytest (≥80% coverage floor).
+1. **Backend**: ruff (format+lint), mypy, pytest — coverage gate
+   `--cov-fail-under=20`, not 80%; see
+   [TESTING_STRATEGY.md](TESTING_STRATEGY.md) §1 for both stacks' numbers.
 2. **Frontend**: `npm ci` → typecheck (tsc) → ESLint → Prettier check →
    Vitest coverage → `next build`.
 3. **Contract**: OpenAPI snapshot comparison.
