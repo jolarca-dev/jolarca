@@ -128,13 +128,16 @@ GOVERNANCE_FILES = [
     "docs/archive/README.md",
     # Added 2026-10-05 (t9). The index cites every document path in the repository, so
     # C2 becomes an inventory check: a renamed or deleted doc fails the gate instead of
-    # leaving a dead link behind. The ADR registry and the pointer file that links to it
-    # are deliberately NOT listed yet: putting the registry in scope immediately reports
-    # two pre-existing C4 violations in it (its Scope sentence and its Registry Overview
-    # heading both name ADR-0001…0010 as the registry's extent, while ADR-0020 exists),
-    # and this branch fixes those in the same commit that widens the scope rather than
-    # landing a red gate. Tracked as §8 G27.
+    # leaving a dead link behind.
     "docs/README.md",
+    # Added one commit later in the same branch, together with the fixes they expose:
+    # the registry was read only by registry_max(), so its own citations and any range
+    # it claimed were never checked. That is how two live C4 violations survived in it
+    # (its Scope sentence and its Registry Overview heading both named the first ten ids
+    # as the registry's extent while ADR-0020 existed) and how three ids came to have no
+    # record at all. Tracked as §8 G27.
+    "docs/ARCHITECTURE_DECISION_RECORDS.md",
+    "docs/TECH_DECISIONS.md",
 ]
 
 PATH_ROOTS = ["", "backend"]

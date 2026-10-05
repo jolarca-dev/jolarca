@@ -1,13 +1,18 @@
 # Architecture Decision Records
 
-**Scope:** Consolidated decision registry for grant reviewers. Engineering
-detail for ADR-0001…0010 lives in [TECH_DECISIONS.md](TECH_DECISIONS.md);
-this document adds the platform-level and security-governance decisions,
-continuing the existing numbering (no collisions).
+**Scope:** The single decision registry for this repository. The first seven records
+were consolidated here from `docs/TECH_DECISIONS.md` on 2026-10-05; that file is now a
+pointer plus a summary table. This document previously claimed that engineering detail
+for ADR-0001…0010 lived in `docs/TECH_DECISIONS.md`, which was false for three of the
+ten: **ADR-0008, ADR-0009 and ADR-0010 have no record anywhere in the repository**
+(measured: `grep -oE '^## ADR-[0-9]{4}'` over all of `docs/` yields 0001-0007 and
+0011-0020 only). They are listed below as absent rather than reconstructed, because
+inventing a decision record is the fabrication failure mode this repository's §8
+register exists to prevent (see the G12 NEVER-ISSUED precedent).
 
 **Format:** Context → Decision → Consequences. **Status:** Accepted.
 
-## Registry Overview (ADR-0001…0010 — engineering registry)
+## Registry Overview (engineering ids — full records below)
 
 | ID | Decision |
 | --- | --- |
@@ -23,6 +28,80 @@ continuing the existing numbering (no collisions).
 | ADR-0010 | Risk acceptance: js-yaml advisory in codegen toolchain |
 
 ---
+
+## ADR-0001 — Monorepo with domain-bounded Django apps
+**Context:** Marketplace spans 11 domains with strict compliance boundaries.
+**Decision:** Single repo; per-domain apps; cross-app access via `services.py` only;
+`payments_app` is the only Stripe importer; AI runs only in Celery `ai` queue.
+**Consequences:** Review-gated only. CODEOWNERS is a single wildcard and branch
+protection reports `require_code_owner_reviews=false`, so it enforces nothing — see
+QODER.md §8 G2 and ADR-0020; import-linter contracts to follow.
+
+## ADR-0002 — AGPL-3.0 licensing
+**Context:** Organization policy for public-facing platform code.
+**Decision:** AGPL-3.0, never modified. Network-use copyleft acknowledged: if the
+platform is ever offered to third parties for self-hosting, source must ship.
+**Consequences:** Legal review required before bundling incompatible dependencies.
+
+## ADR-0003 — Dual i18n: DB content vs UI strings
+**Context:** Catalog content is authored per-listing; UI chrome is static.
+**Decision:** `django-modeltranslation` for catalog (lt/lv/et/en columns);
+`next-intl` messages for UI. The two systems are never unified.
+**Consequences:** Two translation workflows; documented in CONTRIBUTING.
+
+## ADR-0004 — Field-level encryption with Fernet; pgcrypto migration path
+**Context:** GDPR Art. 32 defense-in-depth for PII at rest.
+**Decision:** `core.EncryptedTextField` (Fernet, key rotation via MultiFernet,
+fail-closed without key). Trade-off: ciphertext not queryable. Searchable
+encrypted columns migrate to pgcrypto PGP functions (extension provisioned).
+**Consequences:** No LIKE/filters on encrypted columns; analytics uses derived
+non-PII columns.
+
+## ADR-0005 — Object storage: MinIO in dev, S3-compatible in prod
+**Context:** Media + documents + invoice PDFs need private signed access.
+**Decision:** `django-storages` S3 API against MinIO (dev) / managed S3 (prod).
+Dev compose uses `latest` tag; production MUST pin release tags.
+**Consequences:** Signed URLs by default (`AWS_QUERYSTRING_AUTH=True`).
+
+## ADR-0006 — Django admin retained, edge-restricted
+**Context:** Ops tooling vs attack surface.
+**Decision:** Keep admin; production gates it behind edge IP allowlist + SSO.
+CSP and rate limits apply.
+**Consequences:** Deploy topology must enforce the gate before GA.
+
+## ADR-0007 — Sanctioned stubs over silent fakes
+**Context:** MVP scope cannot implement every integration at scaffold time.
+**Decision:** Unfinished integrations raise `NotImplementedError("MVP-*")` with a
+ticket id tracked in `docs/MVP_REMAINING_WORK.md`; config-gated features raise
+`*NotConfigured`. Nothing pretends to succeed.
+**Consequences:** Callers must handle the loud-failure states explicitly.
+
+## ADR-0008 — Frontend scope: storefront, seller dashboard, moderation backoffice
+
+**Status: NO RECORD.** The title above is transcribed from the Registry Overview table,
+which is the only place this ADR appears. No context, decision or consequences text
+exists in any tracked file (measured 2026-10-05: `git grep -n 'ADR-0008'` returns this
+file's overview row only). Recorded as absent rather than reconstructed; if the owner
+holds the original decision, append it here with its date and source.
+
+## ADR-0009 — Frontend compliance & UX posture (sacred-modern)
+
+**Status: NO RECORD — but the decision is substantively documented elsewhere.** The
+overview row is the only `## ADR-0009` mention; the substance survives as
+`docs/DESIGN_SYSTEM.md`, and three documents cite the id: `docs/EXECUTIVE_SUMMARY.md:20`,
+`docs/POST_MVP_ROADMAP.md:9`, `docs/TESTING_STRATEGY.md:36`, plus ADR-0016's context
+below. Those citations resolve to a title, not to a record. Do not treat this section as
+the decision text.
+
+## ADR-0010 — Risk acceptance: js-yaml advisory in codegen toolchain
+
+**Status: NO RECORD — the acceptance itself is recorded.** `docs/SECURITY.md:70`
+(Dependency Supply Chain) carries the substantive risk-acceptance row and
+`docs/SECURITY_POSTURE.md:53` cites the id, so the acceptance is documented; the ADR
+text is not. Per this repository's convention a dev-only advisory acceptance is
+recorded as an ADR **and** a `docs/SECURITY.md` §3 row — only the second half exists.
+Reconstructing the first half from the security row is possible but is a decision for
+the owner, not for a docs PR.
 
 ## ADR-0011 — Next.js 15 App Router over Pages Router
 
