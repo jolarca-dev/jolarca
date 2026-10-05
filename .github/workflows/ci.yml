@@ -78,6 +78,18 @@ jobs:
       # frontend had a real CI gate (npm run format:check). Parity restored.
       - name: Format check (ruff format)
         run: ruff format --check .
+
+      # Repo tooling in scripts/ (the gate scripts themselves). Run from the REPO
+      # ROOT, never as `ruff check ../scripts` from backend/: measured that ruff
+      # resolves backend/pyproject.toml in that form and root ruff.toml from the
+      # root, so the working directory silently picks the rule set (backend
+      # line-length 100 vs root 88) and a locally-clean line fails CI.
+      # QODER.md §8 G25.
+      - name: Lint (ruff) - scripts/ tooling
+        working-directory: ${{ github.workspace }}
+        run: |
+          ruff check scripts
+          ruff format --check scripts
       - name: Typecheck (mypy)
         run: mypy project apps
       - name: Unit + security + contract tests

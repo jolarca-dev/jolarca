@@ -17,9 +17,6 @@ import django  # noqa: E402
 
 django.setup()
 
-from django.contrib.auth.models import Group  # noqa: E402
-from django.utils import timezone  # noqa: E402
-
 from apps.core.permissions import Roles, ensure_role_groups  # noqa: E402
 from apps.products_app.models import (  # noqa: E402
     Category,
@@ -30,6 +27,8 @@ from apps.products_app.models import (  # noqa: E402
 from apps.sellers_app.models import Country, SellerProfile, SellerStatus  # noqa: E402
 from apps.tax_app.models import VatRateSnapshot  # noqa: E402
 from apps.users_app.models import User  # noqa: E402
+from django.contrib.auth.models import Group  # noqa: E402
+from django.utils import timezone  # noqa: E402
 
 CATEGORIES = [
     # (slug, name, homepage_rank) — rank curates the storefront home rail
