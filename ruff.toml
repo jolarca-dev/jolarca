@@ -1,0 +1,17 @@
+# Repo-wide ruff config. Added because NONE existed: with no config, each tool
+# version applies its own defaults, so `scripts/` was "clean" under venv 0.16.6
+# and had 7 E402 errors under the pre-commit hook's 0.9.4, while CI saw neither
+# (it cds into backend/). QODER.md §8 G25. Pinning the rule set here makes the
+# hook, CI, the venv and every future upgrade agree.
+
+line-length = 88
+
+[lint]
+select = ["E4", "E7", "E9", "F", "I", "ISC", "EXE"]
+ignore = []
+
+[lint.per-file-ignores]
+# seed_data.py bootstraps Django before importing app models; the import order is
+# required, not careless. Ignored here so the file needs no per-line `# noqa`,
+# which RUF100 would then flag as unused under some versions.
+"scripts/seed_data.py" = ["E402"]

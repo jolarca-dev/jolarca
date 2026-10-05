@@ -143,15 +143,19 @@ FALSIFIED = (
     ),
     (
         "fail loudly at the rollout step",
-        "staging warns and exits 0 since 2026-10-05; "
-        "only production still fails; see G17",
+        (
+            "staging warns and exits 0 since 2026-10-05; "
+            "only production still fails; see G17"
+        ),
     ),
     ("deploy-staging.yml → staging VM", "no staging target exists; §A-07 undecided"),
     (
         "manual approval gate before any prod action",
-        "no production environment exists "
-        "and can_admins_bypass defaults to "
-        "true; see G18",
+        (
+            "no production environment exists "
+            "and can_admins_bypass defaults to "
+            "true; see G18"
+        ),
     ),
 )
 
@@ -590,8 +594,10 @@ def self_test() -> int:
         "CONTRIBUTING.md",
         (
             "## Architecture rules\n",
-            "## Architecture rules\n"
-            "`frontend/src/generated/api_nope2.ts` does not exist.\n",
+            (
+                "## Architecture rules\n"
+                "`frontend/src/generated/api_nope2.ts` does not exist.\n"
+            ),
         ),
         check_paths,
         False,

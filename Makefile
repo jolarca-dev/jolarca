@@ -76,6 +76,7 @@ test-integration: ## Integration tests against the CI-parity compose topology
 # lint + npm run format:check).
 lint-py: ## ruff lint + format check (backend)
 	cd backend && $(PY) -m ruff check . && $(PY) -m ruff format --check .
+	$(PY) -m ruff check scripts/ && $(PY) -m ruff format --check scripts/
 
 lint-fe: ## ESLint + Prettier check (frontend)
 	cd frontend && npm run lint && npm run format:check
