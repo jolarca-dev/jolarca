@@ -98,8 +98,11 @@ blocks a merge: backend coverage under the `--cov-fail-under` value, a frontend 
 below the 80% floor on the included modules, a failing frontend test, type check or
 lint, OpenAPI drift, a secret hit, or a failing security suite. The three dotted boxes
 above **do not** block — Lighthouse and Playwright are `if: false` (§8 G5, §8 G4) and
-`frontend-build` is not a required context, is skipped whenever lint fails, and holds
-the only check that boots the shipped bundle (§8 G21).
+`frontend-build` is not a required context and holds the only check that boots the shipped
+bundle (§8 G21). It no longer waits on lint: on 2026-10-06 PR #176 dropped `frontend-lint`
+from the job's `needs:`, so a lint failure can no longer suppress it — measured the same day on
+PR #161, where `frontend-lint` failed and `frontend-build` ran and passed on the same commit.
+Making `frontend-build` a required context (G21's fix 2) is still open and is the owner's call.
 
 **Artifact retention:** coverage reports (XML + HTML), Playwright HTML
 report + traces/videos on failure, Lighthouse reports — retained per

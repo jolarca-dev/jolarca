@@ -631,12 +631,15 @@ one audit trail across those writers needs each writer's zone, not a guessed one
    **(5)** #91, a 17-day-old "land outstanding WIP" catch-all, should be inspected or
    closed — never merged blind.
    **(6)** **G21 gates the evidence for all of the above, not just this upgrade.**
-   `frontend-build` runs the only check that boots the shipped bundle, is not a required
-   context, and is skipped whenever lint fails — so on #161 the guard never executed at all.
-   Before landing any v16 upgrade: merge #162 (the guard must stop encoding Next 15's CSS
-   directory, or it cries wolf on every v16 build) and decide between dropping
-   `frontend-lint` from `frontend-build`'s `needs:` and adding `frontend-build` to the
-   required contexts. Neither is a dependency change, so it is a one-line CI edit either way.
+   `frontend-build` runs the only check that boots the shipped bundle and is not a required
+   context, so until 2026-10-06 it was also skipped whenever lint failed — which is why on #161
+   the guard had never executed at all. **Partly overtaken by events, corrected 2026-10-06:** of
+   the two options below, the first is taken — #176 (`726b4ad`) dropped `frontend-lint` from
+   `frontend-build`'s `needs:`, and #161's refreshed head is the proof (`frontend-lint` failure
+   and `frontend-build` success on the same commit); #162 is merged, so the guard no longer
+   encodes Next 15's CSS directory. What remains is the second option only — adding
+   `frontend-build` to the required contexts (G21 fix 2), together with G36's `strict` — and both
+   are owner calls, not one-line edits anyone should make unprompted.
 4. **G15 + G16 — DONE 2026-10-05.** Both failed for the same structural reason: a
    local check looking at more than it should, producing output no one can act on
    and training the operator to ignore the gate. Both are closed with mutation
@@ -765,8 +768,12 @@ one audit trail across those writers needs each writer's zone, not a guessed one
     `dependency-audit` job and under `make check-advisories`: it fails when a change removes a
     production-scoped advisory that no §6.2 row names, or when the row's ID is cited nowhere in
     the change. Its first real test was retroactive — the delta of #178 itself, attributed to
-    `JOL-DEP-20261006-01`. Its limits (npm production scope only, token-based package matching,
-    exit 2 on cannot-verify) are recorded in the row instead of being left as a surprise.)*
+    `JOL-DEP-20261006-01` — and it then ran for real in CI on #180, where the attribution branch
+    reported `OK(no production advisory removed)` on the `pull_request` event and `SKIPPED(not a
+    pull_request event)` on `main`'s push, both printed rather than silent. Its limits (npm
+    production scope only, marked-identifier package matching, `GH_TOKEN` needed for the
+    attribution half, exit 2 on cannot-verify) are recorded in the row instead of being left as a
+    surprise.)*
 
 14. **G36 — decide `strict` for branch protection.** *(Owner call, one API field. A branch need
     not be up to date with `main` to merge, so green checks describe the tree at the last push,
