@@ -22,18 +22,26 @@ PIP := $(ROOT)/.venv/bin/pip
 # target behaviour is unchanged there (parity by design).
 LOAD_ENV := set -a; if [ -f .env ]; then . ./.env; fi; set +a;
 
-.PHONY: help bootstrap sysdeps dev-up dev-down logs migrate makemigrations seed \
+.PHONY: help shell bootstrap sysdeps dev-up dev-down logs migrate makemigrations seed \
         test test-contract test-integration lint lint-py lint-fe typecheck check lock \
         api-schema check-secrets check-toolchain check-deps-groups check-docs check-advisories verify wait
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  %-18s %s\n", $$1, $$2}'
 
+# Gate targets below are immune to PATH drift because $(PY) and $(PIP) are absolute
+# paths under $(ROOT). An *interactive* shell has no such guarantee: before §8 G37
+# nothing in the repository activated .venv at all, so hand-typed `ruff` resolved to
+# ~/.local/bin/ruff (0.16.5) while CI ran the pinned 0.16.6 — a local "pass" measured
+# against tools CI does not run, with every green gate agreeing with it.
+shell: ## Interactive shell with the pinned .venv active (source scripts/activate.sh)
+	@. ./scripts/activate.sh && exec bash -i
+
 bootstrap: ## Create venv, install tooling + dev deps
 	python3 -m venv .venv
 	$(PIP) install --upgrade pip pip-tools
 	$(PIP) install -r backend/requirements/dev.txt
-	@echo "Now: cp .env.example .env && make dev-up"
+	@echo "Now: source scripts/activate.sh  (or: make shell)  ·  cp .env.example .env && make dev-up"
 
 sysdeps: ## OS packages needed on the HOST (GDAL for PostGIS models). Needs sudo.
 	sudo apt-get update && sudo apt-get install -y --no-install-recommends gdal-bin libgdal-dev

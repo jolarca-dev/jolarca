@@ -46,7 +46,7 @@ Design invariants (enforced in review, see `docs/architecture/01-modular-breakdo
 
 ```bash
 cp .env.example .env          # fill in values
-make bootstrap                # venv + deps
+make bootstrap && source scripts/activate.sh   # venv + deps, then activate
 make sysdeps                  # GDAL on the host (one-time, needs sudo)
 make dev-up                   # full stack via docker-compose.dev.yml
 make migrate && make seed

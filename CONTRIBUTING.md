@@ -5,7 +5,7 @@
 ```bash
 git clone <repo> && cd jolarca
 cp .env.example .env            # fill in CHANGE_ME values
-make bootstrap                  # venv + pinned dev dependencies
+make bootstrap && source scripts/activate.sh   # venv + pinned dev deps, then activate
 make sysdeps                    # one-time: GDAL libraries (PostGIS model support)
 make dev-up                     # postgis, redis, minio, mailpit, stripe-mock, web, worker, beat, frontend
 make migrate && make seed
