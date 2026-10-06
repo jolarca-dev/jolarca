@@ -29,6 +29,10 @@ scope:  users | sellers | products | orders | payments | tax | shipping | ai | b
 
 Breaking changes: append `!` (`feat(payments)!: ...`) and describe migration in the body.
 Security fixes MUST reference the internal incident ID, never the vulnerability detail.
+Mint the ID first, in `docs/INCIDENT_RESPONSE.md` §6.2 (format §6.1); inventing one inside
+a commit message is fabricating a record. The rule covers four public, permanent surfaces:
+branch name, commit subject, commit body, and PR title plus body. The detail itself belongs
+in that register, in `QODER.md` §8, and in the ADRs — those are what the ID points at.
 
 **Nothing machine-checks this format.** `.pre-commit-config.yaml` installs no
 `commit-msg` hook and no commitlint runs in any workflow, so the convention is

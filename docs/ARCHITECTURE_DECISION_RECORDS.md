@@ -302,7 +302,17 @@ the ESLint chain `eslint-config-next → @next/eslint-plugin-next → fast-glob 
 micromatch`. As of 2026-10-03 **no patched release exists** (`npm view braces
 version` = 3.0.3; Trivy status "affected", fixed-version blank;
 [AVD](https://avd.aquasec.com/nvd/cve-2026-93687)), and it is **not** carried in
-GitHub Dependabot's advisory DB (open alerts are dompurify/vitest only). `braces`
+GitHub Dependabot's advisory DB (open alerts are dompurify/vitest only).
+**Correction (2026-10-06): that clause is false and was never run.** Dependabot
+raised alert **#38** for `braces` in the npm ecosystem and it now sits in
+`auto_dismissed`; `state=open` returns 0 alerts and the full inventory is 38 rows
+(34 npm, 4 pip), measured 2026-10-06. So Dependabot *did* carry it. What survives
+is the consequence, not the reason: an auto-dismissed alert opens no fix PR, and
+**why** #38 was dismissed is not established here. The decision itself does not
+change — `braces` still has no patched release and does not ship — and the
+non-blocking trivy dev report stays the durable tracker, because unlike the
+alert it does not disappear on its own. Recorded as G34.
+`braces`
 is a **dev-only** package (`package-lock.json` `"dev": true`) reachable only
 through the lint toolchain; the production `runner` image copies only
 `.next/standalone`, `.next/static` and `public` and even strips npm
