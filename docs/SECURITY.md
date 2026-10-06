@@ -165,6 +165,7 @@ What is enforced instead, verified 2026-10-05 against the branch-protection API:
 | Automated gates | 11 required status checks: backend, secrets, gitleaks, trivy, codeql, dependency-audit, docker-scan, frontend-typecheck, frontend-lint, frontend-unit, frontend-openapi-drift |
 | Merge discipline | squash only; force-push blocked; branch deletion blocked; `enforce_admins: true` |
 | Docs-to-config truth | `scripts/check_doc_claims.py` fails the build when a document asserts a control that configuration does not implement |
+| Advisory-to-record linkage | `scripts/check_advisory_register.py` (required `dependency-audit` job, `make check-advisories`) fails when a change removes a production-scoped advisory that no row of [incident response §6.2](INCIDENT_RESPONSE.md) names, or when that row's ID is cited nowhere in the change — so a silenced advisory cannot reach `main` without a record. Added 2026-10-06 after a HIGH arrived with no Dependabot alert (§8 G35) |
 | Release evidence | images published under immutable SHA / release tags; SBOM and SLSA provenance on the production build path |
 
 **Not a control, and not to be cited as one:** `.github/CODEOWNERS` is a single

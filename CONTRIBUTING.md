@@ -94,6 +94,11 @@ frontend-unit]`, so a lint failure skips it entirely (§8 G21).
    match the `backend/requirements/dev.txt` pins, or if a stray `.venv` exists anywhere in the
    tree (gitignored at every depth, so invisible to `git status`). Local-only by design: CI
    installs from the lock. `make verify` runs it first.
+9. Advisory-to-record linkage — `make check-advisories` fails when your change removes a
+   production-scoped npm advisory that no row of `docs/INCIDENT_RESPONSE.md` §6.2 names as a
+   marked identifier, or when that row's incident ID appears in none of your commit messages or
+   the PR text (§8 G35; §Part VII). The structural half — every cited ID must exist in §6.2 — runs
+   offline and always. Mint the ID in the register **before** writing the fix.
 
 ## Architecture rules
 

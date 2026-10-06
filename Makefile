@@ -24,7 +24,7 @@ LOAD_ENV := set -a; if [ -f .env ]; then . ./.env; fi; set +a;
 
 .PHONY: help bootstrap sysdeps dev-up dev-down logs migrate makemigrations seed \
         test test-contract test-integration lint lint-py lint-fe typecheck check lock \
-        api-schema check-secrets check-toolchain check-deps-groups check-docs verify wait
+        api-schema check-secrets check-toolchain check-deps-groups check-docs check-advisories verify wait
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  %-18s %s\n", $$1, $$2}'
@@ -141,6 +141,17 @@ check-docs: ## Fail when docs assert a control that does not exist
 	$(PY) scripts/check_doc_claims.py --self-test
 	$(PY) scripts/check_doc_claims.py
 
+# §8 G35: the production gates name advisories, but nothing linked a named advisory to an
+# incident record, so docs/INCIDENT_RESPONSE.md §6.2 existed only because an operator wrote in
+# it by hand -- measured 2026-10-06, when a HIGH arrived with no Dependabot alert and the ID
+# was minted manually. This fails when a change removes a production-scoped advisory without
+# a §6.2 row naming the package and cited in the change set, and when an ID is cited anywhere
+# in the governance docs without a row. Same self-test discipline as the two above: exit 2 is
+# "cannot verify", never a pass.
+check-advisories: ## Fail when an advisory is silenced without an incident record (also runs in CI)
+	$(PY) scripts/check_advisory_register.py --self-test
+	$(PY) scripts/check_advisory_register.py
+
 # One reproducible evidence artifact for every gate this repo claims. Exists because
 # agent sessions verified gates by reading terminal output, while /tmp and the shell on
 # this host are shared with concurrent sessions on sibling repos - a contaminated
@@ -151,7 +162,7 @@ verify: ## Run every fast gate and write a dated evidence report to .state/
 	  echo "branch:    $$(git rev-parse --abbrev-ref HEAD) @ $$(git rev-parse --short HEAD)"; \
 	  echo "remote:    $$(git remote get-url origin)"; \
 	  echo "dirty:     $$(git status --porcelain | wc -l) path(s)"; echo; \
-	  for t in check-toolchain lint-py check-secrets check-docs check-deps-groups test; do \
+	  for t in check-toolchain lint-py check-secrets check-docs check-deps-groups check-advisories test; do \
 	    printf '%-18s ' "$$t"; \
 	    if $(MAKE) --no-print-directory $$t >/dev/null 2>&1; then echo PASS; else echo FAIL; fi; \
 	  done; \
