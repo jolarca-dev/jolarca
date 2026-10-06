@@ -21,7 +21,7 @@ code that changes it (PR template enforces).
 | No card data on premises | Stripe Elements/PaymentIntents only; `payments_app` stores ids/amounts | Art. 32 | A.8.12 | CC6.x | SAQ-A scope |
 | AI PII guardrail + outbound audit | `ai_service_app.guardrails` + `AIRequestLog` | Art. 22/32 | A.8.28 | CC6.6 | — |
 | Supply chain | pinned+hashed requirements, Dependabot, Trivy, SBOM+provenance on prod images | — | A.5.19 | CC9.2 | Req. 6.3 |
-| Access review surface | CODEOWNERS + environment approval gates on deploys | — | A.5.15 | CC6.2 | Req. 7 |
+| Change approval (single operator) | **No human approval gate exists**: 11 required status checks with `enforce_admins`, squash-only, force-push and deletion blocked; CODEOWNERS is a single wildcard with `require_code_owner_reviews=false`; no `production` environment. Residual risk accepted in ADR-0020 | — | A.5.15 | CC6.2 | Req. 7 |
 | Logging isolation | `compliance` Celery queue; `GDPR_PROCESSING_HALTED` exempt probes | Art. 32 | A.8.15 | CC7.2 | — |
 
 **Gaps (tracked in MVP_REMAINING_WORK):** DPIA template, subprocessor register

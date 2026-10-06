@@ -32,12 +32,8 @@ def prepare_oss_return(period: str) -> None:
 
     # Aggregate by buyer country (destination principle for OSS)
     orders = Order.objects.filter(
-        created_at__gte=timezone.make_aware(
-            datetime.combine(start_date, datetime.min.time())
-        ),
-        created_at__lt=timezone.make_aware(
-            datetime.combine(end_date, datetime.min.time())
-        ),
+        created_at__gte=timezone.make_aware(datetime.combine(start_date, datetime.min.time())),
+        created_at__lt=timezone.make_aware(datetime.combine(end_date, datetime.min.time())),
         status__in=["paid", "fulfilled", "completed"],
     )
 

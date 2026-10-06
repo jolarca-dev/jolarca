@@ -64,6 +64,12 @@ actionable (ADR-0010).
 
 ## 4. Incident Response
 
+**Procedure of record: [INCIDENT_RESPONSE.md](INCIDENT_RESPONSE.md)** — severity levels,
+response clocks, communication templates and the post-mortem template. The five phases
+below are the *evidence* view: which control, script or switch each phase uses in this
+repository, named in the NIST-style phase vocabulary an auditor expects. They are not a
+second procedure, and where a clock or a step differs, INCIDENT_RESPONSE.md wins.
+
 1. **Detection** — monitoring.sh health/threshold alerts (webhook + email),
    Stripe webhook failure runbook, log correlation via x-request-id, GDPR
    kill switch (`GDPR_PROCESSING_HALTED`) for suspected breach containment.
