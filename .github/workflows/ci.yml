@@ -194,7 +194,7 @@ jobs:
             (echo "::error::Generated API types stale — run 'npm run generate:api' and commit" && exit 1)
 
   frontend-build:
-    needs: [frontend-typecheck, frontend-lint, frontend-unit]
+    needs: [frontend-typecheck, frontend-unit]  # deliberately NOT frontend-lint: a style failure must not suppress the only check that boots the shipped bundle (§8 G21); typecheck and unit stay here because both are required contexts, so their failure already blocks the merge
     runs-on: ubuntu-24.04
     defaults:
       run:
