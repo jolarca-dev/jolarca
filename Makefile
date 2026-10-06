@@ -1,14 +1,19 @@
 # jolarca — developer task runner
-# All targets are non-interactive; CI uses the same targets (parity by design).
+# All targets are non-interactive. CI runs the same checks, but invokes the gate scripts
+# and tools directly rather than `make`, and check-toolchain has no CI counterpart (§8 G14).
 
 SHELL := /bin/bash
 COMPOSE_DEV := docker compose -f docker-compose.dev.yml
 COMPOSE_TEST := docker compose -f docker-compose.test.yml
 # ROOT is derived from this Makefile's own location, not from the invocation
 # directory. $(CURDIR) changes under `make -C`, which would silently rebind
-# $(PY) - and backend/.venv exists as a stale decoy (ruff 0.16.3 / mypy 2.3.0 /
-# django 5.2.17 against the pinned 0.16.6 / 2.3.1 / 6.1.1). scripts/check_toolchain.py
+# $(PY) - and a decoy backend/.venv (ruff 0.16.3 / mypy 2.3.0 / django 5.2.17 against
+# the pinned 0.16.6 / 2.3.1 / 6.1.1) existed until it was removed on 2026-10-05; it was
+# invisible to `git status` because .gitignore matches .venv/ at any depth. scripts/check_toolchain.py
 # enforces the invariant; `make bootstrap` rebuilds the one true venv.
+# Activation is a separate concern and is tracked too (QODER.md §8 G37): type
+# `source scripts/activate.sh`, run `make shell`, or let direnv load the repo's
+# .envrc — which needs the one-time host hook plus `direnv allow` per checkout.
 ROOT := $(patsubst %/,%,$(dir $(realpath $(firstword $(MAKEFILE_LIST)))))
 PY := $(ROOT)/.venv/bin/python
 PIP := $(ROOT)/.venv/bin/pip
@@ -22,18 +27,26 @@ PIP := $(ROOT)/.venv/bin/pip
 # target behaviour is unchanged there (parity by design).
 LOAD_ENV := set -a; if [ -f .env ]; then . ./.env; fi; set +a;
 
-.PHONY: help bootstrap sysdeps dev-up dev-down logs migrate makemigrations seed \
+.PHONY: help shell bootstrap sysdeps dev-up dev-down logs migrate makemigrations seed \
         test test-contract test-integration lint lint-py lint-fe typecheck check lock \
-        api-schema check-secrets check-toolchain check-deps-groups check-docs verify wait
+        api-schema check-secrets check-toolchain check-deps-groups check-docs check-advisories verify wait
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  %-18s %s\n", $$1, $$2}'
+
+# Gate targets below are immune to PATH drift because $(PY) and $(PIP) are absolute
+# paths under $(ROOT). An *interactive* shell has no such guarantee: before §8 G37
+# nothing in the repository activated .venv at all, so hand-typed `ruff` resolved to
+# ~/.local/bin/ruff (0.16.5) while CI ran the pinned 0.16.6 — a local "pass" measured
+# against tools CI does not run, with every green gate agreeing with it.
+shell: ## Interactive shell with the pinned .venv active (source scripts/activate.sh)
+	@. ./scripts/activate.sh && exec bash -i
 
 bootstrap: ## Create venv, install tooling + dev deps
 	python3 -m venv .venv
 	$(PIP) install --upgrade pip pip-tools
 	$(PIP) install -r backend/requirements/dev.txt
-	@echo "Now: cp .env.example .env && make dev-up"
+	@echo "Now: source scripts/activate.sh  (or: make shell)  ·  cp .env.example .env && make dev-up"
 
 sysdeps: ## OS packages needed on the HOST (GDAL for PostGIS models). Needs sudo.
 	sudo apt-get update && sudo apt-get install -y --no-install-recommends gdal-bin libgdal-dev
@@ -141,6 +154,17 @@ check-docs: ## Fail when docs assert a control that does not exist
 	$(PY) scripts/check_doc_claims.py --self-test
 	$(PY) scripts/check_doc_claims.py
 
+# §8 G35: the production gates name advisories, but nothing linked a named advisory to an
+# incident record, so docs/INCIDENT_RESPONSE.md §6.2 existed only because an operator wrote in
+# it by hand -- measured 2026-10-06, when a HIGH arrived with no Dependabot alert and the ID
+# was minted manually. This fails when a change removes a production-scoped advisory without
+# a §6.2 row naming the package and cited in the change set, and when an ID is cited anywhere
+# in the governance docs without a row. Same self-test discipline as the two above: exit 2 is
+# "cannot verify", never a pass.
+check-advisories: ## Fail when an advisory is silenced without an incident record (also runs in CI)
+	$(PY) scripts/check_advisory_register.py --self-test
+	$(PY) scripts/check_advisory_register.py
+
 # One reproducible evidence artifact for every gate this repo claims. Exists because
 # agent sessions verified gates by reading terminal output, while /tmp and the shell on
 # this host are shared with concurrent sessions on sibling repos - a contaminated
@@ -151,7 +175,7 @@ verify: ## Run every fast gate and write a dated evidence report to .state/
 	  echo "branch:    $$(git rev-parse --abbrev-ref HEAD) @ $$(git rev-parse --short HEAD)"; \
 	  echo "remote:    $$(git remote get-url origin)"; \
 	  echo "dirty:     $$(git status --porcelain | wc -l) path(s)"; echo; \
-	  for t in check-toolchain lint-py check-secrets check-docs check-deps-groups test; do \
+	  for t in check-toolchain lint-py check-secrets check-docs check-deps-groups check-advisories test; do \
 	    printf '%-18s ' "$$t"; \
 	    if $(MAKE) --no-print-directory $$t >/dev/null 2>&1; then echo PASS; else echo FAIL; fi; \
 	  done; \
