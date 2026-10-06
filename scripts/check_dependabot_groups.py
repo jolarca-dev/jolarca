@@ -213,9 +213,7 @@ def check_structure(updates: list[dict], problems: list[str]) -> None:
                 continue
             extra = set(group) - ALLOWED_GROUP_KEYS
             if extra:
-                fail(
-                    problems, f"{eco}: group '{name}' has unknown keys {sorted(extra)}"
-                )
+                fail(problems, f"{eco}: group '{name}' has unknown keys {sorted(extra)}")
             if group.get("applies-to") not in (
                 None,
                 VERSION_UPDATE,
@@ -281,9 +279,7 @@ def _ignored_major_patterns(ignores: list | None) -> set[str]:
     return names
 
 
-def check_major_ceiling(
-    groups: dict[str, dict], ignores: list | None, problems: list[str]
-) -> None:
+def check_major_ceiling(groups: dict[str, dict], ignores: list | None, problems: list[str]) -> None:
     """A ceiling-blocked major must be ignored, not grouped, and never neither."""
     ignored = _ignored_major_patterns(ignores)
     for name in MAJOR_CEILING:
@@ -311,9 +307,7 @@ def check_major_ceiling(
             )
 
 
-def check_families(
-    groups: dict[str, dict], ignores: list | None, problems: list[str]
-) -> None:
+def check_families(groups: dict[str, dict], ignores: list | None, problems: list[str]) -> None:
     for family, routes in FAMILIES.items():
         chosen: dict[str, tuple[str, ...]] = {}
         for route_name, spec in routes.items():
@@ -386,13 +380,9 @@ def run() -> int:
     pip = resolve_ecosystem(data, "pip")
     npm_groups, pip_groups = npm.get("groups") or {}, pip.get("groups") or {}
     if not npm_groups:
-        problems.append(
-            "npm: no groups configured; the fan-out gap (G19) is unmitigated"
-        )
+        problems.append("npm: no groups configured; the fan-out gap (G19) is unmitigated")
     if not pip_groups:
-        problems.append(
-            "pip: no groups configured; the fan-out gap (G19) is unmitigated"
-        )
+        problems.append("pip: no groups configured; the fan-out gap (G19) is unmitigated")
 
     check_no_ambiguity(npm_groups, npm_names(), "npm", problems)
     check_no_ambiguity(pip_groups, pip_names(), "pip", problems)
@@ -432,9 +422,7 @@ def self_test() -> int:
         "a": {"patterns": ["*"], "update-types": ["minor", "patch"]},
         "b": {"patterns": ["vitest"], "update-types": ["patch"]},
     }
-    grouped_sensitive = {
-        "everything": {"patterns": ["*"], "update-types": ["minor", "patch"]}
-    }
+    grouped_sensitive = {"everything": {"patterns": ["*"], "update-types": ["minor", "patch"]}}
     ceiling_groups = {
         "ring-major": {
             "patterns": ["next", "eslint-config-next"],
@@ -470,9 +458,7 @@ def self_test() -> int:
     cases.append(("ceiling major grouped with no ignore", bool(problems), True))
 
     problems = []
-    check_major_ceiling(
-        {"ring": {"patterns": ["next"], "update-types": ["major"]}}, None, problems
-    )
+    check_major_ceiling({"ring": {"patterns": ["next"], "update-types": ["major"]}}, None, problems)
     cases.append(("ceiling major grouped nowhere and unignored", bool(problems), True))
 
     problems = []
@@ -492,17 +478,11 @@ def self_test() -> int:
         verdict = "DETECTED" if detected else "silent"
         if detected != want:
             ok = False
-            verdict += (
-                " <- WRONG (expected " + ("detection" if want else "silence") + ")"
-            )
+            verdict += " <- WRONG (expected " + ("detection" if want else "silence") + ")"
         print(f"self-test {label}: {verdict}")
     print(
         "self_test "
-        + (
-            "OK - the gate can fail and can pass"
-            if ok
-            else "FAILED - the gate is not trustworthy"
-        )
+        + ("OK - the gate can fail and can pass" if ok else "FAILED - the gate is not trustworthy")
     )
     return 0 if ok else 1
 

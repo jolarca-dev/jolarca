@@ -1,8 +1,10 @@
 # JOL Marketplace — Sprint Changelog (100-Day Sprint)
 
-**Scope:** Human-curated sprint record. The machine-generated,
-commit-derived changelog lives at the repository root (`CHANGELOG.md` —
-do not edit by hand); this document is the grant-period narrative.
+**Scope:** Human-curated sprint record and grant-period narrative. Nothing
+machine-generates it; it is hand-maintained. For actual change history use
+`git log` and the GitHub PR list. A root `CHANGELOG.md` stub that stopped at the
+repository scaffold was deleted on 2026-10-05 rather than backfilled, so this
+file and `git log` are the record.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Table of Contents
@@ -79,12 +81,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   image optimizer wrapper, `StreamedSection` (Suspense + error boundary),
   preconnect/dns-prefetch hints, consent-gated Core Web Vitals.
 - Lighthouse budgets hardened: Speed Index promoted to error;
-  `scripts/lighthouse-budget.json` wired into LHCI.
+  `frontend/scripts/lighthouse-budget.json` wired into LHCI. **No longer a gate:** the
+  `frontend-lighthouse` job is `if: false` (`QODER.md` §8 G5), so these budgets
+  are not measured in CI.
 
 ### Sprint 8 — Verification & Package (days 94–100)
 - Playwright suite: 45 scenarios across chromium / iPhone 14 / Pixel 7 —
   buyer, seller, funeral journeys; axe-core WCAG 2.2 AA; GDPR gate; LCP
   budget; smoke. CI split: backend-free smoke job vs full-stack journeys.
+  **No longer a gate:** `frontend-playwright-smoke` is `if: false`
+  (`QODER.md` §8 G4), and when enabled it runs `smoke.spec.ts` only — not the
+  45-scenario suite described here.
 - Documentation package (this set): ARCHITECTURE, DESIGN_SYSTEM,
   API_CONTRACT, DEPLOYMENT, SECURITY, GDPR_COMPLIANCE, GRANT_SUBMISSION,
   TESTING, CHANGELOG.
@@ -124,6 +131,5 @@ marked:
 
 ---
 
-**Cross-references:** root `CHANGELOG.md` (generated) ·
-`docs/MVP_REMAINING_WORK.md` · `docs/ASSUMPTIONS.md` ·
-`docs/TECH_DECISIONS.md`
+**Cross-references:** `docs/MVP_REMAINING_WORK.md` · `docs/ASSUMPTIONS.md` ·
+`docs/TECH_DECISIONS.md` · `docs/README.md`

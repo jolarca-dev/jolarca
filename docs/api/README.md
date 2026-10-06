@@ -1,4 +1,5 @@
 # CI-generated OpenAPI snapshot — never hand-edit.
 
-This file is produced by `make api-schema` (drf-spectacular) and diffed in CI.
-The first real snapshot is generated once the backend boots in CI/locally.
+`docs/api/openapi.yaml` in this directory is produced by `make api-schema`
+(drf-spectacular) and diffed in CI. This guard note is hand-written: the target
+writes the snapshot, not this file.

@@ -35,9 +35,10 @@ jobs:
       # Reporting step: publish a SARIF snapshot of the PRODUCTION/library surface
       # to code scanning (trivy-action builds it with all severities). exit-code is
       # 0 on purpose: a non-zero exit here would silently gate on MEDIUM/LOW too
-      # (the earlier severity fix). Dev-only npm advisories (which Dependabot does
-      # NOT carry, e.g. braces) are covered by the dedicated non-blocking dev report
-      # two steps below -- not by this step.
+      # (the earlier severity fix). Dev-only npm advisories are covered by the
+      # dedicated non-blocking dev report two steps below -- not by this step.
+      # Dependabot is NOT a substitute for that report: its braces alert #38 sits
+      # in auto_dismissed, so it opens no fix PR (measured 2026-10-06, §8 G34).
       - uses: aquasecurity/trivy-action@d2a0b60797ff03db6132bd4e2b293f9b37081297 # master
         with:
           scan-type: fs
@@ -52,10 +53,13 @@ jobs:
           sarif_file: trivy-results.sarif
       # Dev-dependency TRACKING (non-blocking): dev-only npm transitives such as
       # braces (CVE-2026-93687, HIGH, no upstream fix, reachable only via
-      # eslint-config-next) are absent from Dependabot's advisory DB, so without
-      # this nothing would alert on them. Scan WITH dev deps and upload a
+      # eslint-config-next) leave no OPEN Dependabot alert -- #38 exists but is
+      # auto_dismissed, so it queues no fix PR -- which is why this report has to
+      # exist rather than the alert. Scan WITH dev deps and upload a
       # CRITICAL/HIGH SARIF with --exit-code 0 -> surfaces as a code-scanning alert
-      # but never denies the pipeline. Accepted risk is documented in ADR-0018.
+      # but never denies the pipeline. Accepted risk is documented in ADR-0018;
+      # incident identifiers (and the advisory detail that must stay out of commit
+      # messages) live in docs/INCIDENT_RESPONSE.md section 6.2.
       - name: Trivy dev-dependency advisory report (non-blocking)
         run: |
           trivy fs --scanners vuln --vuln-type os,library --include-dev-deps --severity CRITICAL,HIGH --exit-code 0 --format sarif --output trivy-dev.sarif .
