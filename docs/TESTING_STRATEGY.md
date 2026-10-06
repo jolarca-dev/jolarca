@@ -81,29 +81,29 @@ flowchart TD
     BE --> CT["Contract: OpenAPI snapshot diff<br/>+ frontend api:drift"]
     FE --> E2E["Playwright suite: 43 tests × 3 projects<br/>CI job is if:false — runs nowhere (§8 G4; ADR-0022)"]
     FE --> LH["Lighthouse CI vs budget<br/>job is if:false — measures nothing (§8 G5; ADR-0022)"]
-    FE --> BA["frontend-build: verify-standalone.mjs boots the bundle<br/>no size gate exists; not a required context (§8 G21)"]
-    CT --> MERGE["Merge gate (11 required status checks)"]
+    FE --> BA["frontend-build: verify-standalone.mjs boots the bundle<br/>no size gate exists; required context since 2026-10-06 (§8 G21 closed)"]
+    CT --> MERGE["Merge gate (12 required status checks; branch must be current)"]
     E2E -.->|disabled| MERGE
     LH -.->|disabled| MERGE
-    BA -.->|not required| MERGE
+    BA --> MERGE
     SEC --> MERGE
     MERGE --> STG["deploy-staging.yml → images to ghcr.io<br/>(rollout NOT implemented — §A-07 stub)"]
     STG --> PROD["deploy-production.yml → attested images<br/>(rollout stub fails loudly; scripts/deploy.sh is NOT wired into CI)"]
 ```
 
-**Gate conditions:** the eleven required contexts are `backend`, `secrets`,
+**Gate conditions:** the twelve required contexts are `backend`, `secrets`,
 `frontend-typecheck`, `frontend-lint`, `frontend-unit`, `frontend-openapi-drift`,
-`gitleaks`, `trivy`, `codeql`, `dependency-audit` and `docker-scan`. What therefore
-blocks a merge: backend coverage under the `--cov-fail-under` value, a frontend drop
-below the 80% floor on the included modules, a failing frontend test, type check or
-lint, OpenAPI drift, a secret hit, or a failing security suite. The three dotted boxes
-above **do not** block — Lighthouse and Playwright are `if: false` (§8 G5, §8 G4; accepted in
-ADR-0022) and
-`frontend-build` is not a required context and holds the only check that boots the shipped
-bundle (§8 G21). It no longer waits on lint: on 2026-10-06 PR #176 dropped `frontend-lint`
-from the job's `needs:`, so a lint failure can no longer suppress it — measured the same day on
-PR #161, where `frontend-lint` failed and `frontend-build` ran and passed on the same commit.
-Making `frontend-build` a required context (G21's fix 2) is still open and is the owner's call.
+`frontend-build`, `gitleaks`, `trivy`, `codeql`, `dependency-audit` and `docker-scan`,
+with `strict` on since 2026-10-06, so a branch must be current with `main` (§8 G36).
+What therefore blocks a merge: backend coverage under the `--cov-fail-under` value, a
+frontend drop below the 80% floor on the included modules, a failing frontend test, type
+check or lint, OpenAPI drift, a secret hit, a failing security suite, or a bundle that
+does not build or boot. The two dotted boxes above **do not** block — Lighthouse and
+Playwright are `if: false` (§8 G4/G5; accepted in ADR-0022). `frontend-build` holds the
+only check that boots the shipped bundle, and it no longer waits on lint: PR #176 dropped
+`frontend-lint` from its `needs:`, measured the same day on PR #161, where `frontend-lint`
+failed and `frontend-build` ran and passed on the same commit. Both halves of §8 G21 are
+therefore applied; the job still carries one unexplained `0ee87ff` flake — see that row.
 
 **Artifact retention:** coverage reports (XML + HTML), Playwright HTML
 report + traces/videos on failure, Lighthouse reports — retained per

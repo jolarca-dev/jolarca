@@ -80,8 +80,8 @@ members each; a test PR touching `payments_app` requests the payments team.
 
 Enable on `main` (and audit branch while in review):
 - Require PR + **CODEOWNERS review** (works only after Step 2). *(Measured 2026-10-06: never enabled — `require_code_owner_reviews=false` with a single maintainer, so CODEOWNERS gates nothing; §8 G2 and ADR-0020 accept that residual.)*
-- Required status checks: `backend` (ruff, mypy, pytest ≥80% cov, OpenAPI drift, integration), `frontend` (tsc, build, Playwright), `secrets`, `gitleaks`, `trivy`, `codeql`, `dependency-audit`. *(Measured 2026-10-06: 11 contexts are required, but the backend floor is `--cov-fail-under=63` — it was 20 when this checklist was written, and ADR-0021's ratchet raised it (§8 G1); `frontend-build` is not among them (§8 G21); and the Playwright and Lighthouse jobs are `if: false` (§8 G4/G5, ADR-0022).)*
-- Require branches up-to-date; no force-push; no deletions; signed commits recommended. *(Measured 2026-10-06: `strict=false`, so a branch need not be up to date before merge; §8 G36 records it as an owner call, not a doc fix.)*
+- Required status checks: `backend` (ruff, mypy, pytest ≥80% cov, OpenAPI drift, integration), `frontend` (tsc, build, Playwright), `secrets`, `gitleaks`, `trivy`, `codeql`, `dependency-audit`. *(Measured 2026-10-06: 12 contexts are required, `frontend-build` among them since that day (§8 G21 closed); the backend floor is `--cov-fail-under=63`, not 80% — it was 20 when this checklist was written and ADR-0021's ratchet raised it (§8 G1); Playwright and Lighthouse remain `if: false` (§8 G4/G5, ADR-0022).)*
+- Require branches up-to-date; no force-push; no deletions; signed commits recommended. *(Applied 2026-10-06: `strict` is now **on**, so a branch must be current with `main` before merge — §8 G36 closed. Force-push and deletions remain blocked; commits are unsigned.)*
 
 **Exit criteria:** a no-op PR cannot merge without all checks green + owner review.
 

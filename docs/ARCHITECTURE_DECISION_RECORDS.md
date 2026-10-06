@@ -449,11 +449,15 @@ not exist. Verified against configuration and the GitHub API on 2026-10-05:
 
 What *is* enforced, and was re-verified rather than assumed:
 
-- Eleven required status checks (`backend`, `secrets`, `gitleaks`, `trivy`, `codeql`,
+- Twelve required status checks (`backend`, `secrets`, `gitleaks`, `trivy`, `codeql`,
   `dependency-audit`, `docker-scan`, `frontend-typecheck`, `frontend-lint`,
-  `frontend-unit`, `frontend-openapi-drift`), `strict: false`, with
+  `frontend-unit`, `frontend-openapi-drift`, `frontend-build`), `strict: true`, with
   `allow_squash_merge` the only merge mode, force-push and branch deletion blocked,
-  and `delete_branch_on_merge` on.
+  and `delete_branch_on_merge` on. *(Amended 2026-10-06 by owner instruction: this bullet
+  read eleven with `strict: false` — the state measured when ADR-0020 was written — and the
+  change that closes §8 G21's fix 2 and §8 G36 falsified it. The risk accepted here is
+  unchanged: no second approver exists. What moved is the automated half, which is the
+  compensating control this ADR leans on, so it is stated rather than quietly restated.)*
 - `scripts/check_doc_claims.py` (CI-required, via the `backend` job) fails the build
   when documentation asserts a control configuration does not implement, and runs a
   self-test first so it cannot become an always-green gate.

@@ -58,14 +58,14 @@ human review layer: complete it from the diff, not from memory. Tracked as
 
 ## Quality gates
 
-**Required contexts** — a failure blocks the merge (11 as of 2026-10-05):
+**Required contexts** — a failure blocks the merge (12 as of 2026-10-06; `strict` is on, so a branch must be current with `main` before it merges):
 `backend`, `secrets`, `frontend-typecheck`, `frontend-lint`, `frontend-unit`,
-`frontend-openapi-drift`, `gitleaks`, `trivy`, `codeql`, `dependency-audit`,
-`docker-scan`.
+`frontend-openapi-drift`, `frontend-build`, `gitleaks`, `trivy`, `codeql`,
+`dependency-audit`, `docker-scan`.
 
-**Runs but does not block:** `frontend-build` — the only job that boots the
-standalone bundle. It also declares `needs: [frontend-typecheck, frontend-lint,
-frontend-unit]`, so a lint failure skips it entirely (§8 G21).
+**Became a required context 2026-10-06:** `frontend-build` — the only job that boots
+the standalone bundle. Its `needs:` no longer lists `frontend-lint`, so a style
+failure can no longer mask it (§8 G21, fixes 1 and 2 both applied 2026-10-06).
 
 **Disabled (`if: false`):** `frontend-lighthouse`, `frontend-playwright-smoke`
 (§8 G4/G5).
