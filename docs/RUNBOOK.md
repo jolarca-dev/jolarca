@@ -175,7 +175,7 @@ COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.prod"
 | TLS cert replaced in `./ssl/`          | `$COMPOSE exec nginx nginx -s reload`     | zero downtime |
 | Postgres (last resort)                 | `$COMPOSE restart postgres`               | full outage while healthchecks recover |
 | Whole stack                            | `$COMPOSE down && $COMPOSE up -d`         | full outage ~1 min |
-| Roll back a bad release                | `scripts/deploy.sh --rollback`            | brief window |
+| Roll back a bad release                | `scripts/deploy.sh` with `--rollback`     | brief window |
 
 Never `kill -9` postgres; always let the healthcheck-driven restart do it.
 
