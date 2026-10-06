@@ -158,13 +158,14 @@ a residual risk** — see [ADR-0020](ARCHITECTURE_DECISION_RECORDS.md). The repo
 has one maintainer; GitHub does not permit self-approval, and `enforce_admins: true`
 means requiring an approval would make `main` unmergeable rather than safer.
 
-What is enforced instead, verified 2026-10-05 against the branch-protection API:
+What is enforced instead, verified 2026-10-05 and re-verified 2026-10-06 against the branch-protection API:
 
 | Control | Enforcement |
 |---|---|
-| Automated gates | 11 required status checks: backend, secrets, gitleaks, trivy, codeql, dependency-audit, docker-scan, frontend-typecheck, frontend-lint, frontend-unit, frontend-openapi-drift |
+| Automated gates | 12 required status checks: backend, secrets, gitleaks, trivy, codeql, dependency-audit, docker-scan, frontend-typecheck, frontend-lint, frontend-unit, frontend-openapi-drift, frontend-build (added 2026-10-06, §8 G21); `strict` on, so a branch must be current with `main` (§8 G36) |
 | Merge discipline | squash only; force-push blocked; branch deletion blocked; `enforce_admins: true` |
 | Docs-to-config truth | `scripts/check_doc_claims.py` fails the build when a document asserts a control that configuration does not implement |
+| Advisory-to-record linkage | `scripts/check_advisory_register.py` (required `dependency-audit` job, `make check-advisories`) fails when a change removes a production-scoped advisory that no row of [incident response §6.2](INCIDENT_RESPONSE.md) names, or when that row's ID is cited nowhere in the change — so a silenced advisory cannot reach `main` without a record. Added 2026-10-06 after a HIGH arrived with no Dependabot alert (§8 G35) |
 | Release evidence | images published under immutable SHA / release tags; SBOM and SLSA provenance on the production build path |
 
 **Not a control, and not to be cited as one:** `.github/CODEOWNERS` is a single

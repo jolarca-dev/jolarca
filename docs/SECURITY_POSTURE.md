@@ -76,7 +76,7 @@ second procedure, and where a clock or a step differs, INCIDENT_RESPONSE.md wins
 2. **Containment** — flip the processing halt switch; revoke sessions by
    rotating `DJANGO_SECRET_KEY`; edge-block offending IPs; disable the
    affected service via compose.
-3. **Eradication** — patch/rollback (`scripts/deploy.sh --rollback`), rotate
+3. **Eradication** — patch/rollback (`scripts/deploy.sh` with `--rollback`), rotate
    credentials/keys (Fernet MultiFernet rotation supported), re-run secret
    scan.
 4. **Recovery** — restore from verified backups (7/4/12 rotation; monthly

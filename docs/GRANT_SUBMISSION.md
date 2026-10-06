@@ -161,7 +161,7 @@ the grant — see §9.
 > deliberately **not** edited: it is the record of what was sent to the funder, and
 > silently rewriting a funding submission would be worse than disclosing the divergence
 > beside it. **(1) Test health.** The enforced backend coverage gate is
-> `--cov-fail-under=20` (`.github/workflows/ci.yml:97`); the 80% floor is the frontend
+> `--cov-fail-under=20` then, **63 since 2026-10-06** (`.github/workflows/ci.yml:97`); the 80% floor is the frontend
 > Vitest threshold and applies only to the 17 modules named in
 > `frontend/vitest.config.mts`. "e2e green on stack" is measured nowhere: the
 > `frontend-playwright-smoke` job is `if: false` (`QODER.md` §8 G4). **(2) Core Web Vitals

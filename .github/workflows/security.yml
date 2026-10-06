@@ -117,6 +117,32 @@ jobs:
       - name: npm audit (frontend)
         working-directory: frontend
         run: npm audit --omit=dev --audit-level=high
+      # §8 G35 linkage. The gates above NAME advisories; nothing used to require that a named
+      # advisory became a record, so docs/INCIDENT_RESPONSE.md §6.2 depended on an operator
+      # noticing -- measured 2026-10-06, when a production HIGH arrived with no Dependabot
+      # alert at all. This fails when the change removes a production-scoped advisory that no
+      # §6.2 row of class DEP or SEC names, or when the row exists but its ID appears in no
+      # commit message or the PR text (an unattributable security fix, §Part VII). Kept
+      # unconditional so the offline structural half also guards push and schedule events; the
+      # attribution half needs base+head and prints SKIPPED without them. Exit 2 (cannot
+      # verify) fails the job: a skipped check must never read as a pass. Two limits stated
+      # rather than implied -- npm production scope only (a removed advisory in
+      # backend/requirements/*.txt is not covered), and a §6.2 row must name the package as a
+      # marked identifier (backticks or emphasis) rather than in plain prose, because prose that
+      # happens to contain a package name would otherwise silence the check.
+      - name: Advisory-to-incident-record linkage (§8 G35)
+        env:
+          ADV_REG_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          ADV_REG_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          ADV_REG_PR_NUMBER: ${{ github.event.pull_request.number }}
+          # This is the first step in this repository that calls the platform API from CI, and
+          # `gh` refuses to run without a token: it is not picked up implicitly the way
+          # actions/* helpers handle it. Without this line every pull request would report
+          # CANNOT and fail the job -- denial-of-pipeline, the G18/ADR-0018 lesson.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/check_advisory_register.py --self-test
+          python scripts/check_advisory_register.py
 
   docker-scan:
     runs-on: ubuntu-24.04

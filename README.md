@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/jolarca-dev/jolarca/actions/workflows/ci.yml/badge.svg)](https://github.com/jolarca-dev/jolarca/actions/workflows/ci.yml)
 [![Security](https://github.com/jolarca-dev/jolarca/actions/workflows/security.yml/badge.svg)](https://github.com/jolarca-dev/jolarca/actions/workflows/security.yml)
-![Coverage](https://img.shields.io/badge/coverage-enforced%20gate%2020%25-yellow)
+![Coverage](https://img.shields.io/badge/coverage-enforced%20gate%2063%25-yellow)
 ![Lighthouse](https://img.shields.io/badge/lighthouse-CI%20gate%20disabled-lightgrey)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
 
@@ -46,7 +46,7 @@ Design invariants (enforced in review, see `docs/architecture/01-modular-breakdo
 
 ```bash
 cp .env.example .env          # fill in values
-make bootstrap                # venv + deps
+make bootstrap && source scripts/activate.sh   # venv + deps, then activate
 make sysdeps                  # GDAL on the host (one-time, needs sudo)
 make dev-up                   # full stack via docker-compose.dev.yml
 make migrate && make seed

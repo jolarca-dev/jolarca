@@ -36,7 +36,7 @@ gh pr checks 153
 ```
 
 The guard validates its own comparison logic before touching any branch
-(`scripts/repair-dependabot-lock.sh --self-test`), because a tool that rejected
+(`scripts/repair-dependabot-lock.sh` with `--self-test`), because a tool that rejected
 every valid repair would be invisible until a PR stayed red for a week.
 
 **What each check means:**

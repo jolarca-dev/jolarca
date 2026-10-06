@@ -14,7 +14,8 @@ Engineering context:
 > `frontend/scripts/bundle-analyze.ts` has any invoker outside a developer's terminal.
 > This report previously described the budget as CI-enforced and named a "Budget job" as
 > the enforcement for four metrics; that was false, and the gates it implied are tracked
-> as `QODER.md` §8 **G4** and **G5**, both still OPEN. The numbers themselves are
+> as `QODER.md` §8 **G4** and **G5**, both still OPEN (non-enforcement accepted in ADR-0022).
+> The numbers themselves are
 > unchanged and remain the intended budgets — **what changed is the claim that anything
 > checks them.** Re-enabling either job makes the Enforcement column below true again.
 
