@@ -127,7 +127,7 @@ follows the 7-year tax-law window before anonymization.
 - **Versioning:** path prefix `/api/v1/`; breaking changes require `/v2`
   with a deprecation window.
 - **Client:** `openapi-fetch` bound to generated `paths` types
-  (`frontend/src/generated/api`) — drift is caught by `npm run api:drift`.
+  (`frontend/src/generated/api.ts`) — drift is caught by `npm run api:drift`.
 - **Contract gaps:** endpoints the frontend needs but the backend has not
   shipped are registered in `frontend/src/lib/api/contract-gaps.ts`
   (GAP-Pxx/Sxx/Lxx/Axx…) and rendered as sanctioned degradation states.

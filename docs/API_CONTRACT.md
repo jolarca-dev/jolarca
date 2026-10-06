@@ -35,7 +35,7 @@
 ```mermaid
 flowchart LR
     A["Backend code + drf-spectacular annotations"] -->|"make api-schema"| B["docs/api/openapi.yaml"]
-    B -->|"openapi-ts (frontend/openapi-ts.config.ts)"| C["frontend/src/lib/api/generated client"]
+    B -->|"openapi-ts (frontend/openapi-ts.config.ts)"| C["frontend/src/generated/api.ts client"]
     C --> D["Domain libs (cart, checkout, seller, admin, search, funeral)"]
     B -->|snapshot committed| E["CI gate: schema drift fails the build"]
 ```

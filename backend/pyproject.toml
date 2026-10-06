@@ -48,25 +48,28 @@ prod = [
 packages = ["project", "apps"]
 
 [tool.ruff]
-line-length = 100
-target-version = "py312"
+# Inherit the repo's one rule set instead of maintaining a second copy of it.
+# Before this, line-length lived here as 100 and in /ruff.toml as 88 — two answers
+# to the same question in one repository, which is how §8 G25 stayed invisible.
+# Shared values (line-length, target-version, base select/ignore) are defined only
+# in ../ruff.toml; nothing below may redeclare them. Only Django-specific deltas.
+extend = "../ruff.toml"
 extend-exclude = ["*/migrations/*"]
 
 [tool.ruff.lint]
-select = [
-    "E", "W",    # pycodestyle
-    "F",         # pyflakes
-    "I",         # isort
-    "B",         # bugbear
-    "S",         # bandit (security)
-    "C4",        # comprehensions
-    "UP",        # pyupgrade
+extend-select = [
     "DJ",        # django-specific
 ]
-ignore = [
-    "S101",  # assert used in tests
+extend-ignore = [
     "S311",  # pseudo-random OK for non-crypto uses; crypto paths use secrets
 ]
+
+[tool.ruff.lint.isort]
+# Stated rather than inferred. `project` and `apps` are this service's own packages,
+# and the classification must not depend on which file happens to supply the settings
+# once /ruff.toml is inherited. Measured with `ruff check --show-settings` from
+# backend/: project_root stays backend/, so this is determinism, not a workaround.
+known-first-party = ["project", "apps"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "DJ"]

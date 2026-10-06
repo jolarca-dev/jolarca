@@ -35,17 +35,49 @@ updates:
     # scope under PCI DSS SAQ-A; a silent regression there is a scope change,
     # not a chore).
     #
-    # Two families are grouped WITH majors, because they cannot be bumped apart.
-    # Verified from each branch's own files with a local `npm ci --dry-run`:
+    # Two families cannot be bumped apart. Verified from each branch's own files with a
+    # local `npm ci --dry-run`:
     #   vitest-5.0.3            ERESOLVE While resolving: @vitest/coverage-v8@4.1.10,
     #                           Found: vitest@5.0.3   (and mirrored for coverage-v8)
     #   eslint-10.11.0          ERESOLVE While resolving: eslint-config-next@15.5.23,
     #                           Found: eslint@10.11.0
-    # `eslint-config-next` is peer-coupled to BOTH `next` and `eslint`, so the
-    # toolchain moves as one ring — splitting it into a `next` group and an `eslint`
-    # group would leave each still unsatisfiable on its own. Groups are therefore kept
-    # disjoint and their patterns excluded from the catch-all, so no update can match
-    # two groups at once.
+    # `eslint-config-next` is version-locked to `next` (16.3.8 depends on
+    # @next/eslint-plugin-next@16.3.8 exactly), so THOSE two majors move together. It
+    # does NOT follow that `eslint`'s major moves with them: a peer range is a CEILING,
+    # not a licence to raise both. `eslint-config-next@16` bundles
+    # `eslint-plugin-react@7.37.5`, whose newest published version still peers eslint
+    # `^3 || ... || ^9.7`, and ESLint 10 removed `context.getFilename()` — measured on
+    # PR #154, where the ring including eslint 10 cannot even load a config:
+    # "Error while loading rule 'react/display-name': contextOrFilename.getFilename is
+    # not a function". So #154 is permanently unbuildable, and eslint majors are ignored
+    # below rather than grouped. (This comment previously claimed the toolchain was one
+    # ring including `eslint`; that mistake is what created #154.)
+    #
+    # Each family is then split into a `-major` and a `-patch` group differing ONLY in
+    # `update-types` (QODER.md §8 G20). Grouping majors together is necessary, but a
+    # grouped PR is ATOMIC: while `vitest` + `@vitest/*` sat in a single group that
+    # included `major`, the CVSS 5.9 fix for CVE-2026-84373 (vitest **4.1.11**, a patch
+    # release, `main` carries 4.1.10) could only arrive inside the 5.x major-bump PR.
+    # A security patch must never wait on a major release.
+    #
+    # Matching is made unambiguous BY CONSTRUCTION rather than by relying on group order:
+    # the catch-all excludes every family pattern, and the two groups per family share
+    # patterns but partition by update-type — so any single update matches exactly ONE
+    # group. That matters because GitHub documents first-match-wins ordering between
+    # groups, and dependabot-core #14202 reports majors being silently suppressed when
+    # the first matching group excludes them. This file does not depend on that path.
+    #
+    # ESLint majors are blocked by an upstream ceiling, not by choice. REVISIT TRIGGER:
+    # when `npm view eslint-plugin-react peerDependencies.eslint` includes 10 (or
+    # eslint-config-next vendors a version that does), delete this `ignore:` block AND
+    # add `eslint` / `@eslint/*` back to `next-toolchain-major` patterns in the same
+    # change; `make check-deps-groups` enforces that an un-ignored eslint major is
+    # either grouped or reported, so the two edits cannot be half-done silently.
+    ignore:
+      - dependency-name: eslint
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@eslint/*"
+        update-types: ["version-update:semver-major"]
     groups:
       weekly-minor-patch:
         applies-to: version-updates
@@ -63,16 +95,32 @@ updates:
         update-types:
           - minor
           - patch
-      vitest:
+      vitest-major:
         applies-to: version-updates
         patterns:
           - vitest
           - "@vitest/*"
         update-types:
           - major
+      vitest-patch:
+        applies-to: version-updates
+        patterns:
+          - vitest
+          - "@vitest/*"
+        update-types:
           - minor
           - patch
-      next-toolchain:
+      # Major ring = the version-locked pair only. `eslint` / `@eslint/*` are absent
+      # here on purpose: their majors are blocked upstream (see `ignore:`), so a
+      # grouped eslint major would make the whole ring unbuildable, as PR #154 showed.
+      next-toolchain-major:
+        applies-to: version-updates
+        patterns:
+          - next
+          - eslint-config-next
+        update-types:
+          - major
+      next-toolchain-patch:
         applies-to: version-updates
         patterns:
           - next
@@ -80,7 +128,6 @@ updates:
           - eslint-config-next
           - "@eslint/*"
         update-types:
-          - major
           - minor
           - patch
   - package-ecosystem: docker
