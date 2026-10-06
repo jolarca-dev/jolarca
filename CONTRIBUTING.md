@@ -5,7 +5,7 @@
 ```bash
 git clone <repo> && cd jolarca
 cp .env.example .env            # fill in CHANGE_ME values
-make bootstrap                  # venv + pinned dev dependencies
+make bootstrap && source scripts/activate.sh   # venv + pinned dev deps, then activate (`make shell` does both)
 make sysdeps                    # one-time: GDAL libraries (PostGIS model support)
 make dev-up                     # postgis, redis, minio, mailpit, stripe-mock, web, worker, beat, frontend
 make migrate && make seed
@@ -17,7 +17,7 @@ Frontend separately (if not using compose):
 cd frontend && npm ci && npm run dev
 ```
 
-## Commit style — Conventional Commits (enforced; CHANGELOG is generated from these)
+## Commit style — Conventional Commits (convention; not machine-enforced)
 
 ```
 <type>(<scope>): <imperative summary>
@@ -29,14 +29,46 @@ scope:  users | sellers | products | orders | payments | tax | shipping | ai | b
 
 Breaking changes: append `!` (`feat(payments)!: ...`) and describe migration in the body.
 Security fixes MUST reference the internal incident ID, never the vulnerability detail.
+Mint the ID first, in `docs/INCIDENT_RESPONSE.md` §6.2 (format §6.1); inventing one inside
+a commit message is fabricating a record. The rule covers four public, permanent surfaces:
+branch name, commit subject, commit body, and PR title plus body. The detail itself belongs
+in that register, in `QODER.md` §8, and in the ADRs — those are what the ID points at.
+
+**Nothing machine-checks this format.** `.pre-commit-config.yaml` installs no
+`commit-msg` hook and no commitlint runs in any workflow, so the convention is
+*review-gated*. `docs/CHANGELOG.md` is likewise **not generated** from these
+commits: no generator is wired to any make target or workflow — it is
+hand-maintained. A root `CHANGELOG.md` stub that used to sit beside this file was
+deleted on 2026-10-05 rather than backfilled; `docs/CHANGELOG.md` plus `git log`
+is the record.
 
 ## Branching & PR checklist
 
 Branch from `main`; one concern per PR. Every PR template includes a **compliance
-checklist** — it is not ceremonial. Reviewers: `CODEOWNERS` forces a second
-approver on `payments_app`, `compliance_app`, `settings/`, and workflows.
+checklist** — it is not ceremonial.
 
-## Quality gates (all enforced in CI)
+**Review is self-review.** `.github/CODEOWNERS` is a single wildcard
+(`* @JourneyOfLife`): there are no per-path owners for `payments_app`,
+`compliance_app`, `settings/` or workflows. Branch protection sets
+`require_code_owner_reviews: false` and `required_approving_review_count: 0`, so
+CODEOWNERS is inert and no second approver is required — or possible, with one
+operator and `enforce_admins: true`. The PR checklist is therefore the *only*
+human review layer: complete it from the diff, not from memory. Tracked as
+`QODER.md` §8 G2.
+
+## Quality gates
+
+**Required contexts** — a failure blocks the merge (12 as of 2026-10-06; `strict` is on, so a branch must be current with `main` before it merges):
+`backend`, `secrets`, `frontend-typecheck`, `frontend-lint`, `frontend-unit`,
+`frontend-openapi-drift`, `frontend-build`, `gitleaks`, `trivy`, `codeql`,
+`dependency-audit`, `docker-scan`.
+
+**Became a required context 2026-10-06:** `frontend-build` — the only job that boots
+the standalone bundle. Its `needs:` no longer lists `frontend-lint`, so a style
+failure can no longer mask it (§8 G21, fixes 1 and 2 both applied 2026-10-06).
+
+**Disabled (`if: false`):** `frontend-lighthouse`, `frontend-playwright-smoke`
+(§8 G4/G5).
 
 1. `ruff check` clean **and** `ruff format --check` clean — lint and formatting are
    separate tools (`make lint` runs both, plus the frontend ESLint and Prettier
@@ -45,10 +77,28 @@ approver on `payments_app`, `compliance_app`, `settings/`, and workflows.
 3. Tests green — CI runs `tests/unit`, `tests/security` and `tests/contract`
    (`make test`, `make test-contract`; the contract suite needs the dev database,
    so it is not part of `make test`). The coverage gate today is
-   `--cov-fail-under=20`; 80% is the target, not the current gate.
+   `--cov-fail-under=63` (ADR-0021's ratchet, from CI's own figure); 80% is the target — §8 G1.
 4. OpenAPI snapshot regenerated if API surface changed (`make api-schema`)
-5. No secrets (`scripts/check_no_secrets.sh`, Gitleaks)
-6. Playwright checkout journey passes (frontend e2e)
+5. No secrets — `make check-secrets` scans what **git carries** (`git ls-files`),
+   the same set CI sees, alongside Gitleaks (which scans history).
+6. Playwright checkout journey — **not currently a gate**; the job is `if: false`
+   (§8 G4). Do not cite it as coverage for a frontend change.
+7. Documentation claims — `make check-docs` fails when a contributor-facing doc
+   asserts a control that configuration does not implement (badge org vs `origin`,
+   cited paths that do not exist, claims proven false, volatile ADR counts, gap-
+   register integrity, cited `make` targets, and the exemption map that scopes C3/C6,
+   which must state a reason per file — §8 G38). Scope now comes from `git ls-files`,
+   so a new document cannot sit quietly outside it. Runs in the CI backend job with
+   `--self-test` first: claims about controls, unlike controls, were checked by nothing.
+8. Toolchain parity — `make check-toolchain` fails if the interpreter running the gates does not
+   match the `backend/requirements/dev.txt` pins, or if a stray `.venv` exists anywhere in the
+   tree (gitignored at every depth, so invisible to `git status`). Local-only by design: CI
+   installs from the lock. `make verify` runs it first.
+9. Advisory-to-record linkage — `make check-advisories` fails when your change removes a
+   production-scoped npm advisory that no row of `docs/INCIDENT_RESPONSE.md` §6.2 names as a
+   marked identifier, or when that row's incident ID appears in none of your commit messages or
+   the PR text (§8 G35; §Part VII). The structural half — every cited ID must exist in §6.2 — runs
+   offline and always. Mint the ID in the register **before** writing the fix.
 
 ## Architecture rules
 
@@ -69,13 +119,19 @@ Enforced by `backend/tests/unit/test_architecture_boundaries.py` (runs in
   16 pre-existing direct model imports are baselined in the fitness test as a
   shrink-only ratchet — route new calls through `services.py`, don't extend the
   baseline.
-- Never hand-edit: `requirements/*.txt`, `docs/api/openapi.yaml`,
-  `frontend/src/lib/api/generated/`, `CHANGELOG.md`, `LICENSE`.
+- Never hand-edit: `backend/requirements/*.txt`, `docs/api/openapi.yaml`,
+  `frontend/src/generated/api.ts`, `LICENSE`. Regenerate instead — `make lock`
+  for the pins, `make api-schema` for the snapshot and client. (`docs/CHANGELOG.md`
+  was once listed here in error: nothing generates it, so it is hand-maintained — and
+  the root stub that caused the confusion was deleted on 2026-10-05. The
+  previously cited path `frontend/src/lib/api/generated/` does not exist.)
 - New PII fields: use `core.encryption.EncryptedTextField` and annotate the
   RoPA classification; update `docs/COMPLIANCE_MATRIX.md` in the same PR.
 
 ## Adding dependencies
 
 Runtime deps go in `backend/pyproject.toml`, then `make lock` regenerates the
-pinned, hash-checked requirement files. PRs that edit `requirements/*.txt`
-directly are rejected by CI.
+pinned, hash-checked requirement files. **No CI job rejects a hand-edited
+`requirements/*.txt`** — that rule is review-gated only. Check it yourself: a
+lockfile edit not accompanied by a matching `pyproject.toml` edit is a defect,
+and it undermines the `--require-hashes` install CI depends on.

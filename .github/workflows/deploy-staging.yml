@@ -16,7 +16,14 @@ concurrency:
 jobs:
   build-and-push:
     runs-on: ubuntu-24.04
-    environment: staging          # GitHub environment: audit log of every deploy (SOC 2 CC8.1)
+    # NO `environment:` on this job. A job that declares an environment makes GitHub
+    # record a DEPLOYMENT to it and post a deployment status — and this job only
+    # builds and pushes container images. Nothing is deployed, so labelling it
+    # `staging` wrote a false entry into the environment audit log on every merge
+    # (the comment here used to cite that log as "SOC 2 CC8.1" evidence). Re-add
+    # `environment: staging` only in the PR that implements a real rollout, so the
+    # log reflects real events. ghcr.io auth uses the repo-scoped GITHUB_TOKEN and
+    # `packages: write`, neither of which needs an environment.
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
@@ -36,18 +43,47 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository }}/frontend:staging-${{ github.sha }}
 
+  # The display name is load-bearing: GitHub renders it as the check line. A job
+  # literally called "deploy" reporting success would read as "staged deployment
+  # completed", which is false — there is no staging target (§A-07 UNDECIDED).
   deploy:
+    name: "staging rollout - NOT IMPLEMENTED (stub, nothing deployed)"
     needs: build-and-push
     runs-on: ubuntu-24.04
-    environment: staging
+    # No `environment:` here either, for the same reason as build-and-push: a
+    # rollout that does not happen must not appear in the deployment log.
     steps:
-      # TARGET RUNTIME DECISION PENDING (see docs/ASSUMPTIONS.md §A-07):
-      # GKE Autopilot is the candidate. This step is intentionally a sanctioned
-      # stub — deploying to an undecided target would be worse than no deploy.
-      - name: Rollout (sanctioned stub)
+      # TARGET RUNTIME DECISION PENDING (see docs/ASSUMPTIONS.md §A-07): GKE
+      # Autopilot is the candidate. Deploying to an undecided target would be worse
+      # than not deploying, so this step stays a sanctioned stub.
+      #
+      # It used to end in `exit 1`. That made EVERY push to main report a red
+      # Deploy Staging run long after the irreversible part (the image push) had
+      # already succeeded — a permanently-red signal is as unactionable as a
+      # permanently-green one (the closed gap G3), and it hid genuine image-build
+      # failures behind the stub's own expected failure (QODER.md §8 G17).
+      #
+      # It now warns and exits 0, but the non-deployment is kept legible in three
+      # places a reader cannot miss: the job name above, a ::warning:: annotation
+      # on the run, and a step-summary heading. Removing the red X without these
+      # would simply convert one false signal into a worse one.
+      - name: Rollout stub - no deployment performed
         run: |
-          echo "Image tags pinned for staging:"
-          echo "  ghcr.io/${{ github.repository }}/backend:staging-${{ github.sha }}"
-          echo "  ghcr.io/${{ github.repository }}/frontend:staging-${{ github.sha }}"
-          echo "TODO(A-07): kubectl set image / helm upgrade once target runtime is ratified."
-          exit 1   # fail loudly until the deploy target is implemented — no silent no-ops
+          echo "::warning title=Staging rollout not implemented::No deployment to staging was performed. Target runtime is undecided per ASSUMPTIONS.md A-07. Images are published but nothing runs them."
+          {
+            echo "## No staging deployment performed"
+            echo ""
+            echo "**Nothing was deployed to staging.** The rollout target runtime is"
+            echo "undecided (\`docs/ASSUMPTIONS.md\` §A-07), so this job is a sanctioned"
+            echo "stub. Publishing to an undecided target would be worse than not"
+            echo "publishing at all."
+            echo ""
+            echo "Images built and pushed by the preceding job:"
+            echo ""
+            echo "- \`ghcr.io/${{ github.repository }}/backend:staging-${{ github.sha }}\`"
+            echo "- \`ghcr.io/${{ github.repository }}/frontend:staging-${{ github.sha }}\`"
+            echo ""
+            echo "This run is green by design. It is evidence that images were built"
+            echo "and attested, **not** evidence that anything was deployed."
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "TODO(A-07): kubectl set image / helm upgrade once the target runtime is ratified."

@@ -9,9 +9,39 @@ permissions:
   packages: write
 
 jobs:
-  build-and-push:
+  # Position is the control. This workflow used to run build-and-push -> deploy, so the
+  # first job published `backend:latest` and `frontend:latest` (with SBOM and SLSA
+  # provenance) under `environment: production`, and only the *second* job said the
+  # rollout is not implemented. That is the placement defect §8 G17 recorded for staging:
+  # an irreversible side effect upstream of the step that admits it, with a red X the
+  # reader cannot act on because the publish already happened.
+  #
+  # Declaring an environment is not an approval control either: no `production`
+  # environment exists, a `v*` tag would auto-create one with `can_admins_bypass`
+  # defaulting to true, and with a single operator who is the org owner any approval
+  # granted here is self-grantable — §8 G18 and ADR-0020. A failing step upstream, by
+  # contrast, cannot be bypassed by role.
+  #
+  # Still latent rather than current: `git ls-remote --tags origin` returns no `v*`, so
+  # this workflow has never run.
+  refuse-publish:
     runs-on: ubuntu-24.04
-    environment: production       # REQUIRED: manual approval gate before any prod action
+    steps:
+      - name: production rollout not implemented — nothing built, nothing published
+        run: |
+          echo "::error::No production rollout target is ratified (docs/ASSUMPTIONS.md §A-07), so this workflow publishes nothing."
+          echo "Lift this job only together with all of: a ratified deploy target, a migration job that runs before rollout,"
+          echo "a smoke check after it, a rollback image tag recorded in the deploy log, and on-call notification."
+          exit 1
+
+  build-and-push:
+    needs: refuse-publish
+    runs-on: ubuntu-24.04
+    # No `environment:` here on purpose: a build job must not write deployment records
+    # about a deployment that did not happen — §8 G26 measured 111 such records on
+    # staging, 6 of the last 12 with a `success` status. Immutable per-release tags only:
+    # `:latest` was the mutable half of the publish, and queue item 5 names removing it as
+    # the control that holds while §A-07 is undecided.
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
@@ -26,7 +56,6 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository }}/backend:${{ github.ref_name }}
-            ghcr.io/${{ github.repository }}/backend:latest
           provenance: true          # SLSA provenance attestation (supply-chain evidence)
           sbom: true                # SBOM artifact (SOC 2 supply-chain evidence)
       - uses: docker/build-push-action@v6
@@ -35,13 +64,15 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository }}/frontend:${{ github.ref_name }}
-            ghcr.io/${{ github.repository }}/frontend:latest
           provenance: true
           sbom: true
 
   deploy:
     needs: build-and-push
     runs-on: ubuntu-24.04
+    # Kept: this is where a ratified rollout would declare its environment, and it is
+    # unreachable while `refuse-publish` fails, so no environment and no deployment
+    # record is created by a run of this workflow as it stands today.
     environment: production
     steps:
       # Same sanctioned-stub policy as staging (docs/ASSUMPTIONS.md §A-07).

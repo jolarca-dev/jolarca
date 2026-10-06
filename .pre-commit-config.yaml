@@ -27,3 +27,22 @@ repos:
     hooks:
       - id: prettier
         files: ^frontend/
+        # Prettier resolves .prettierignore relative to **cwd**, and pre-commit runs
+        # every hook from the repository root — where there is no .prettierignore. So
+        # frontend/.prettierignore's `src/generated` exclusion was never applied, and
+        # this hook rewrote the committed generated client (QODER.md §8 G16; measured
+        # 2026-10-05: 1323 insertions / 1323 deletions on frontend/src/generated/api.ts,
+        # and the hook FAILS the commit while doing it). Pointing the hook at the
+        # project's own ignore file makes it agree with `npm run format:check`, which
+        # runs inside frontend/ and honours it — so the hook can no longer produce a
+        # diff that no CI gate will ever reproduce.
+        # Measured 2026-10-05: --ignore-path alone leaves the generated client alone
+        # but exits 1 ("No files matching the given patterns were found") when every
+        # passed file is ignored, which would fail any commit touching only generated
+        # frontend output — i.e. exactly `make api-schema`. The second flag makes an
+        # all-ignored file list a pass instead of an error; the control case (a real
+        # badly-formatted frontend file) still fails and reformats.
+        args:
+          - --ignore-path
+          - frontend/.prettierignore
+          - --no-error-on-unmatched-pattern

@@ -15,7 +15,7 @@ def main() -> None:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
         raise ImportError(
-            "Couldn't import Django. Activate the project venv (make bootstrap)."
+            "Couldn't import Django. Activate the project venv: source scripts/activate.sh"
         ) from exc
     execute_from_command_line(sys.argv)
 
