@@ -131,6 +131,15 @@ LIVE_CLAIM_FILES = [
     # list, so no check could see it: the same scope hole as G30, in the next document.
     # Tracked as §8 G32.
     "docs/PERFORMANCE_REPORT.md",
+    # Added 2026-10-06 with §8 G33. This document is the producer of the incident IDs
+    # that CONTRIBUTING.md and QODER.md §Part VII require every security fix to cite,
+    # and it had never been in scope for anything: a falsified claim inside it
+    # ("Dev-only npm advisories ... which Dependabot does NOT carry, e.g. braces", in
+    # the workflow that pairs with it) and a citation to a directory that does not
+    # exist both survived every gate. Being the authoritative record is the reason it
+    # must be checked, not a reason to leave it out: its claims are internal and
+    # therefore falsifiable, unlike the frozen grant documents above.
+    "docs/INCIDENT_RESPONSE.md",
     ".github/CODEOWNERS",
     "Makefile",
     # Workflow comments are contributor-facing claims too. G18 and G26 both began
@@ -180,6 +189,10 @@ GOVERNANCE_FILES = [
     "docs/PERFORMANCE_REPORT.md",
     "docs/GRANT_APPLICATION.md",
     "docs/GRANT_SUBMISSION.md",
+    # Added 2026-10-06 with §8 G33, in BOTH lists for the reason in the LIVE_CLAIM_FILES
+    # entry above: §6.2 is now where incident IDs are minted, so a citation there to a
+    # nonexistent path or tool is a defect in the record itself, not in prose about it.
+    "docs/INCIDENT_RESPONSE.md",
 ]
 
 PATH_ROOTS = ["", "backend"]
