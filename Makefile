@@ -1,5 +1,6 @@
 # jolarca — developer task runner
-# All targets are non-interactive; CI uses the same targets (parity by design).
+# All targets are non-interactive. CI runs the same checks, but invokes the gate scripts
+# and tools directly rather than `make`, and check-toolchain has no CI counterpart (§8 G14).
 
 SHELL := /bin/bash
 COMPOSE_DEV := docker compose -f docker-compose.dev.yml
