@@ -5,7 +5,7 @@
 ```bash
 git clone <repo> && cd jolarca
 cp .env.example .env            # fill in CHANGE_ME values
-make bootstrap                  # venv + pinned dev dependencies
+make bootstrap && source scripts/activate.sh   # venv + pinned dev deps, then activate (`make shell` does both)
 make sysdeps                    # one-time: GDAL libraries (PostGIS model support)
 make dev-up                     # postgis, redis, minio, mailpit, stripe-mock, web, worker, beat, frontend
 make migrate && make seed
@@ -58,14 +58,14 @@ human review layer: complete it from the diff, not from memory. Tracked as
 
 ## Quality gates
 
-**Required contexts** — a failure blocks the merge (11 as of 2026-10-05):
+**Required contexts** — a failure blocks the merge (12 as of 2026-10-06; `strict` is on, so a branch must be current with `main` before it merges):
 `backend`, `secrets`, `frontend-typecheck`, `frontend-lint`, `frontend-unit`,
-`frontend-openapi-drift`, `gitleaks`, `trivy`, `codeql`, `dependency-audit`,
-`docker-scan`.
+`frontend-openapi-drift`, `frontend-build`, `gitleaks`, `trivy`, `codeql`,
+`dependency-audit`, `docker-scan`.
 
-**Runs but does not block:** `frontend-build` — the only job that boots the
-standalone bundle. It also declares `needs: [frontend-typecheck, frontend-lint,
-frontend-unit]`, so a lint failure skips it entirely (§8 G21).
+**Became a required context 2026-10-06:** `frontend-build` — the only job that boots
+the standalone bundle. Its `needs:` no longer lists `frontend-lint`, so a style
+failure can no longer mask it (§8 G21, fixes 1 and 2 both applied 2026-10-06).
 
 **Disabled (`if: false`):** `frontend-lighthouse`, `frontend-playwright-smoke`
 (§8 G4/G5).
@@ -77,7 +77,7 @@ frontend-unit]`, so a lint failure skips it entirely (§8 G21).
 3. Tests green — CI runs `tests/unit`, `tests/security` and `tests/contract`
    (`make test`, `make test-contract`; the contract suite needs the dev database,
    so it is not part of `make test`). The coverage gate today is
-   `--cov-fail-under=20`; 80% is the target, not the current gate.
+   `--cov-fail-under=63` (ADR-0021's ratchet, from CI's own figure); 80% is the target — §8 G1.
 4. OpenAPI snapshot regenerated if API surface changed (`make api-schema`)
 5. No secrets — `make check-secrets` scans what **git carries** (`git ls-files`),
    the same set CI sees, alongside Gitleaks (which scans history).
@@ -86,14 +86,19 @@ frontend-unit]`, so a lint failure skips it entirely (§8 G21).
 7. Documentation claims — `make check-docs` fails when a contributor-facing doc
    asserts a control that configuration does not implement (badge org vs `origin`,
    cited paths that do not exist, claims proven false, volatile ADR counts, gap-
-   register integrity, cited `make` targets). Runs in the CI backend job, preceded
-   by `--self-test`. This gate exists because every code invariant here is
-   machine-checked while the *claims about* those controls were checked by nothing,
-   so docs drifted and each drift became a new §8 entry.
+   register integrity, cited `make` targets, and the exemption map that scopes C3/C6,
+   which must state a reason per file — §8 G38). Scope now comes from `git ls-files`,
+   so a new document cannot sit quietly outside it. Runs in the CI backend job with
+   `--self-test` first: claims about controls, unlike controls, were checked by nothing.
 8. Toolchain parity — `make check-toolchain` fails if the interpreter running the gates does not
    match the `backend/requirements/dev.txt` pins, or if a stray `.venv` exists anywhere in the
    tree (gitignored at every depth, so invisible to `git status`). Local-only by design: CI
    installs from the lock. `make verify` runs it first.
+9. Advisory-to-record linkage — `make check-advisories` fails when your change removes a
+   production-scoped npm advisory that no row of `docs/INCIDENT_RESPONSE.md` §6.2 names as a
+   marked identifier, or when that row's incident ID appears in none of your commit messages or
+   the PR text (§8 G35; §Part VII). The structural half — every cited ID must exist in §6.2 — runs
+   offline and always. Mint the ID in the register **before** writing the fix.
 
 ## Architecture rules
 

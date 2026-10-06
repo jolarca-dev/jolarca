@@ -27,19 +27,19 @@ state — re-measure before quoting one.
 
 | Stack | Enforced value | Where | Applies to |
 | --- | --- | --- | --- |
-| Backend | `--cov-fail-under=20` | `.github/workflows/ci.yml:97` | `pytest tests/unit tests/security tests/contract --cov=.` |
+| Backend | `--cov-fail-under=63` | `.github/workflows/ci.yml:97` | `pytest tests/unit tests/security tests/contract --cov=.` |
 | Frontend | `80` for branches, functions, lines and statements | `frontend/vitest.config.mts:55-60` | only the 17 modules named in `coverage.include` (`:36-54`) |
 
-The backend figure is **20%, not 80%**. The in-file comment at `ci.yml:98-103` records the
-intent to raise it in steps from the figure CI itself reports, and measured coverage at
-68.8% locally once contract tests joined the suite. The frontend floor is real but narrow:
-it is not an aggregate over the app, so "the frontend is 80% covered" does not follow from
-it. This table is the only place in `docs/` that states these numbers; every other document
-links here rather than restating them (`QODER.md` §8 G1 — the restatements were the drift).
-The 80→20 backend decision is recorded as ADR-0021, retroactively: the value was lowered in
-an unrelated revert PR and had no decision record until 2026-10-05. That ADR also carries
-the ratchet rule and the fact that it is already triggered — measured 69% against a gate of
-20% — so the next CI edit owes either a raised flag or a stated reason.
+The backend figure is **63%, not 80%** — raised from 20 on 2026-10-06 when ADR-0021's ratchet
+triggered: CI's own `backend` job reported `Total coverage: 68.56%` (run `37476183729`), so
+the flag is that figure minus 5, taken from what CI reports rather than from a local run.
+Measured locally the same set came out at 68.8% once contract tests joined it. The frontend
+floor is real but narrow: it is not an aggregate over the app, so "the frontend is 80%
+covered" does not follow from it. This table is the only place in `docs/` that states these
+numbers; every other document links here rather than restating them (`QODER.md` §8 G1 — the
+restatements were the drift). The 80→20 downgrade is recorded as ADR-0021, retroactively: the
+value was lowered in an unrelated revert PR and had no decision record until 2026-10-05, which
+is also where the ratchet rule lives. §8 G1 stays OPEN: 63% is still not the documented target.
 
 **Rule of composition:** deterministic tests only — no sleeps-as-sync, no
 network to third parties (Stripe mocked), seeded fixtures, and test data
@@ -75,31 +75,35 @@ cleanup in e2e (`e2e/fixtures`).
 
 ```mermaid
 flowchart TD
-    PR["Push / PR"] --> BE["Backend job<br/>ruff · mypy · pytest (--cov-fail-under=20)"]
+    PR["Push / PR"] --> BE["Backend job<br/>ruff · mypy · pytest (--cov-fail-under=63)"]
     PR --> FE["Frontend job<br/>ESLint · typecheck · Vitest (80% on the 17 included modules) · Prettier"]
     PR --> SEC["Security job<br/>secret scan · npm audit · pip-audit"]
     BE --> CT["Contract: OpenAPI snapshot diff<br/>+ frontend api:drift"]
-    FE --> E2E["Playwright suite: 43 tests × 3 projects<br/>CI job is if:false — runs nowhere (§8 G4)"]
-    FE --> LH["Lighthouse CI vs budget<br/>job is if:false — measures nothing (§8 G5)"]
-    FE --> BA["frontend-build: verify-standalone.mjs boots the bundle<br/>no size gate exists; not a required context (§8 G21)"]
-    CT --> MERGE["Merge gate (11 required status checks)"]
+    FE --> E2E["Playwright suite: 43 tests × 3 projects<br/>CI job is if:false — runs nowhere (§8 G4; ADR-0022)"]
+    FE --> LH["Lighthouse CI vs budget<br/>job is if:false — measures nothing (§8 G5; ADR-0022)"]
+    FE --> BA["frontend-build: verify-standalone.mjs boots the bundle<br/>no size gate exists; required context since 2026-10-06 (§8 G21 closed)"]
+    CT --> MERGE["Merge gate (12 required status checks; branch must be current)"]
     E2E -.->|disabled| MERGE
     LH -.->|disabled| MERGE
-    BA -.->|not required| MERGE
+    BA --> MERGE
     SEC --> MERGE
     MERGE --> STG["deploy-staging.yml → images to ghcr.io<br/>(rollout NOT implemented — §A-07 stub)"]
     STG --> PROD["deploy-production.yml → attested images<br/>(rollout stub fails loudly; scripts/deploy.sh is NOT wired into CI)"]
 ```
 
-**Gate conditions:** the eleven required contexts are `backend`, `secrets`,
+**Gate conditions:** the twelve required contexts are `backend`, `secrets`,
 `frontend-typecheck`, `frontend-lint`, `frontend-unit`, `frontend-openapi-drift`,
-`gitleaks`, `trivy`, `codeql`, `dependency-audit` and `docker-scan`. What therefore
-blocks a merge: backend coverage under the `--cov-fail-under` value, a frontend drop
-below the 80% floor on the included modules, a failing frontend test, type check or
-lint, OpenAPI drift, a secret hit, or a failing security suite. The three dotted boxes
-above **do not** block — Lighthouse and Playwright are `if: false` (§8 G5, §8 G4) and
-`frontend-build` is not a required context, is skipped whenever lint fails, and holds
-the only check that boots the shipped bundle (§8 G21).
+`frontend-build`, `gitleaks`, `trivy`, `codeql`, `dependency-audit` and `docker-scan`,
+with `strict` on since 2026-10-06, so a branch must be current with `main` (§8 G36).
+What therefore blocks a merge: backend coverage under the `--cov-fail-under` value, a
+frontend drop below the 80% floor on the included modules, a failing frontend test, type
+check or lint, OpenAPI drift, a secret hit, a failing security suite, or a bundle that
+does not build or boot. The two dotted boxes above **do not** block — Lighthouse and
+Playwright are `if: false` (§8 G4/G5; accepted in ADR-0022). `frontend-build` holds the
+only check that boots the shipped bundle, and it no longer waits on lint: PR #176 dropped
+`frontend-lint` from its `needs:`, measured the same day on PR #161, where `frontend-lint`
+failed and `frontend-build` ran and passed on the same commit. Both halves of §8 G21 are
+therefore applied; the job still carries one unexplained `0ee87ff` flake — see that row.
 
 **Artifact retention:** coverage reports (XML + HTML), Playwright HTML
 report + traces/videos on failure, Lighthouse reports — retained per

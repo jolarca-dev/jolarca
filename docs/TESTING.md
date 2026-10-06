@@ -86,7 +86,7 @@ rather than skipping — the suite doubles as a contract-completion meter.
 `.github/workflows/ci.yml` gates, in order:
 
 1. **Backend**: ruff (format+lint), mypy, pytest — coverage gate
-   `--cov-fail-under=20`, not 80%; see
+   `--cov-fail-under=63`, not 80%; see
    [TESTING_STRATEGY.md](TESTING_STRATEGY.md) §1 for both stacks' numbers.
 2. **Frontend**: `npm ci` → typecheck (tsc) → ESLint → Prettier check →
    Vitest coverage → `next build`.
