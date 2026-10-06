@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/jolarca-dev/jolarca/actions/workflows/ci.yml/badge.svg)](https://github.com/jolarca-dev/jolarca/actions/workflows/ci.yml)
 [![Security](https://github.com/jolarca-dev/jolarca/actions/workflows/security.yml/badge.svg)](https://github.com/jolarca-dev/jolarca/actions/workflows/security.yml)
-![Coverage](https://img.shields.io/badge/coverage-enforced%20gate%2020%25-yellow)
+![Coverage](https://img.shields.io/badge/coverage-enforced%20gate%2063%25-yellow)
 ![Lighthouse](https://img.shields.io/badge/lighthouse-CI%20gate%20disabled-lightgrey)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
 
@@ -46,7 +46,7 @@ Design invariants (enforced in review, see `docs/architecture/01-modular-breakdo
 
 ```bash
 cp .env.example .env          # fill in values
-make bootstrap                # venv + deps
+make bootstrap && source scripts/activate.sh   # venv + deps, then activate
 make sysdeps                  # GDAL on the host (one-time, needs sudo)
 make dev-up                   # full stack via docker-compose.dev.yml
 make migrate && make seed
@@ -55,19 +55,18 @@ make migrate && make seed
 
 ## Documentation
 
-| Document | Contents |
-| --- | --- |
-| [EXECUTIVE_SUMMARY.md](docs/EXECUTIVE_SUMMARY.md) | One-page mission, value, and status |
-| [GRANT_APPLICATION.md](docs/GRANT_APPLICATION.md) · [GRANT_SUBMISSION.md](docs/GRANT_SUBMISSION.md) | Work packages, Gantt, budget, risks, metrics · narrative |
-| [ARCHITECTURE_DECISION_RECORDS.md](docs/ARCHITECTURE_DECISION_RECORDS.md) | Consolidated ADR registry |
-| [TECHNICAL_SPECIFICATION.md](docs/TECHNICAL_SPECIFICATION.md) | Architecture, data flows, API contract, caching |
-| [SECURITY_POSTURE.md](docs/SECURITY_POSTURE.md) · [SECURITY.md](docs/SECURITY.md) | STRIDE model, compliance mapping, IR · operational policy |
-| [PERFORMANCE_REPORT.md](docs/PERFORMANCE_REPORT.md) | CWV budgets, techniques, scalability plan |
-| [TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md) · [TESTING.md](docs/TESTING.md) | Pyramid, a11y, security, CI/CD gates |
-| [POST_MVP_ROADMAP.md](docs/POST_MVP_ROADMAP.md) | Phases 2–4 (AI search → EU expansion) |
-| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Proxmox/Docker/nginx production topology |
-| [GDPR_COMPLIANCE.md](docs/GDPR_COMPLIANCE.md) · [COMPLIANCE_MATRIX.md](docs/COMPLIANCE_MATRIX.md) | Privacy architecture · control-to-article matrix |
+Full inventory, plus the authority map that names which document owns which topic:
+**[docs/README.md](docs/README.md)**. Every path in it is resolved against the working
+tree by `make check-docs`, so the index cannot silently go stale.
 
-Full developer guide: [CONTRIBUTING.md](CONTRIBUTING.md) ·
-Vulnerability reporting: [SECURITY.md](SECURITY.md) ·
-Decisions & ADRs: [docs/TECH_DECISIONS.md](docs/TECH_DECISIONS.md)
+- Contributors: [CONTRIBUTING.md](CONTRIBUTING.md) · [QODER.md](QODER.md)
+- Reviewers and funders: [docs/EXECUTIVE_SUMMARY.md](docs/EXECUTIVE_SUMMARY.md) ·
+  [docs/GRANT_SUBMISSION.md](docs/GRANT_SUBMISSION.md)
+- Architecture and operations: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ·
+  [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) · [docs/RUNBOOK.md](docs/RUNBOOK.md)
+- Security: [SECURITY.md](SECURITY.md) (vulnerability disclosure) ·
+  [docs/SECURITY_POSTURE.md](docs/SECURITY_POSTURE.md) (threat model and controls)
+
+This section lists entry points only, on purpose: it previously carried a ten-row table
+of documents that duplicated `docs/`, and two indexes drift — one of them always ends up
+wrong, which is the mechanism recorded as QODER.md §8 G1 and G24.

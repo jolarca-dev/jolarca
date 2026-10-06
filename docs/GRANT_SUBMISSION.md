@@ -156,6 +156,22 @@ the grant — see §9.
 | Erasure SLA | 100% within `GDPR_ERASURE_SLA_DAYS` | Compliance queue metrics |
 | Test health | ≥ 80% branch coverage floors; e2e green on stack | CI |
 
+> **Post-submission annotation (2026-10-05), added in the repository copy only.** Three
+> instruments named above do not currently run in CI, and the submitted narrative is
+> deliberately **not** edited: it is the record of what was sent to the funder, and
+> silently rewriting a funding submission would be worse than disclosing the divergence
+> beside it. **(1) Test health.** The enforced backend coverage gate is
+> `--cov-fail-under=20` then, **63 since 2026-10-06** (`.github/workflows/ci.yml:97`); the 80% floor is the frontend
+> Vitest threshold and applies only to the 17 modules named in
+> `frontend/vitest.config.mts`. "e2e green on stack" is measured nowhere: the
+> `frontend-playwright-smoke` job is `if: false` (`QODER.md` §8 G4). **(2) Core Web Vitals
+> and Accessibility instruments.** `frontend-lighthouse` is `if: false` too (§8 G5), so
+> Lighthouse CI and the Playwright axe scans run locally only. **(3) Governance.**
+> `.github/CODEOWNERS` is a single wildcard and the protection API reports
+> `require_code_owner_reviews: false`, so no review gate survives anything — personnel
+> change or otherwise (§8 G2). Tracked as §8 G1, G2, G4 and G5; the corrected numbers and
+> their measurement commands live in `docs/TESTING_STRATEGY.md` §1.
+
 ## 9. Sustainability Plan Post-Grant
 
 - **Cost structure:** self-hosted infrastructure (~VM + storage) and

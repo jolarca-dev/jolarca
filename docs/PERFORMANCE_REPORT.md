@@ -2,21 +2,34 @@
 
 **Target:** Core Web Vitals "Good" for all metrics on simulated 4G
 (Lighthouse mobile throttling). Budget sources of truth:
-`frontend/scripts/lighthouse-budget.json` (CI-enforced) and the Playwright
-runtime suite. Engineering context:
+`frontend/scripts/lighthouse-budget.json` and the Playwright runtime suite.
+Engineering context:
 [TECHNICAL_SPECIFICATION.md](TECHNICAL_SPECIFICATION.md).
+
+> **Enforcement status, measured 2026-10-05.** The budgets below are **asserted by
+> nothing in CI.** `frontend-lighthouse` is `if: false`
+> (`.github/workflows/ci.yml:227-232`) and `frontend-playwright-smoke` is `if: false`
+> (`ci.yml:258-263`), and `git grep -nE 'lighthouse-budget|bundle-analyze|analyze:bundle'`
+> over `.github/` and `Makefile` returns **zero** hits — so neither the budget file nor
+> `frontend/scripts/bundle-analyze.ts` has any invoker outside a developer's terminal.
+> This report previously described the budget as CI-enforced and named a "Budget job" as
+> the enforcement for four metrics; that was false, and the gates it implied are tracked
+> as `QODER.md` §8 **G4** and **G5**, both still OPEN (non-enforcement accepted in ADR-0022).
+> The numbers themselves are
+> unchanged and remain the intended budgets — **what changed is the claim that anything
+> checks them.** Re-enabling either job makes the Enforcement column below true again.
 
 ## 1. Benchmarks — Budget vs Verified Gates
 
-| Metric | Google "Good" | CI budget (Lighthouse) | Verified gate | Enforcement |
+| Metric | Google "Good" | Budget file (Lighthouse) | Verified gate | Enforcement (measured 2026-10-05) |
 | --- | --- | --- | --- | --- |
-| LCP | ≤ 2.5s | **≤ 2000ms** | ≤ 2000ms on catalog grid (4G sim) | Lighthouse CI job fails over budget; `e2e/performance.spec.ts` measures via PerformanceObserver |
-| CLS | ≤ 0.1 | **≤ 0.1** | Skeleton geometry == final geometry | Budget job + CLS-safe skeleton contract |
-| INP | ≤ 200ms | TBT ≤ **200ms** (lab proxy) | — | Budget job |
-| TTFB | ≤ 800ms | covered by Speed Index budget | Static pages pre-rendered; dynamic pages stream | Build mode (77/77 static pages) |
-| FCP | ≤ 1.8s | **≤ 1800ms** | — | Budget job |
-| Speed Index | — | **≤ 3000ms** | — | Budget job |
-| JS per page | — | scripts ≤ **300KB**, total ≤ **1200KB** | **529KB total gzipped; largest chunk 58.4KB (framework)** | `npm run analyze:bundle` (fails > 150KB/chunk) |
+| LCP | ≤ 2.5s | **≤ 2000ms** | ≤ 2000ms on catalog grid (4G sim) | **None in CI.** `frontend/e2e/performance.spec.ts` measures via PerformanceObserver, but the only job that would run it is `if: false` (§8 G4/G5) |
+| CLS | ≤ 0.1 | **≤ 0.1** | Skeleton geometry == final geometry | **None in CI** — the CLS-safe skeleton contract is a code convention, not a gate (§8 G5) |
+| INP | ≤ 200ms | TBT ≤ **200ms** (lab proxy) | — | **None in CI** (§8 G5) |
+| TTFB | ≤ 800ms | covered by Speed Index budget | Static pages pre-rendered; dynamic pages stream | Build output (77/77 static pages), not a CI gate |
+| FCP | ≤ 1.8s | **≤ 1800ms** | — | **None in CI** (§8 G5) |
+| Speed Index | — | **≤ 3000ms** | — | **None in CI** (§8 G5) |
+| JS per page | — | scripts ≤ **300KB**, total ≤ **1200KB** | **529KB total gzipped; largest chunk 58.4KB (framework)** | `npm run analyze:bundle` exits 1 over 150KB/chunk (`frontend/scripts/bundle-analyze.ts:16`) — **manual only, no CI invoker** |
 
 **Field data:** the consent-gated Web Vitals reporter batches LCP/INP/CLS/
 TTFB/FCP to the self-hosted collector (`/api/v1/analytics/vitals/`,
@@ -67,10 +80,12 @@ endpoint ships.
   rating using the exact Google thresholds (single vocabulary for field +
   CI).
 - **Alert thresholds:** any page with median LCP > 2500ms or CLS > 0.1
-  over a 7-day window triggers review; budgets in CI are the pre-release
-  gate so regressions ship to nobody.
+  over a 7-day window triggers review. The budgets are **not** a pre-release
+  gate today: nothing in CI reads them (§8 G5), so a regression is caught only
+  if a human runs Lighthouse or the bundle analyzer before merging.
 - **Ops:** container healthchecks, disk/memory alerts
-  (`scripts/monitoring.sh`), Lighthouse CI artifacts retained per build.
+  (`scripts/monitoring.sh`). **No Lighthouse CI artifacts are retained**, because
+  the job that would produce them is disabled.
 
 ## 4. Scalability Plan
 
@@ -88,6 +103,7 @@ stateless or externally state-backed (ADR-0012).
 
 ---
 
-*CI wiring: `.github/workflows/ci.yml` (Lighthouse job fails on budget
-exceedance) · bundle gate: `frontend/scripts/bundle-analyze.ts` ·
+*CI wiring: `.github/workflows/ci.yml` — the Lighthouse job is `if: false`, so no
+budget is asserted in CI (`QODER.md` §8 G5) · bundle analyzer:
+`frontend/scripts/bundle-analyze.ts`, invoked manually via `npm run analyze:bundle` ·
 test detail: [TESTING_STRATEGY.md](TESTING_STRATEGY.md).*

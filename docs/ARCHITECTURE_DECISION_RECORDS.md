@@ -1,13 +1,18 @@
 # Architecture Decision Records
 
-**Scope:** Consolidated decision registry for grant reviewers. Engineering
-detail for ADR-0001…0010 lives in [TECH_DECISIONS.md](TECH_DECISIONS.md);
-this document adds the platform-level and security-governance decisions,
-continuing the existing numbering (no collisions).
+**Scope:** The single decision registry for this repository. The first seven records
+were consolidated here from `docs/TECH_DECISIONS.md` on 2026-10-05; that file is now a
+pointer plus a summary table. This document previously claimed that engineering detail
+for ADR-0001…0010 lived in `docs/TECH_DECISIONS.md`, which was false for three of the
+ten: **ADR-0008, ADR-0009 and ADR-0010 have no record anywhere in the repository**
+(measured: `grep -oE '^## ADR-[0-9]{4}'` over all of `docs/` yields 0001-0007 and
+0011-0020 only). They are listed below as absent rather than reconstructed, because
+inventing a decision record is the fabrication failure mode this repository's §8
+register exists to prevent (see the G12 NEVER-ISSUED precedent).
 
 **Format:** Context → Decision → Consequences. **Status:** Accepted.
 
-## Registry Overview (ADR-0001…0010 — engineering registry)
+## Registry Overview (engineering ids — full records below)
 
 | ID | Decision |
 | --- | --- |
@@ -23,6 +28,108 @@ continuing the existing numbering (no collisions).
 | ADR-0010 | Risk acceptance: js-yaml advisory in codegen toolchain |
 
 ---
+
+## ADR-0001 — Monorepo with domain-bounded Django apps
+**Context:** Marketplace spans 11 domains with strict compliance boundaries.
+**Decision:** Single repo; per-domain apps; cross-app access via `services.py` only;
+`payments_app` is the only Stripe importer; AI runs only in Celery `ai` queue.
+**Consequences:** Review-gated only. CODEOWNERS is a single wildcard and branch
+protection reports `require_code_owner_reviews=false`, so it enforces nothing — see
+QODER.md §8 G2 and ADR-0020; import-linter contracts to follow.
+
+## ADR-0002 — AGPL-3.0 licensing
+**Context:** Organization policy for public-facing platform code.
+**Decision:** AGPL-3.0, never modified. Network-use copyleft acknowledged: if the
+platform is ever offered to third parties for self-hosting, source must ship.
+**Consequences:** Legal review required before bundling incompatible dependencies.
+
+## ADR-0003 — Dual i18n: DB content vs UI strings
+**Context:** Catalog content is authored per-listing; UI chrome is static.
+**Decision:** `django-modeltranslation` for catalog (lt/lv/et/en columns);
+`next-intl` messages for UI. The two systems are never unified.
+**Consequences:** Two translation workflows; documented in CONTRIBUTING.
+
+## ADR-0004 — Field-level encryption with Fernet; pgcrypto migration path
+**Context:** GDPR Art. 32 defense-in-depth for PII at rest.
+**Decision:** `core.EncryptedTextField` (Fernet, key rotation via MultiFernet,
+fail-closed without key). Trade-off: ciphertext not queryable. Searchable
+encrypted columns migrate to pgcrypto PGP functions (extension provisioned).
+**Consequences:** No LIKE/filters on encrypted columns; analytics uses derived
+non-PII columns.
+
+## ADR-0005 — Object storage: MinIO in dev, S3-compatible in prod
+**Context:** Media + documents + invoice PDFs need private signed access.
+**Decision:** `django-storages` S3 API against MinIO (dev) / managed S3 (prod).
+Dev compose uses `latest` tag; production MUST pin release tags.
+**Consequences:** Signed URLs by default (`AWS_QUERYSTRING_AUTH=True`).
+
+## ADR-0006 — Django admin retained, edge-restricted
+**Context:** Ops tooling vs attack surface.
+**Decision:** Keep admin; production gates it behind edge IP allowlist + SSO.
+CSP and rate limits apply.
+**Consequences:** Deploy topology must enforce the gate before GA.
+
+## ADR-0007 — Sanctioned stubs over silent fakes
+**Context:** MVP scope cannot implement every integration at scaffold time.
+**Decision:** Unfinished integrations raise `NotImplementedError("MVP-*")` with a
+ticket id tracked in `docs/MVP_REMAINING_WORK.md`; config-gated features raise
+`*NotConfigured`. Nothing pretends to succeed.
+**Consequences:** Callers must handle the loud-failure states explicitly.
+
+## ADR-0008 — Frontend scope: storefront, seller dashboard, moderation backoffice
+
+**Status: NO RECORD.** No `## ADR-0008` decision text exists in any tracked file; the
+title above is transcribed from the Registry Overview table, which is the only place the
+*title* appears.
+
+**Correction (2026-10-06).** This section originally asserted that "`git grep -n
+'ADR-0008'` returns this file's overview row only". **That was false, and it had not been
+run.** Measured on `main`: `git grep -l 'ADR-0008'` returns **6 files**, five of them
+frontend source — `frontend/src/app/[locale]/admin/layout.tsx:17`,
+`frontend/src/app/[locale]/funeral-services/page.tsx:28`,
+`frontend/src/components/client/funeral/service-card.tsx:4`,
+`frontend/src/lib/api/contract-gaps.ts:194,292`,
+and `frontend/src/lib/funeral.ts:2`. The id is load-bearing in shipped code: those
+comments assert the funeral vertical is *directory and lead generation only, not
+e-commerce* and that the admin surface is role-gated, and cite this ADR as the authority
+for both. So the absent record is not a documentation gap — it is the only written basis
+for two architectural boundaries that code already depends on. Recorded as absent rather
+than reconstructed; if the owner holds the original decision, append it here with its
+date and source.
+
+## ADR-0009 — Frontend compliance & UX posture (sacred-modern)
+
+**Status: NO RECORD — but the decision is substantively documented elsewhere.** There is
+no `## ADR-0009` record; the substance survives as `docs/DESIGN_SYSTEM.md`, and ADR-0016's
+context below paraphrases it.
+
+**Measured 2026-10-06, superseding the "three documents" figure this section first
+carried — which was a count of `docs/` only and understated the exposure by an order of
+magnitude.** `git grep -l 'ADR-0009' main` returns **26 tracked files**:
+
+| Area | Files | Examples |
+| --- | --- | --- |
+| `docs/` | 3 | `docs/EXECUTIVE_SUMMARY.md:20`, `docs/POST_MVP_ROADMAP.md:9`, `docs/TESTING_STRATEGY.md:58` |
+| `backend/` | 3 | `backend/apps/search_app/views.py:3`, `backend/apps/products_app/views.py:174`, `backend/apps/sellers_app/serializers.py:4` |
+| `docs/api/` | 1 | `docs/api/openapi.yaml:302` |
+| `frontend/` | 18 | `frontend/lighthouserc.js:2`, `frontend/src/lib/security.ts:45`, `frontend/src/styles/tokens.css:2` |
+| registry | 1 | this file's overview row |
+
+Production code cites this id for its privacy posture ("the main query travels as a JSON
+BODY via POST", "phone, address never leave private surfaces"), for the Stripe origin
+allowlist that holds the merchant at SAQ-A scope, and for the "sacred-modern" design
+language. **Each of those citations resolves to a title, not to a decision text.** Do not
+treat this section as the decision text.
+
+## ADR-0010 — Risk acceptance: js-yaml advisory in codegen toolchain
+
+**Status: NO RECORD — the acceptance itself is recorded.** `docs/SECURITY.md:70`
+(Dependency Supply Chain) carries the substantive risk-acceptance row and
+`docs/SECURITY_POSTURE.md:53` cites the id, so the acceptance is documented; the ADR
+text is not. Per this repository's convention a dev-only advisory acceptance is
+recorded as an ADR **and** a `docs/SECURITY.md` §3 row — only the second half exists.
+Reconstructing the first half from the security row is possible but is a decision for
+the owner, not for a docs PR.
 
 ## ADR-0011 — Next.js 15 App Router over Pages Router
 
@@ -195,7 +302,17 @@ the ESLint chain `eslint-config-next → @next/eslint-plugin-next → fast-glob 
 micromatch`. As of 2026-10-03 **no patched release exists** (`npm view braces
 version` = 3.0.3; Trivy status "affected", fixed-version blank;
 [AVD](https://avd.aquasec.com/nvd/cve-2026-93687)), and it is **not** carried in
-GitHub Dependabot's advisory DB (open alerts are dompurify/vitest only). `braces`
+GitHub Dependabot's advisory DB (open alerts are dompurify/vitest only).
+**Correction (2026-10-06): that clause is false and was never run.** Dependabot
+raised alert **#38** for `braces` in the npm ecosystem and it now sits in
+`auto_dismissed`; `state=open` returns 0 alerts and the full inventory is 38 rows
+(34 npm, 4 pip), measured 2026-10-06. So Dependabot *did* carry it. What survives
+is the consequence, not the reason: an auto-dismissed alert opens no fix PR, and
+**why** #38 was dismissed is not established here. The decision itself does not
+change — `braces` still has no patched release and does not ship — and the
+non-blocking trivy dev report stays the durable tracker, because unlike the
+alert it does not disappear on its own. Recorded as G34.
+`braces`
 is a **dev-only** package (`package-lock.json` `"dev": true`) reachable only
 through the lint toolchain; the production `runner` image copies only
 `.next/standalone`, `.next/static` and `public` and even strips npm
@@ -332,11 +449,15 @@ not exist. Verified against configuration and the GitHub API on 2026-10-05:
 
 What *is* enforced, and was re-verified rather than assumed:
 
-- Eleven required status checks (`backend`, `secrets`, `gitleaks`, `trivy`, `codeql`,
+- Twelve required status checks (`backend`, `secrets`, `gitleaks`, `trivy`, `codeql`,
   `dependency-audit`, `docker-scan`, `frontend-typecheck`, `frontend-lint`,
-  `frontend-unit`, `frontend-openapi-drift`), `strict: false`, with
+  `frontend-unit`, `frontend-openapi-drift`, `frontend-build`), `strict: true`, with
   `allow_squash_merge` the only merge mode, force-push and branch deletion blocked,
-  and `delete_branch_on_merge` on.
+  and `delete_branch_on_merge` on. *(Amended 2026-10-06 by owner instruction: this bullet
+  read eleven with `strict: false` — the state measured when ADR-0020 was written — and the
+  change that closes §8 G21's fix 2 and §8 G36 falsified it. The risk accepted here is
+  unchanged: no second approver exists. What moved is the automated half, which is the
+  compensating control this ADR leans on, so it is stated rather than quietly restated.)*
 - `scripts/check_doc_claims.py` (CI-required, via the `backend` job) fails the build
   when documentation asserts a control configuration does not implement, and runs a
   self-test first so it cannot become an always-green gate.
@@ -377,6 +498,112 @@ point real review, a `production` environment with a required reviewer who is no
 author, and deployment approval become implementable rather than nominal.
 
 **Status:** Accepted 2026-10-05 (recorded per owner authorization; sole maintainer).
+
+## ADR-0021 — Backend coverage gate: recorded at 20%, with a ratchet rule
+
+**Context.** The backend coverage gate is `--cov-fail-under=20`
+(`.github/workflows/ci.yml:97`). It was never *decided* at that value. The flag shipped at
+**80** in the initial commit `2d9109e` (#1, 2026-08-16) and was lowered to **20** in
+`22117ff` (#45, 2026-09-03) — a commit titled "revert: restore original api.ts (OpenAPI
+snapshot incomplete for catalog)", so the downgrade rode inside an unrelated revert and
+was recorded nowhere. Three documents went on describing ≥80% as enforced in CI
+(`QODER.md` §8 G1), one of them an external funding submission. Contract tests joined the
+same command in `b4b0483` (#131, 2026-10-04), which added the in-file rationale and a
+`TODO: raise threshold toward 80%` while leaving the value at 20. Measured on this tree on
+2026-10-05, with the command that produces each figure:
+
+| Test set | Coverage | Tests | Command |
+| --- | --- | --- | --- |
+| unit + security | **24%** (3012 statements, 2282 missed) | 41 | `pytest tests/unit tests/security -q --cov=. --cov-report=term` with `DJANGO_SETTINGS_MODULE=project.settings.test` |
+| unit + security + contract (CI's set) | **69%** (3012 statements, 941 missed) | 162 | the same command with `tests/contract` added |
+
+The 69% corroborates the 68.8% that `ci.yml:98-103` records from 2026-10-03. It is
+restated here as a measurement rather than a citation even though the two are only days
+apart, because a suite that changes daily makes a quoted figure stale faster than a
+quoted line number does.
+
+**Decision.** Record the gate as 20% — retroactively, since that has been the configured
+value since #45 — and adopt a ratchet rule in place of a target date: **whenever CI's own
+reported coverage exceeds `--cov-fail-under` by 10 points or more, the PR that observes it
+raises the flag to measured − 5.** Taking the figure from CI rather than from a local run
+is the rule `ci.yml:101` already states; the 5-point margin absorbs per-run variation so
+the gate cannot be tripped by one deleted test. This ADR changes no configuration: the
+flag is still 20.
+
+**Consequences.** (+) The 80→20 downgrade finally has a record, its mechanism is named (an
+unrelated revert PR, which is how a gate value changes without anyone deciding to change
+it), and the three documents that restated ≥80% were corrected in the same branch as this
+ADR. (+) The ratchet is self-triggering: it needs no owner and no calendar entry, which is
+precisely what a "raise it later" TODO lacks on a single-maintainer repository. (−) **The
+rule is already triggered and nothing has been done about it.** Measured 69% against a gate
+of 20% is 49 points of slack, so about 70% of the covered statements could be deleted and
+CI would still pass. The next CI edit must therefore raise the flag to 64 (69 − 5) or state
+why not; that edit is a configuration change on protected `main` and belongs to the owner,
+not to this ADR, which is why it is recorded here as an obligation rather than applied.
+(−) The frontend floor is a different mechanism — 80% over 17 named modules in
+`frontend/vitest.config.mts` — and is out of scope: it is not comparable to a backend
+aggregate and must never be quoted as though it were. (−) Coverage is a proxy. A raised
+gate makes deletion visible; it does not make any assertion meaningful.
+
+**Status:** Accepted 2026-10-05 (recorded retroactively; sole maintainer).
+
+**Applied 2026-10-06 — the obligation above is discharged, at a different value than it
+planned.** `--cov-fail-under` went from 20 to **63**, not 64. The rule takes the figure **CI
+reports**, and CI's own `backend` job logged `Required test coverage of 20% reached. Total
+coverage: 68.56%` (run `37476183729`, head `6ba1b14`), so `measured − 5` is 63.56 → **63**. The
+64 written above subtracted 5 from the *local* 69% measurement — the very number this ADR says
+not to use. The two are within a point, so neither value is load-bearing; the difference is
+recorded because letting "64" stand would make a CI measurement and a local one interchangeable
+in the rule that exists to keep them apart. **G1 stays OPEN:** 63% is not the ≥80% originally
+advertised, and coverage is a proxy — a raised floor makes deletion visible, it does not make
+any assertion meaningful.
+
+## ADR-0022 — Risk acceptance: Playwright checkout journey and Lighthouse budgets are not CI gates
+
+**Context.** Two `ci.yml` jobs are switched off by condition rather than by deletion:
+`frontend-lighthouse` and `frontend-playwright-smoke` both carry `if: false`. Measured
+2026-10-06 on `main`, both report `skipped` on every run. What they would have produced is
+real and unrun: **43 `test()` declarations across 14 Playwright spec files × 3 projects**
+(buyer/seller/funeral journeys, checkout, consent, GDPR, a11y, security headers) and
+`frontend/scripts/lighthouse-budget.json`, the budget file that **no invoker anywhere**
+references — `git grep -nE 'lighthouse-budget|bundle-analyze|analyze:bundle' -- .github/ Makefile`
+returns zero hits, the finding recorded as §8 **G32**. `docs/TESTING_STRATEGY.md` §4 and
+`docs/PERFORMANCE_REPORT.md` now state "None in CI" per metric, and the `README.md:6` badge
+says the Lighthouse gate is disabled. **A corrected badge is not a working gate** — §8 G4 and
+G5 stayed OPEN because the substance was still missing, and §8 G32 closed only the false claim.
+
+**Decision.** Accept the risk for as long as the platform has no real transactions to protect,
+and record the acceptance instead of leaving two disabled jobs unexplained. Enabling them today
+would produce a permanently red or permanently pending pipeline for reasons that are not the
+tests' quality: the Lighthouse job needs a reachable built target, the Playwright job needs the
+compose stack, and `smoke.spec.ts` is the only spec the disabled job is written to run — so
+"enable Playwright" would not even execute the 43-declaration suite. Re-enable when the work
+exists to make them green, in this order: (1) make `frontend-build` a required context
+(§8 **G21** fix 2, the owner's call), (2) wire the Lighthouse job to a build artifact and the
+budget file so the budget has an invoker, (3) run the checkout journey against CI services, not
+only `smoke.spec.ts`.
+
+**Compensating controls actually in place** (stated as measurements, not intentions): 267 Vitest
+tests across 22 files, gated by the required `frontend-unit` context; `frontend-openapi-drift`
+required, so the backend↔frontend contract cannot drift silently (§8 G22); `frontend-typecheck`
+and `frontend-lint` required; the standalone-server CSS guard
+(`frontend/scripts/verify-standalone.mjs`) runs on every PR in `frontend-build`, though that job
+is **not** a required context — which is precisely why step (1) above precedes this acceptance
+being called a mitigation. Backend contract tests assert the PCI SAQ-A Stripe boundary and PII
+non-leakage (§8 G7). No automated control covers visual regressions, real-browser checkout
+flows, or Core Web Vitals.
+
+**Consequences.** (+) The gap has a dated owner decision, a revisit trigger and an ordering, so
+it cannot silently become permanent the way the `--cov-fail-under` downgrade did (ADR-0021).
+(+) CI stays honest: nothing is claimed that does not run. (−) A regression that only appears in
+a real browser — checkout, consent UX, a11y, CSS delivery — can reach `main` undetected. (−) A
+Core Web Vitals regression is unmeasured, so the performance budgets are aspirational until step
+(2) lands. (−) The accepted risk sits on the same single-operator surface as ADR-0020: whoever
+accepts it is also whoever would notice the regression by hand. **Review:** before any production
+launch, before the first real carrier or payment integration, and whenever `frontend-build`
+becomes a required context. **§8 G4 and G5 stay OPEN** — an accepted risk is not an enforced gate.
+
+**Status:** Accepted 2026-10-06 (recorded per owner authorization in this session; sole maintainer).
 
 
 ---

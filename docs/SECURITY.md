@@ -76,16 +76,16 @@ Design decisions:
 
 | # | Risk | Mitigation |
 |---|---|---|
-| A01 Broken access control | Server-side role checks on every request; UI gates are cosmetic only; admin surfaces edge-restricted (ADR-0006) |
-| A02 Cryptographic failures | Fernet field-level encryption (`core.EncryptedTextField`, MultiFernet rotation, fail-closed); TLS 1.2+ everywhere; secrets in env, never code (ADR-0004) |
-| A03 Injection | ORM-only data access; rich-text descriptions sanitized before render; CSP blocks inline script injection |
-| A04 Insecure design | Contract-gap doctrine forbids fabricated state (ADR-0007); order state machine has explicit transitions only; idempotency on checkout |
-| A05 Security misconfiguration | `poweredByHeader: false`, `DJANGO_DEBUG=false` enforced in prod settings, exact-match `ALLOWED_HOSTS`, source maps disabled in production |
-| A06 Vulnerable components | Supply-chain controls §3 |
-| A07 Auth failures | httpOnly SameSite=Lax session cookies, CSRF double-submit, rate limits on auth endpoints, password strength policy |
-| A08 Integrity failures | Signed Stripe webhooks + event-id idempotency; CI artifact pipeline; no unsigned image deploys |
-| A09 Logging failures | Audit log on every admin mutation (GAP-M09 endpoint, fire-and-forget but monitored); consent decisions versioned and auditable; **no PII in logs** |
-| A10 SSRF | Server-side fetches target only the configured API origin; no user-controlled URLs fetched server-side |
+| A01 | Broken access control | Server-side role checks on every request; UI gates are cosmetic only; admin surfaces edge-restricted (ADR-0006) |
+| A02 | Cryptographic failures | Fernet field-level encryption (`core.EncryptedTextField`, MultiFernet rotation, fail-closed); TLS 1.2+ everywhere; secrets in env, never code (ADR-0004) |
+| A03 | Injection | ORM-only data access; rich-text descriptions sanitized before render; CSP blocks inline script injection |
+| A04 | Insecure design | Contract-gap doctrine forbids fabricated state (ADR-0007); order state machine has explicit transitions only; idempotency on checkout |
+| A05 | Security misconfiguration | `poweredByHeader: false`, `DJANGO_DEBUG=false` enforced in prod settings, exact-match `ALLOWED_HOSTS`, source maps disabled in production |
+| A06 | Vulnerable components | Supply-chain controls §3 |
+| A07 | Auth failures | httpOnly SameSite=Lax session cookies, CSRF double-submit, rate limits on auth endpoints, password strength policy |
+| A08 | Integrity failures | Signed Stripe webhooks + event-id idempotency; CI artifact pipeline; no unsigned image deploys |
+| A09 | Logging failures | Audit log on every admin mutation (GAP-M09 endpoint, fire-and-forget but monitored); consent decisions versioned and auditable; **no PII in logs** |
+| A10 | SSRF | Server-side fetches target only the configured API origin; no user-controlled URLs fetched server-side |
 
 ## 5. Payments & PCI Scope
 
@@ -104,7 +104,19 @@ with Stripe as the sole card-data processor.
 
 ## 6. Incident Response Plan
 
+**The procedure of record is [INCIDENT_RESPONSE.md](./INCIDENT_RESPONSE.md)** — severity
+levels, response clocks, the detection→declaration flow, the communication templates and
+the post-mortem template all live there. This section keeps only the security-specific
+view: which controls an incident touches, and when the GDPR notification clock starts.
+Where the two documents differ, INCIDENT_RESPONSE.md is authoritative.
+
 ### Severity definitions
+
+These are the same three levels as `P1`/`P2`/`P3` in
+[INCIDENT_RESPONSE.md](./INCIDENT_RESPONSE.md) §1, numbered `Sev` here because this
+section classifies by data exposure rather than service impact. The clocks agree — Sev 1
+is P1 (acknowledge 15 min, first mitigation 1 h) — so the naming difference is
+historical, not a second scale.
 
 | Sev | Definition | Example | Response clock |
 |---|---|---|---|
@@ -123,12 +135,14 @@ with Stripe as the sole card-data processor.
 4. **Notify** — supervisory authority within **72 h** where GDPR Art. 33
    applies; affected users where Art. 34 requires. Template lives with the
    compliance records.
-5. **Recover** — restore from verified backups (runbook), replay queues,
+5. **Recover** — restore from verified backups
+   ([runbooks/restore-from-backup.md](./runbooks/restore-from-backup.md)), replay queues,
    verify audit trail continuity.
-6. **Post-mortem** — blameless write-up within 5 working days; remediation
-   items land as tracked issues; runbooks updated (existing playbooks:
-   `docs/runbooks/ai-outage.md`, `stripe-webhook-failure.md`,
-   `restore-from-backup.md`).
+6. **Post-mortem** — blameless write-up on the template in
+   [INCIDENT_RESPONSE.md](./INCIDENT_RESPONSE.md) §5, within 5 working days; remediation
+   items land as tracked issues; the playbooks in `docs/runbooks/` are updated. That
+   directory holds four playbooks and `docs/README.md` is the inventory of record — this
+   step used to enumerate three of them by name, which is how a list drifts.
 
 Roles: incident commander (on-call operator), compliance lead (GDPR
 decisions), communications (user/authority notices). For the grant
@@ -137,7 +151,6 @@ escalation to the organization director is mandatory at Sev 1.
 
 ---
 
-**Cross-references:** [ARCHITECTURE.md](./ARCHITECTURE.md) ·
 ## 7. Change and Deployment Controls
 
 **Segregation of duties is not achieved by configuration and is formally accepted as
@@ -145,13 +158,14 @@ a residual risk** — see [ADR-0020](ARCHITECTURE_DECISION_RECORDS.md). The repo
 has one maintainer; GitHub does not permit self-approval, and `enforce_admins: true`
 means requiring an approval would make `main` unmergeable rather than safer.
 
-What is enforced instead, verified 2026-10-05 against the branch-protection API:
+What is enforced instead, verified 2026-10-05 and re-verified 2026-10-06 against the branch-protection API:
 
 | Control | Enforcement |
 |---|---|
-| Automated gates | 11 required status checks: backend, secrets, gitleaks, trivy, codeql, dependency-audit, docker-scan, frontend-typecheck, frontend-lint, frontend-unit, frontend-openapi-drift |
+| Automated gates | 12 required status checks: backend, secrets, gitleaks, trivy, codeql, dependency-audit, docker-scan, frontend-typecheck, frontend-lint, frontend-unit, frontend-openapi-drift, frontend-build (added 2026-10-06, §8 G21); `strict` on, so a branch must be current with `main` (§8 G36) |
 | Merge discipline | squash only; force-push blocked; branch deletion blocked; `enforce_admins: true` |
 | Docs-to-config truth | `scripts/check_doc_claims.py` fails the build when a document asserts a control that configuration does not implement |
+| Advisory-to-record linkage | `scripts/check_advisory_register.py` (required `dependency-audit` job, `make check-advisories`) fails when a change removes a production-scoped advisory that no row of [incident response §6.2](INCIDENT_RESPONSE.md) names, or when that row's ID is cited nowhere in the change — so a silenced advisory cannot reach `main` without a record. Added 2026-10-06 after a HIGH arrived with no Dependabot alert (§8 G35) |
 | Release evidence | images published under immutable SHA / release tags; SBOM and SLSA provenance on the production build path |
 
 **Not a control, and not to be cited as one:** `.github/CODEOWNERS` is a single
@@ -166,4 +180,10 @@ removed and no new entries are created, but GitHub does not delete deployment
 records, so that history remains and must not be relied on as deployment evidence.
 Use the container registry tags and `git log` instead. See §8 G26.
 
-[DEPLOYMENT.md](./DEPLOYMENT.md) · [GDPR_COMPLIANCE.md](./GDPR_COMPLIANCE.md)
+---
+
+**Cross-references:** [ARCHITECTURE.md](./ARCHITECTURE.md) ·
+[DEPLOYMENT.md](./DEPLOYMENT.md) · [GDPR_COMPLIANCE.md](./GDPR_COMPLIANCE.md) ·
+[INCIDENT_RESPONSE.md](./INCIDENT_RESPONSE.md) (procedure of record for §6) ·
+[SECURITY_POSTURE.md](./SECURITY_POSTURE.md) (threat model, mitigations, assurance
+roadmap) · [RUNBOOK.md](./RUNBOOK.md) (how to fix a running system)

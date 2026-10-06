@@ -9,15 +9,37 @@ assurance, and the CI/CD gate chain. Performance gates:
 
 | Layer | Framework | Count | Scope |
 | --- | --- | --- | --- |
-| Unit (backend) | pytest | 32 test functions (`backend/tests/unit` + `security`) | Services, state machine, retention, redaction |
-| Unit (frontend) | Vitest | **254 tests / 21 files** | Stores, libs (errors/logger/sanitization/security/vitals/a11y/validation), contract gaps, middleware logic, deployment contracts |
-| Contract | pytest + OpenAPI snapshot | `backend/tests/contract` | Schema stability (`make api-schema`), frontend drift check (`npm run api:drift`) |
+| Unit (backend) | pytest | 41 tests collected (`backend/tests/unit` + `security`) | Services, state machine, retention, redaction |
+| Unit (frontend) | Vitest | **267 tests / 22 files** | Stores, libs (errors/logger/sanitization/security/vitals/a11y/validation), contract gaps, middleware logic, deployment contracts |
+| Contract | pytest + OpenAPI snapshot | 121 tests collected (`backend/tests/contract`) | Schema stability (`make api-schema`), frontend drift check (`npm run api:drift`) |
 | Integration | docker-compose.test.yml | CI-parity topology | Backend against real Postgres/Redis/ES |
-| End-to-end | Playwright | **66 scenarios / 9 spec files × 3 projects** (desktop, iPhone 14, Pixel 7) | Buyer/seller/funeral journeys, checkout, consent, GDPR, a11y, performance, security headers, error handling |
+| End-to-end | Playwright | **43 `test()` declarations / 14 spec files × 3 projects** (chromium, iPhone 14, Pixel 7) | Buyer/seller/funeral journeys, checkout, consent, GDPR, a11y, performance, security headers, error handling |
 
-**Coverage gate:** ≥ 80% (lines/branches/functions) enforced in CI for
-both stacks; protected modules (security, sanitization, consent, cart)
-are tracked individually in `vitest.config.mts`.
+Every count above is a measurement, not an aspiration, taken on 2026-10-05 against this
+tree and reproducible with the command beside it: 41 → `pytest tests/unit tests/security
+--collect-only -q`; 121 → `pytest tests/contract --collect-only -q`; 267/22 → `npx vitest
+run` ("Test Files 22 passed", "Tests 267 passed"); 43/14 → `ls -1 frontend/e2e/*.spec.ts`
+plus a `test(` count per file; 3 projects → `frontend/playwright.config.ts:53-56`. These
+numbers drift on every commit and nothing verifies them, so a stale count is the expected
+state — re-measure before quoting one.
+
+**Coverage gates — two different numbers, deliberately.**
+
+| Stack | Enforced value | Where | Applies to |
+| --- | --- | --- | --- |
+| Backend | `--cov-fail-under=63` | `.github/workflows/ci.yml:97` | `pytest tests/unit tests/security tests/contract --cov=.` |
+| Frontend | `80` for branches, functions, lines and statements | `frontend/vitest.config.mts:55-60` | only the 17 modules named in `coverage.include` (`:36-54`) |
+
+The backend figure is **63%, not 80%** — raised from 20 on 2026-10-06 when ADR-0021's ratchet
+triggered: CI's own `backend` job reported `Total coverage: 68.56%` (run `37476183729`), so
+the flag is that figure minus 5, taken from what CI reports rather than from a local run.
+Measured locally the same set came out at 68.8% once contract tests joined it. The frontend
+floor is real but narrow: it is not an aggregate over the app, so "the frontend is 80%
+covered" does not follow from it. This table is the only place in `docs/` that states these
+numbers; every other document links here rather than restating them (`QODER.md` §8 G1 — the
+restatements were the drift). The 80→20 downgrade is recorded as ADR-0021, retroactively: the
+value was lowered in an unrelated revert PR and had no decision record until 2026-10-05, which
+is also where the ratchet rule lives. §8 G1 stays OPEN: 63% is still not the documented target.
 
 **Rule of composition:** deterministic tests only — no sleeps-as-sync, no
 network to third parties (Stripe mocked), seeded fixtures, and test data
@@ -53,33 +75,49 @@ cleanup in e2e (`e2e/fixtures`).
 
 ```mermaid
 flowchart TD
-    PR["Push / PR"] --> BE["Backend job<br/>ruff · mypy · pytest (≥80% coverage)"]
-    PR --> FE["Frontend job<br/>ESLint · typecheck · Vitest (≥80%) · Prettier"]
+    PR["Push / PR"] --> BE["Backend job<br/>ruff · mypy · pytest (--cov-fail-under=63)"]
+    PR --> FE["Frontend job<br/>ESLint · typecheck · Vitest (80% on the 17 included modules) · Prettier"]
     PR --> SEC["Security job<br/>secret scan · npm audit · pip-audit"]
     BE --> CT["Contract: OpenAPI snapshot diff<br/>+ frontend api:drift"]
-    FE --> E2E["Playwright vs docker-compose stack<br/>(66 scenarios, 3 viewports)"]
-    FE --> LH["Lighthouse CI vs budget<br/>(fails on exceedance)"]
-    FE --> BA["Bundle gate: ≤150KB/chunk gzipped"]
-    CT --> MERGE["Merge gate (11 required status checks)"]
-    E2E --> MERGE
-    LH --> MERGE
+    FE --> E2E["Playwright suite: 43 tests × 3 projects<br/>CI job is if:false — runs nowhere (§8 G4; ADR-0022)"]
+    FE --> LH["Lighthouse CI vs budget<br/>job is if:false — measures nothing (§8 G5; ADR-0022)"]
+    FE --> BA["frontend-build: verify-standalone.mjs boots the bundle<br/>no size gate exists; required context since 2026-10-06 (§8 G21 closed)"]
+    CT --> MERGE["Merge gate (12 required status checks; branch must be current)"]
+    E2E -.->|disabled| MERGE
+    LH -.->|disabled| MERGE
     BA --> MERGE
     SEC --> MERGE
     MERGE --> STG["deploy-staging.yml → images to ghcr.io<br/>(rollout NOT implemented — §A-07 stub)"]
     STG --> PROD["deploy-production.yml → attested images<br/>(rollout stub fails loudly; scripts/deploy.sh is NOT wired into CI)"]
 ```
 
-**Gate conditions:** every box above must pass; coverage below 80%, any
-budget exceedance, a secret hit, or a failing security suite blocks merge.
+**Gate conditions:** the twelve required contexts are `backend`, `secrets`,
+`frontend-typecheck`, `frontend-lint`, `frontend-unit`, `frontend-openapi-drift`,
+`frontend-build`, `gitleaks`, `trivy`, `codeql`, `dependency-audit` and `docker-scan`,
+with `strict` on since 2026-10-06, so a branch must be current with `main` (§8 G36).
+What therefore blocks a merge: backend coverage under the `--cov-fail-under` value, a
+frontend drop below the 80% floor on the included modules, a failing frontend test, type
+check or lint, OpenAPI drift, a secret hit, a failing security suite, or a bundle that
+does not build or boot. The two dotted boxes above **do not** block — Lighthouse and
+Playwright are `if: false` (§8 G4/G5; accepted in ADR-0022). `frontend-build` holds the
+only check that boots the shipped bundle, and it no longer waits on lint: PR #176 dropped
+`frontend-lint` from its `needs:`, measured the same day on PR #161, where `frontend-lint`
+failed and `frontend-build` ran and passed on the same commit. Both halves of §8 G21 are
+therefore applied; the job still carries one unexplained `0ee87ff` flake — see that row.
 
 **Artifact retention:** coverage reports (XML + HTML), Playwright HTML
 report + traces/videos on failure, Lighthouse reports — retained per
 workflow policy (`.github/workflows/ci.yml`).
 
-**Production safety:** deploys are health-gated (in-container
-`/api/health`), migrations run before traffic, and every deploy tags the
-previous image for one-command rollback — see
-[DEPLOYMENT.md](DEPLOYMENT.md).
+**Production safety — described in the deployment docs, not implemented in any
+workflow.** Neither deploy workflow performs a rollout: `deploy-production.yml:57-62`
+is a `TODO(A-07)` step that prints "migration job → rollout → smoke → rollback tag
+record" and then exits 1, while `deploy-staging.yml` emits a warning and exits 0 having
+deployed nothing (§8 G17). So no migration runs before traffic, no deploy exercises a
+health gate, and no rollback tag is recorded. What the workflows do is build and push
+images — production pushes `:latest` — which is why a green production run must never be
+read as a release. The health-gated rollout and one-command rollback in
+[DEPLOYMENT.md](DEPLOYMENT.md) remain design, pending `docs/ASSUMPTIONS.md` §A-07.
 
 ---
 
