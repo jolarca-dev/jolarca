@@ -6,9 +6,13 @@ COMPOSE_DEV := docker compose -f docker-compose.dev.yml
 COMPOSE_TEST := docker compose -f docker-compose.test.yml
 # ROOT is derived from this Makefile's own location, not from the invocation
 # directory. $(CURDIR) changes under `make -C`, which would silently rebind
-# $(PY) - and backend/.venv exists as a stale decoy (ruff 0.16.3 / mypy 2.3.0 /
-# django 5.2.17 against the pinned 0.16.6 / 2.3.1 / 6.1.1). scripts/check_toolchain.py
+# $(PY) - and a decoy backend/.venv (ruff 0.16.3 / mypy 2.3.0 / django 5.2.17 against
+# the pinned 0.16.6 / 2.3.1 / 6.1.1) existed until it was removed on 2026-10-05; it was
+# invisible to `git status` because .gitignore matches .venv/ at any depth. scripts/check_toolchain.py
 # enforces the invariant; `make bootstrap` rebuilds the one true venv.
+# Activation is a separate concern and is tracked too (QODER.md §8 G37): type
+# `source scripts/activate.sh`, run `make shell`, or let direnv load the repo's
+# .envrc — which needs the one-time host hook plus `direnv allow` per checkout.
 ROOT := $(patsubst %/,%,$(dir $(realpath $(firstword $(MAKEFILE_LIST)))))
 PY := $(ROOT)/.venv/bin/python
 PIP := $(ROOT)/.venv/bin/pip
