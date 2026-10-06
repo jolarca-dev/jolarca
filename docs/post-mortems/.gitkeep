@@ -1,0 +1,5 @@
+# Placeholder so git tracks this directory. Post-mortems belong here; the naming
+# convention and the blameless rule live in docs/INCIDENT_RESPONSE.md §5, which is
+# their single home. As of 2026-10-06 this directory did not exist: §5 pointed at a
+# path that had never been created, so the destination had never been used. Per-incident
+# operational notes are a different artifact and live under docs/runbooks/.

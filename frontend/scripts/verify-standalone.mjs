@@ -58,12 +58,37 @@ try {
   }
 
   const html = await (await fetch(`${BASE}/en/`)).text();
-  const cssHref = html.match(/\/_next\/static\/css\/[^"]+\.css/)?.[0];
-  if (!cssHref) {
-    console.error("FAIL: no CSS link in standalone-served HTML.");
+
+  // Assert the contract, not one major's file layout. Next 15 served
+  // /_next/static/css/*.css and Next 16 moved it to /_next/static/chunks/*.css, so a
+  // hard-coded path turns a white-screen guard into a layout assertion that fails
+  // closed the next time upstream relocates an asset. Attributes are parsed
+  // order-independently because Next emits rel before href today, and need not.
+  const cssHrefs = [...html.matchAll(/<link\b[^>]*>/g)]
+    .filter((m) => /rel="stylesheet"/.test(m[0]))
+    .map((m) => m[0].match(/href="([^"]+)"/)?.[1])
+    .filter(Boolean);
+
+  if (cssHrefs.length === 0) {
+    console.error("FAIL: no stylesheet <link> in standalone-served HTML.");
     process.exit(1);
   }
-  const css = await (await fetch(BASE + cssHref)).text();
+
+  const sheets = [];
+  for (const href of cssHrefs) {
+    const res = await fetch(BASE + href);
+    const type = res.headers.get("content-type") ?? "";
+    const body = res.ok ? await res.text() : "";
+    console.log(
+      `CSS file: ${href} — ${body.length} bytes, ${type || "no content-type"}, HTTP ${res.status}`,
+    );
+    if (!res.ok || !type.includes("text/css") || body.length < 1000) {
+      console.error(`FAIL: stylesheet ${href} is not served as real CSS.`);
+      process.exit(1);
+    }
+    sheets.push(body);
+  }
+  const css = sheets.join("\n");
 
   const utilities = [".flex", ".grid", ".max-w-"].some((s) => css.includes(s));
   const twVars = css.includes("--tw-");
@@ -72,7 +97,9 @@ try {
     .slice(0, 12)
     .join("\n");
 
-  console.log(`CSS file: ${cssHref} — ${css.length} bytes (minified prod)`);
+  console.log(
+    `Stylesheets served: ${sheets.length} (${css.length} bytes total)`,
+  );
   console.log(`Utility selectors present: ${utilities ? "YES" : "NO"}`);
   console.log(`--tw- variables present: ${twVars ? "YES" : "NO"}`);
   console.log(`Raw @apply leaked: ${rawApply ? "YES (BAD)" : "no"}`);
