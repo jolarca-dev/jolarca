@@ -27,19 +27,19 @@ state — re-measure before quoting one.
 
 | Stack | Enforced value | Where | Applies to |
 | --- | --- | --- | --- |
-| Backend | `--cov-fail-under=20` | `.github/workflows/ci.yml:97` | `pytest tests/unit tests/security tests/contract --cov=.` |
+| Backend | `--cov-fail-under=63` | `.github/workflows/ci.yml:97` | `pytest tests/unit tests/security tests/contract --cov=.` |
 | Frontend | `80` for branches, functions, lines and statements | `frontend/vitest.config.mts:55-60` | only the 17 modules named in `coverage.include` (`:36-54`) |
 
-The backend figure is **20%, not 80%**. The in-file comment at `ci.yml:98-103` records the
-intent to raise it in steps from the figure CI itself reports, and measured coverage at
-68.8% locally once contract tests joined the suite. The frontend floor is real but narrow:
-it is not an aggregate over the app, so "the frontend is 80% covered" does not follow from
-it. This table is the only place in `docs/` that states these numbers; every other document
-links here rather than restating them (`QODER.md` §8 G1 — the restatements were the drift).
-The 80→20 backend decision is recorded as ADR-0021, retroactively: the value was lowered in
-an unrelated revert PR and had no decision record until 2026-10-05. That ADR also carries
-the ratchet rule and the fact that it is already triggered — measured 69% against a gate of
-20% — so the next CI edit owes either a raised flag or a stated reason.
+The backend figure is **63%, not 80%** — raised from 20 on 2026-10-06 when ADR-0021's ratchet
+triggered: CI's own `backend` job reported `Total coverage: 68.56%` (run `37476183729`), so
+the flag is that figure minus 5, taken from what CI reports rather than from a local run.
+Measured locally the same set came out at 68.8% once contract tests joined it. The frontend
+floor is real but narrow: it is not an aggregate over the app, so "the frontend is 80%
+covered" does not follow from it. This table is the only place in `docs/` that states these
+numbers; every other document links here rather than restating them (`QODER.md` §8 G1 — the
+restatements were the drift). The 80→20 downgrade is recorded as ADR-0021, retroactively: the
+value was lowered in an unrelated revert PR and had no decision record until 2026-10-05, which
+is also where the ratchet rule lives. §8 G1 stays OPEN: 63% is still not the documented target.
 
 **Rule of composition:** deterministic tests only — no sleeps-as-sync, no
 network to third parties (Stripe mocked), seeded fixtures, and test data
@@ -75,7 +75,7 @@ cleanup in e2e (`e2e/fixtures`).
 
 ```mermaid
 flowchart TD
-    PR["Push / PR"] --> BE["Backend job<br/>ruff · mypy · pytest (--cov-fail-under=20)"]
+    PR["Push / PR"] --> BE["Backend job<br/>ruff · mypy · pytest (--cov-fail-under=63)"]
     PR --> FE["Frontend job<br/>ESLint · typecheck · Vitest (80% on the 17 included modules) · Prettier"]
     PR --> SEC["Security job<br/>secret scan · npm audit · pip-audit"]
     BE --> CT["Contract: OpenAPI snapshot diff<br/>+ frontend api:drift"]

@@ -94,13 +94,13 @@ jobs:
         run: mypy project apps
       - name: Unit + security + contract tests
         run: |
-          pytest tests/unit tests/security tests/contract --cov=. --cov-report=xml --cov-fail-under=20
+          pytest tests/unit tests/security tests/contract --cov=. --cov-report=xml --cov-fail-under=63
           # Contract tests joined CI on 2026-10-03 (gap G7): they assert the PCI
           # SAQ-A Stripe boundary and PII non-leakage, so until now that evidence
-          # was written but never produced. Coverage measured 68.8% locally with
-          # them included — raise --cov-fail-under in steps from the figure CI
-          # actually reports, not from a local number.
-          # TODO: raise threshold toward 80% as contract/integration tests land
+          # was written but never produced. This floor is ADR-0021's ratchet applied:
+          # CI's own backend job reported "Total coverage: 68.56%" at run 37476183729,
+          # so the flag is measured - 5 = 63, taken from the figure CI reports and not
+          # from a local run. Ratchet again once CI reports 10+ points above this value.
       - name: Migrate DB for OpenAPI check
         run: python manage.py migrate --noinput
       - name: OpenAPI drift check

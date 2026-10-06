@@ -209,7 +209,7 @@ FALSIFIED = (
     ("directly are rejected by CI", "no workflow rejects hand-edited lockfiles"),
     ("frontend/src/lib/api/generated", "that path does not exist; see G24"),
     ("lighthouse-budgets enforced", "frontend-lighthouse is if:false; see G5"),
-    ("coverage-%E2%89%A580", "the gate is --cov-fail-under=20; see G1"),
+    ("coverage-%E2%89%A580", "the gate is --cov-fail-under=63 (20 until 2026-10-06); see G1"),
     # Added with G17/G26: deployment claims that the staging workflow does not honour.
     (
         "audit log of every deploy",
@@ -251,7 +251,8 @@ FALSIFIED = (
         "CODEOWNERS is inert; review is self-review with one maintainer; see G2",
     ),
     # Added with t9 (2026-10-05), from measured gate values: the backend coverage floor
-    # is --cov-fail-under=20 (.github/workflows/ci.yml:97), while 80 is the frontend
+    # is --cov-fail-under=63 (.github/workflows/ci.yml:97 — it was 20 when this list was
+    # written, and ADR-0021's ratchet raised it on 2026-10-06), while 80 is the frontend
     # Vitest threshold and applies only to the 17 modules in coverage.include
     # (frontend/vitest.config.mts:55-60 for the thresholds, :36-54 for that list).
     # Both testing docs restated "80% for both
@@ -261,11 +262,11 @@ FALSIFIED = (
     # "enforced in CI for both stacks" sentence survived in the first place.
     (
         "≥80% coverage floor",
-        "the backend gate is --cov-fail-under=20; the 80% floor is frontend-only; see G1",
+        "the backend gate is --cov-fail-under=63; the 80% floor is frontend-only; see G1",
     ),
     (
         "coverage below 80%",
-        "the backend gate is --cov-fail-under=20 (ci.yml:97); see G1",
+        "the backend gate is --cov-fail-under=63 (ci.yml:97); see G1",
     ),
     (
         "deploys are health-gated",

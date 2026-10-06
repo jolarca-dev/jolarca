@@ -77,7 +77,7 @@ frontend-unit]`, so a lint failure skips it entirely (§8 G21).
 3. Tests green — CI runs `tests/unit`, `tests/security` and `tests/contract`
    (`make test`, `make test-contract`; the contract suite needs the dev database,
    so it is not part of `make test`). The coverage gate today is
-   `--cov-fail-under=20`; 80% is the target, not the current gate.
+   `--cov-fail-under=63` (ADR-0021's ratchet, from CI's own figure); 80% is the target — §8 G1.
 4. OpenAPI snapshot regenerated if API surface changed (`make api-schema`)
 5. No secrets — `make check-secrets` scans what **git carries** (`git ls-files`),
    the same set CI sees, alongside Gitleaks (which scans history).
