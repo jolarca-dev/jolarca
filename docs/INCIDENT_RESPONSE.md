@@ -166,7 +166,7 @@ existed to define it. It becomes a convention here:
 
 | Token | Rule |
 | ----- | ---- |
-| CLASS | `SEC` authentication, authorisation or secret exposure · `DEP` dependency supply chain · `PII` personal-data breach (also starts the Art. 33 clock, §1) · `AVAIL` outage or degradation · `DATA` data integrity or loss · `PROC` a control that did not do what it claimed |
+| CLASS | `SEC` authentication, authorisation or secret exposure · `DEP` dependency supply chain · `PII` personal-data breach (also starts the Art. 33 clock, §1) · `AVAIL` outage or degradation · `DATA` data integrity or loss · `PROC` a control that did not do what it claimed · `RENAME` legacy: the one identifier minted before this section existed, kept so §6.2 can cite ADR-0019 truthfully. `scripts/check_advisory_register.py` enforces membership in exactly this set, so a new class is a change to this row first. |
 | YYYYMMDD | the date the incident or advisory was **declared**, in the operator's zone (`Europe/Vilnius`). `QODER.md` §Part VIII → *Clocks* exists because one event can carry two dates either side of midnight UTC, so state the zone whenever a timestamp is not local. |
 | NN | sequence within class and date, starting `01` |
 
