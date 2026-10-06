@@ -5,7 +5,7 @@
 ```bash
 git clone <repo> && cd jolarca
 cp .env.example .env            # fill in CHANGE_ME values
-make bootstrap && source scripts/activate.sh   # venv + pinned dev deps, then activate
+make bootstrap && source scripts/activate.sh   # venv + pinned dev deps, then activate (`make shell` does both)
 make sysdeps                    # one-time: GDAL libraries (PostGIS model support)
 make dev-up                     # postgis, redis, minio, mailpit, stripe-mock, web, worker, beat, frontend
 make migrate && make seed
@@ -86,10 +86,10 @@ frontend-unit]`, so a lint failure skips it entirely (§8 G21).
 7. Documentation claims — `make check-docs` fails when a contributor-facing doc
    asserts a control that configuration does not implement (badge org vs `origin`,
    cited paths that do not exist, claims proven false, volatile ADR counts, gap-
-   register integrity, cited `make` targets). Runs in the CI backend job, preceded
-   by `--self-test`. This gate exists because every code invariant here is
-   machine-checked while the *claims about* those controls were checked by nothing,
-   so docs drifted and each drift became a new §8 entry.
+   register integrity, cited `make` targets, and the exemption map that scopes C3/C6,
+   which must state a reason per file — §8 G38). Scope now comes from `git ls-files`,
+   so a new document cannot sit quietly outside it. Runs in the CI backend job with
+   `--self-test` first: claims about controls, unlike controls, were checked by nothing.
 8. Toolchain parity — `make check-toolchain` fails if the interpreter running the gates does not
    match the `backend/requirements/dev.txt` pins, or if a stray `.venv` exists anywhere in the
    tree (gitignored at every depth, so invisible to `git status`). Local-only by design: CI

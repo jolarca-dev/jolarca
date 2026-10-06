@@ -562,12 +562,13 @@ one audit trail across those writers needs each writer's zone, not a guessed one
    reports 10+ points above 63 — and never by jumping to 80, since an unreachable gate gets
    reverted under pressure and a silently-lowered one gets forgotten, the second being
    exactly what happened here.
-2. **G14 — make venv↔lock drift visible.** CI installs from `requirements/dev.txt`
-   with `--require-hashes`, so CI is the authoritative toolchain and the local
-   venv is the loose end. Re-run `make bootstrap` after every `make lock`; a cheap
-   durable guard is a `make deps-check` target that runs
-   `pip install --require-hashes -r backend/requirements/dev.txt` and reports
-   whether anything was out of date.
+2. **G14 — make venv↔lock drift visible.** CI installs from `requirements/dev.txt` with
+   `--require-hashes`, so CI is the authoritative toolchain and the local venv is the loose
+   end; re-run `make bootstrap` after every `make lock`. *(Narrowed 2026-10-06: the proposed
+   `make deps-check` is redundant — `make check-toolchain`, run first by `make verify`, already
+   compares every pin in `backend/requirements/dev.txt` against the installed version and fails
+   on a stray venv. Only hash *integrity* of the lock is left, and it is declined: it needs a
+   mutating `pip install`, which CI performs from the same file.)*
 3. **G19 — finish the dependency backlog; one defect class is left, and it recurs.**
    Always triage locally first — `npm ci --dry-run` against a branch's own
    `package.json` + `package-lock.json` reproduces the gate in seconds, for free.
