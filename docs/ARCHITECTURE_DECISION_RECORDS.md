@@ -554,6 +554,53 @@ in the rule that exists to keep them apart. **G1 stays OPEN:** 63% is not the �
 advertised, and coverage is a proxy — a raised floor makes deletion visible, it does not make
 any assertion meaningful.
 
+## ADR-0022 — Risk acceptance: Playwright checkout journey and Lighthouse budgets are not CI gates
+
+**Context.** Two `ci.yml` jobs are switched off by condition rather than by deletion:
+`frontend-lighthouse` and `frontend-playwright-smoke` both carry `if: false`. Measured
+2026-10-06 on `main`, both report `skipped` on every run. What they would have produced is
+real and unrun: **43 `test()` declarations across 14 Playwright spec files × 3 projects**
+(buyer/seller/funeral journeys, checkout, consent, GDPR, a11y, security headers) and
+`frontend/scripts/lighthouse-budget.json`, the budget file that **no invoker anywhere**
+references — `git grep -nE 'lighthouse-budget|bundle-analyze|analyze:bundle' -- .github/ Makefile`
+returns zero hits, the finding recorded as §8 **G32**. `docs/TESTING_STRATEGY.md` §4 and
+`docs/PERFORMANCE_REPORT.md` now state "None in CI" per metric, and the `README.md:6` badge
+says the Lighthouse gate is disabled. **A corrected badge is not a working gate** — §8 G4 and
+G5 stayed OPEN because the substance was still missing, and §8 G32 closed only the false claim.
+
+**Decision.** Accept the risk for as long as the platform has no real transactions to protect,
+and record the acceptance instead of leaving two disabled jobs unexplained. Enabling them today
+would produce a permanently red or permanently pending pipeline for reasons that are not the
+tests' quality: the Lighthouse job needs a reachable built target, the Playwright job needs the
+compose stack, and `smoke.spec.ts` is the only spec the disabled job is written to run — so
+"enable Playwright" would not even execute the 43-declaration suite. Re-enable when the work
+exists to make them green, in this order: (1) make `frontend-build` a required context
+(§8 **G21** fix 2, the owner's call), (2) wire the Lighthouse job to a build artifact and the
+budget file so the budget has an invoker, (3) run the checkout journey against CI services, not
+only `smoke.spec.ts`.
+
+**Compensating controls actually in place** (stated as measurements, not intentions): 267 Vitest
+tests across 22 files, gated by the required `frontend-unit` context; `frontend-openapi-drift`
+required, so the backend↔frontend contract cannot drift silently (§8 G22); `frontend-typecheck`
+and `frontend-lint` required; the standalone-server CSS guard
+(`frontend/scripts/verify-standalone.mjs`) runs on every PR in `frontend-build`, though that job
+is **not** a required context — which is precisely why step (1) above precedes this acceptance
+being called a mitigation. Backend contract tests assert the PCI SAQ-A Stripe boundary and PII
+non-leakage (§8 G7). No automated control covers visual regressions, real-browser checkout
+flows, or Core Web Vitals.
+
+**Consequences.** (+) The gap has a dated owner decision, a revisit trigger and an ordering, so
+it cannot silently become permanent the way the `--cov-fail-under` downgrade did (ADR-0021).
+(+) CI stays honest: nothing is claimed that does not run. (−) A regression that only appears in
+a real browser — checkout, consent UX, a11y, CSS delivery — can reach `main` undetected. (−) A
+Core Web Vitals regression is unmeasured, so the performance budgets are aspirational until step
+(2) lands. (−) The accepted risk sits on the same single-operator surface as ADR-0020: whoever
+accepts it is also whoever would notice the regression by hand. **Review:** before any production
+launch, before the first real carrier or payment integration, and whenever `frontend-build`
+becomes a required context. **§8 G4 and G5 stay OPEN** — an accepted risk is not an enforced gate.
+
+**Status:** Accepted 2026-10-06 (recorded per owner authorization in this session; sole maintainer).
+
 
 ---
 

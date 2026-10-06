@@ -79,8 +79,8 @@ flowchart TD
     PR --> FE["Frontend job<br/>ESLint · typecheck · Vitest (80% on the 17 included modules) · Prettier"]
     PR --> SEC["Security job<br/>secret scan · npm audit · pip-audit"]
     BE --> CT["Contract: OpenAPI snapshot diff<br/>+ frontend api:drift"]
-    FE --> E2E["Playwright suite: 43 tests × 3 projects<br/>CI job is if:false — runs nowhere (§8 G4)"]
-    FE --> LH["Lighthouse CI vs budget<br/>job is if:false — measures nothing (§8 G5)"]
+    FE --> E2E["Playwright suite: 43 tests × 3 projects<br/>CI job is if:false — runs nowhere (§8 G4; ADR-0022)"]
+    FE --> LH["Lighthouse CI vs budget<br/>job is if:false — measures nothing (§8 G5; ADR-0022)"]
     FE --> BA["frontend-build: verify-standalone.mjs boots the bundle<br/>no size gate exists; not a required context (§8 G21)"]
     CT --> MERGE["Merge gate (11 required status checks)"]
     E2E -.->|disabled| MERGE
@@ -97,7 +97,8 @@ flowchart TD
 blocks a merge: backend coverage under the `--cov-fail-under` value, a frontend drop
 below the 80% floor on the included modules, a failing frontend test, type check or
 lint, OpenAPI drift, a secret hit, or a failing security suite. The three dotted boxes
-above **do not** block — Lighthouse and Playwright are `if: false` (§8 G5, §8 G4) and
+above **do not** block — Lighthouse and Playwright are `if: false` (§8 G5, §8 G4; accepted in
+ADR-0022) and
 `frontend-build` is not a required context and holds the only check that boots the shipped
 bundle (§8 G21). It no longer waits on lint: on 2026-10-06 PR #176 dropped `frontend-lint`
 from the job's `needs:`, so a lint failure can no longer suppress it — measured the same day on
