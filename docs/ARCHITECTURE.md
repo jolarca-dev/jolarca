@@ -236,4 +236,27 @@ live in `docs/runbooks/`.
 
 **Cross-references:** [API_CONTRACT.md](./API_CONTRACT.md) ·
 [SECURITY.md](./SECURITY.md) · [GDPR_COMPLIANCE.md](./GDPR_COMPLIANCE.md) ·
-[TESTING.md](./TESTING.md) · ADRs in `docs/TECH_DECISIONS.md`
+[TESTING.md](./TESTING.md) · ADRs in
+[ARCHITECTURE_DECISION_RECORDS.md](./ARCHITECTURE_DECISION_RECORDS.md) — the registry;
+`docs/TECH_DECISIONS.md` is a pointer to it · the full document inventory in
+[README.md](./README.md)
+
+**Detail documents** (`docs/architecture/`). The modular breakdown is the authority on app
+boundaries and forbidden imports. The four sequence diagrams were reachable only from the
+document index until 2026-10-05 — measured, one inbound reference each, and that one was
+`docs/README.md` — so they are listed here where a reader of this page will find them:
+
+- [01-modular-breakdown.md](./architecture/01-modular-breakdown.md) — app
+  responsibilities, declared public interfaces, the forbidden-imports table the fitness
+  test enforces, and the vendor boundaries.
+- [02-sequence-registration-2fa.md](./architecture/02-sequence-registration-2fa.md) —
+  registration and the two-factor flow.
+- [03-sequence-listing-creation.md](./architecture/03-sequence-listing-creation.md) —
+  listing creation through to publish, including the AI enrichment path.
+- [04-sequence-checkout.md](./architecture/04-sequence-checkout.md) — the money path:
+  checkout, tax calculation, payment intent.
+- [05-sequence-erasure.md](./architecture/05-sequence-erasure.md) — GDPR Art. 17 erasure
+  fan-out across the owning apps.
+- [06-database-erd.md](./architecture/06-database-erd.md) — logical entity relationships.
+- [07-communication-protocols.md](./architecture/07-communication-protocols.md) — REST and
+  internal protocol conventions.

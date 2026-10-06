@@ -1,6 +1,6 @@
 # Compliance-sensitive paths require review from the jolarca-dev org owner.
-# GitHub enforces this via branch protection "require review from Code Owners".
-#
+# NOT ENFORCED: branch protection sets require_code_owner_reviews=false and
+# required_approving_review_count=0, so this file currently gates nothing.
 # NOTE: jolarca-dev has zero teams (D-10). Until teams are created, the sole
 # operator (@JourneyOfLife) is the code owner for everything.
 # ADR-0004 R4: no mission-platform references allowed.

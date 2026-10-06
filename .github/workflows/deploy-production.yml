@@ -11,7 +11,15 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-24.04
-    environment: production       # REQUIRED: manual approval gate before any prod action
+    # This `environment:` line is NOT an approval gate, whatever this comment used to
+    # claim. The `production` environment does not exist yet, and when a `v*` tag
+    # auto-creates it, `can_admins_bypass` defaults to true — so with one operator who
+    # is the org owner, any "required" approval here is self-grantable. See QODER.md
+    # §8 G18. Removing this label entirely is queued as remediation item 12; the
+    # rollout step below still fails loudly ON PURPOSE (unlike staging), because this
+    # job pushes `:latest` and a green production run would read as a release that
+    # never happened.
+    environment: production
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
