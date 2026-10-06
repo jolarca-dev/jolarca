@@ -19,7 +19,7 @@ What it verifies
 C1 origin       — every github.com/<org>/<repo> URL in the README matches the
                   real `origin` remote (G9: badges pointed at a retired org, so
                   both rendered as broken images on the front page).
-C2 real paths   — every backticked repository path cited in governance docs
+C2 real paths   — every backticked repository path cited in a tracked document
                   exists on disk (G24d: two never-hand-edit lists guarded
                   `frontend/src/lib/api/generated/`, which never existed, while
                   README cited the real `frontend/src/generated/api.ts`).
@@ -38,11 +38,18 @@ C6 make targets — every `make <target>` cited in docs exists, and a Makefile
 C7 tables       — every Markdown table git tracks is one contiguous run with
                   exactly one separator row and one cell count per row, and no
                   row has lost its leading pipe. Structural, so it scans all
-                  tracked Markdown rather than the two claim lists below:
+                  tracked Markdown rather than the claim lists below:
                   G30 and G32 were both documents nobody had remembered to add
                   to a list. A malformed table renders silently wrong on GitHub
                   while looking right in an editor — in an evidence column that
                   reads as "none recorded" (G31).
+C8 claim scope  — the exemption map that keeps a document out of C3/C6 must
+                  itself hold: each exempt path is still tracked, each carries a
+                  written reason, and none is also claim-checked. Scope became
+                  derived rather than remembered (§8 G38: 31 of 51 tracked .md
+                  files were in neither list), so the failure mode moved from
+                  "forgot to add" to "forgot to justify" — and a justification is
+                  something a check can falsify.
 
 Limits — read before trusting a green run
 -----------------------------------------
@@ -54,9 +61,11 @@ Limits — read before trusting a green run
   differently will pass. It prevents regression; it does not prove truth.
 - C2 resolves a cited path against a small set of roots (repo root, then
   `backend/`). A path that exists but is not the one intended still passes.
+- C3's scope is every tracked Markdown file except the names in
+  CLAIM_SCOPE_EXEMPT, plus the non-markdown entries of LIVE_CLAIM_FILES. A document
+  exempted there is not claim-checked; C8 inspects the exemption, not its wisdom.
 - C7 checks structure only. A table whose cells are uniform and contiguous can
-  still assert something false; that is C3's job, and C3 only sees the files in
-  LIVE_CLAIM_FILES.
+  still assert something false; that is C3's job.
 - A green run means "these known classes of drift are absent", never
   "the documentation is accurate".
 - **CI-only.** This runs in the backend CI job, not as a pre-commit hook, so a false
@@ -148,6 +157,50 @@ LIVE_CLAIM_FILES = [
     ".github/workflows/deploy-production.yml",
 ]
 
+# C3/C6 scope is derived from 2026-10-06 (§8 G38): every tracked Markdown file is
+# claim-checked EXCEPT one named here, and naming it requires a reason. The two lists
+# above are the floor, not the boundary — measured on this tree, 31 of 51 tracked .md
+# files sat in neither list, so `docs/RUNBOOK.md`, `docs/SECURITY_POSTURE.md`,
+# `docs/API_CONTRACT.md`, `docs/TECHNICAL_SPECIFICATION.md`, all of `docs/architecture/`
+# and all of `docs/runbooks/` could cite paths and controls that do not exist without any
+# gate noticing. That is the third time the same hole produced a finding: §8 G30 and §8
+# G32 were both "a document nobody remembered to add". Exemption is now a written claim
+# that C8 checks, instead of an omission that reads as absence of defect. Exempt does NOT
+# mean unexamined: these files stay in scope for C2 and C4, because a dated record that
+# cites a nonexistent path is still a dead citation.
+CLAIM_SCOPE_EXEMPT = {
+    "QODER.md": (
+        "§8 is a register of falsehoods that were found, so it must be able to quote the "
+        "claim it retracts — measured 3 denylist hits that are register prose about absent "
+        "controls, plus 2 C6 hits over targets the queue *proposes*"
+    ),
+    "docs/GRANT_APPLICATION.md": (
+        "funded-application text submitted in 2026-09 and annotated rather than edited "
+        "(the reasoning already recorded as G30's residual)"
+    ),
+    "docs/GRANT_SUBMISSION.md": (
+        "submitted to a funder as-is; its 1 measured hit at line 189 is the claim the "
+        "document's own dated annotation retracts"
+    ),
+    "docs/archive/STEP20_EXECUTED.md": (
+        "dated execution record of a procedure that ran once; C3 would read its plan "
+        "voice as a present claim"
+    ),
+    "audits/internal/2026-08-marketplace-audit/AUDIT_REPORT.md": (
+        "dated internal audit from 2026-08 — corrected in place with a note rather than "
+        "rewritten, per the convention this repo applies to frozen records"
+    ),
+    "audits/internal/2026-08-marketplace-audit/CHANGES.md": (
+        "companion change log of that same dated audit"
+    ),
+    "audits/internal/2026-08-marketplace-audit/PRE_PUSH_CHECKLIST.md": (
+        "a 2026-08 plan of record. Its three stale claims (CODEOWNERS review, an 80% "
+        "coverage floor, up-to-date branches required) were corrected under "
+        "JOL-PROC-20261006-04, but the surrounding prose states what the author intended "
+        "to enable, which C3 cannot distinguish from a present assertion"
+    ),
+}
+
 # Everything humans read for rules, including the register (for path/ID checks).
 GOVERNANCE_FILES = [
     "README.md",
@@ -209,7 +262,7 @@ FALSIFIED = (
     ("directly are rejected by CI", "no workflow rejects hand-edited lockfiles"),
     ("frontend/src/lib/api/generated", "that path does not exist; see G24"),
     ("lighthouse-budgets enforced", "frontend-lighthouse is if:false; see G5"),
-    ("coverage-%E2%89%A580", "the gate is --cov-fail-under=20; see G1"),
+    ("coverage-%E2%89%A580", "the gate is --cov-fail-under=63 (20 until 2026-10-06); see G1"),
     # Added with G17/G26: deployment claims that the staging workflow does not honour.
     (
         "audit log of every deploy",
@@ -251,7 +304,8 @@ FALSIFIED = (
         "CODEOWNERS is inert; review is self-review with one maintainer; see G2",
     ),
     # Added with t9 (2026-10-05), from measured gate values: the backend coverage floor
-    # is --cov-fail-under=20 (.github/workflows/ci.yml:97), while 80 is the frontend
+    # is --cov-fail-under=63 (.github/workflows/ci.yml:97 — it was 20 when this list was
+    # written, and ADR-0021's ratchet raised it on 2026-10-06), while 80 is the frontend
     # Vitest threshold and applies only to the 17 modules in coverage.include
     # (frontend/vitest.config.mts:55-60 for the thresholds, :36-54 for that list).
     # Both testing docs restated "80% for both
@@ -261,11 +315,11 @@ FALSIFIED = (
     # "enforced in CI for both stacks" sentence survived in the first place.
     (
         "≥80% coverage floor",
-        "the backend gate is --cov-fail-under=20; the 80% floor is frontend-only; see G1",
+        "the backend gate is --cov-fail-under=63; the 80% floor is frontend-only; see G1",
     ),
     (
         "coverage below 80%",
-        "the backend gate is --cov-fail-under=20 (ci.yml:97); see G1",
+        "the backend gate is --cov-fail-under=63 (ci.yml:97); see G1",
     ),
     (
         "deploys are health-gated",
@@ -340,6 +394,28 @@ def existing_governance_files() -> list[str]:
     return [f for f in GOVERNANCE_FILES if (REPO_ROOT / f).is_file()]
 
 
+def governance_inputs() -> list[str]:
+    """C2/C4 scope: the listed documents plus every tracked Markdown file.
+
+    Derived from `git ls-files` so that a document cannot escape the path and ADR-range
+    checks by not having been added to a list — §8 G30, G32 and G38 are three entries
+    describing that one hole. Non-markdown inputs stay explicit, because there is no way
+    to infer from a filename whether its comments are contributor-facing claims.
+    """
+    return sorted(set(GOVERNANCE_FILES) | set(tracked_markdown()))
+
+
+def live_claim_inputs() -> list[str]:
+    """C3/C6 scope: every tracked Markdown file except those exempted with a reason.
+
+    `LIVE_CLAIM_FILES` remains the explicit floor — each of its Markdown entries was added
+    after a finding proved the document needed it, and its non-markdown entries cannot be
+    derived — but the scope is no longer *only* what somebody remembered to append.
+    """
+    auto = [f for f in tracked_markdown() if f not in CLAIM_SCOPE_EXEMPT]
+    return sorted(set(LIVE_CLAIM_FILES) | set(auto))
+
+
 def assert_inputs_present() -> None:
     """Fail closed when a listed input no longer exists (G15's principle, applied here).
 
@@ -406,7 +482,7 @@ def check_paths(problems: list[str]) -> int:
     in order to record that it was one.
     """
     missing: set[str] = set()
-    for f in existing_governance_files():
+    for f in governance_inputs():
         for lineno, line in enumerate(read(f).splitlines(), 1):
             low = line.lower()
             if any(k in low for k in HISTORICAL_MARKERS):
@@ -432,7 +508,7 @@ def check_paths(problems: list[str]) -> int:
 def check_live_claims(problems: list[str]) -> int:
     """C3: strings proven false must not be asserted as current fact."""
     hits = 0
-    for f in LIVE_CLAIM_FILES:
+    for f in live_claim_inputs():
         if not (REPO_ROOT / f).is_file():
             continue
         for lineno, line in enumerate(read(f).splitlines(), 1):
@@ -466,7 +542,7 @@ def check_adr_ranges(problems: list[str]) -> int:
     """
     actual = registry_max()
     n = 0
-    for f in GOVERNANCE_FILES:
+    for f in governance_inputs():
         if not (REPO_ROOT / f).is_file():
             continue
         for lineno, line in enumerate(read(f).splitlines(), 1):
@@ -621,9 +697,9 @@ def check_make_targets(problems: list[str]) -> int:
     """C6: contributor docs may not cite an invocable target that does not exist,
     and a Makefile comment asserting 'no CI job does this' must still be true.
 
-    Only live-claim files are scanned for citations. QODER.md §8 is a remediation
-    queue and legitimately *proposes* targets that do not exist yet (G14's
-    `make deps-check`); flagging a proposal as a false citation would make this
+    Claim-checked scope (`live_claim_inputs()`) is scanned for citations. QODER.md §8 is
+    exempted in CLAIM_SCOPE_EXEMPT and legitimately *proposes* targets that do not exist
+    yet (G14's `make deps-check`); flagging a proposal as a false citation would make this
     check cry wolf, and a checker that cries wolf gets disabled.
     """
     n = 0
@@ -633,7 +709,7 @@ def check_make_targets(problems: list[str]) -> int:
         raise CannotVerify("Makefile has no targets")
 
     cited: set[str] = set()
-    for f in LIVE_CLAIM_FILES:
+    for f in live_claim_inputs():
         if (REPO_ROOT / f).is_file():
             cited.update(re.findall(r"`make ([a-z][a-z0-9-]*)`", read(f)))
     for target in sorted(cited):
@@ -804,6 +880,41 @@ def check_tables(problems: list[str]) -> int:
     return n
 
 
+def check_claim_scope(problems: list[str]) -> int:
+    """C8: the exemption map is the only door out of C3/C6, so the door itself is checked.
+
+    Absence used to mean invisibility — §8 G38 measured 31 of 51 tracked Markdown files in
+    neither list. Now every tracked document is claim-checked unless it is named in
+    CLAIM_SCOPE_EXEMPT, which makes exemption a *stated claim* this check can falsify: the
+    path must still be tracked, the reason must be written down, and no file may be both
+    claim-checked and exempted. Without this, widening scope by derivation would simply
+    move the silent failure from "forgot to add" to "forgot to justify".
+    """
+    n = 0
+    tracked = set(tracked_markdown())
+    for path, reason in sorted(CLAIM_SCOPE_EXEMPT.items()):
+        if path not in tracked:
+            problems.append(
+                f"C8 scope: {path} is exempted from C3/C6 but git tracks no such Markdown "
+                "file — a stale exemption silences nothing, so it must go with the document"
+            )
+            n += 1
+        if not reason.strip():
+            problems.append(
+                f"C8 scope: {path} is exempted from C3/C6 with no reason — exemption has to "
+                "be a written claim, because an unexplained exemption is exactly how §8 G30 "
+                "and G32 read as 'nothing wrong here'"
+            )
+            n += 1
+    for path in sorted(set(CLAIM_SCOPE_EXEMPT) & set(LIVE_CLAIM_FILES)):
+        problems.append(
+            f"C8 scope: {path} appears in LIVE_CLAIM_FILES *and* CLAIM_SCOPE_EXEMPT — "
+            "contradictory scope reads as checked to whichever reader is wrong"
+        )
+        n += 1
+    return n
+
+
 CHECKS = {
     "C1 origin": check_origin,
     "C2 real paths": check_paths,
@@ -812,6 +923,7 @@ CHECKS = {
     "C5 register integrity": check_register,
     "C6 make targets/CI claims": check_make_targets,
     "C7 table integrity": check_tables,
+    "C8 claim scope": check_claim_scope,
 }
 
 
@@ -1106,6 +1218,55 @@ def self_test() -> int:
         check_tables,
         False,
         "docs/README.md rows",
+    )
+
+    # C8 — exemption is the only door out of C3/C6 now that scope is derived, so the door
+    # is probed. These patch the map in memory rather than a file, the way the fail-closed
+    # probe below does: the tree is never touched, and the map is restored either way.
+    saved_exempt = dict(CLAIM_SCOPE_EXEMPT)
+    try:
+        CLAIM_SCOPE_EXEMPT["docs/NOPE-selftest.md"] = "probe: names an untracked file"
+        probs: list[str] = []
+        check_claim_scope(probs)
+        results.append(
+            (
+                "C8 detects an exemption naming an untracked file",
+                any("NOPE-selftest" in p for p in probs),
+                next((p for p in probs if "NOPE-selftest" in p), "no finding")[:120],
+                True,
+            )
+        )
+    finally:
+        CLAIM_SCOPE_EXEMPT.clear()
+        CLAIM_SCOPE_EXEMPT.update(saved_exempt)
+    try:
+        real = next(iter(CLAIM_SCOPE_EXEMPT))
+        CLAIM_SCOPE_EXEMPT[real] = "   "
+        probs = []
+        check_claim_scope(probs)
+        results.append(
+            (
+                "C8 detects an exemption with no reason",
+                any("no reason" in p for p in probs),
+                next((p for p in probs if "no reason" in p), "no finding")[:120],
+                True,
+            )
+        )
+    finally:
+        CLAIM_SCOPE_EXEMPT.clear()
+        CLAIM_SCOPE_EXEMPT.update(saved_exempt)
+    # C8 control — the real map must stay silent. A stale exemption in the tree makes this
+    # report FALSE POSITIVE, which is the intended reading: an unexplained or dead door is
+    # a finding, not a configuration detail.
+    probs = []
+    check_claim_scope(probs)
+    results.append(
+        (
+            "C8 control: real scope is silent",
+            not probs,
+            (probs[0][:120] if probs else f"{len(live_claim_inputs())} claim-checked input(s)"),
+            False,
+        )
     )
 
     # Input presence - a listed path that no longer exists must fail closed rather than
