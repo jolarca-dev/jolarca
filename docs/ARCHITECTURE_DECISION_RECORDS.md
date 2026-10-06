@@ -543,6 +543,17 @@ gate makes deletion visible; it does not make any assertion meaningful.
 
 **Status:** Accepted 2026-10-05 (recorded retroactively; sole maintainer).
 
+**Applied 2026-10-06 — the obligation above is discharged, at a different value than it
+planned.** `--cov-fail-under` went from 20 to **63**, not 64. The rule takes the figure **CI
+reports**, and CI's own `backend` job logged `Required test coverage of 20% reached. Total
+coverage: 68.56%` (run `37476183729`, head `6ba1b14`), so `measured − 5` is 63.56 → **63**. The
+64 written above subtracted 5 from the *local* 69% measurement — the very number this ADR says
+not to use. The two are within a point, so neither value is load-bearing; the difference is
+recorded because letting "64" stand would make a CI measurement and a local one interchangeable
+in the rule that exists to keep them apart. **G1 stays OPEN:** 63% is not the ≥80% originally
+advertised, and coverage is a proxy — a raised floor makes deletion visible, it does not make
+any assertion meaningful.
+
 
 ---
 
