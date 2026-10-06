@@ -91,6 +91,30 @@ gantt
 | R7 | Low seller liquidity at launch | Market | M | High | Anchor parish suppliers pre-launch; funeral-home directory as traffic magnet |
 | R8 | Grant timeline overrun | Schedule | M | Medium | WP gates with scope trim rules: compliance > commerce > cosmetics |
 
+> **Post-submission annotation (2026-10-05), added in the repository copy only.** Four
+> instruments named in this document do not currently run, and the submitted text is
+> deliberately **not** edited: it is the record of what was sent to the funder, and
+> rewriting a funding application in place would misrepresent what was asked for. Measured
+> 2026-10-05: **(1) R3 — "CI budget fails builds; runtime LCP test; bundle gate."** None of
+> the three blocks a build. `frontend-lighthouse` and `frontend-playwright-smoke` are both
+> `if: false` (`.github/workflows/ci.yml:227-232,258-263`), and
+> `frontend/scripts/bundle-analyze.ts` does exit 1 over its 150KB/chunk budget but has **no
+> CI or Makefile invoker at all**. The runtime LCP test exists as
+> `frontend/e2e/performance.spec.ts`; the job that would run it is disabled. **(2) M5 —
+> "CWV budgets green, evidence: Lighthouse CI report."** No Lighthouse CI report is
+> produced, so that milestone's evidence cannot exist as described. **(3) R6 — "health-gated
+> deploys."** Half true, and the half that is true is manual: `scripts/deploy.sh` really
+> does tag a rollback point, migrate before traffic, gate on `/api/health` with a timeout,
+> then smoke-test — but no workflow calls it and no staging target exists
+> (`docs/ASSUMPTIONS.md` §A-07 UNDECIDED), so it is a runbook a human runs, not an
+> automated control. **(4) §6 — "Core Web Vitals, measured via the consent-gated
+> collector."** The collector endpoint has not shipped, so no field data is being gathered
+> yet; the footer's "Lighthouse artifacts" likewise do not exist. Tracked as `QODER.md` §8
+> **G4** and **G5** (both OPEN), with the corrected enforcement status in
+> `docs/PERFORMANCE_REPORT.md` and the coverage-figure divergence annotated the same way in
+> `docs/GRANT_SUBMISSION.md` §8. Whoever submitted this application should be told, because
+> an in-repo annotation cannot retract what was sent.
+
 ## 6. Success Metrics (12-month horizon)
 
 | Metric | Target | Measurement |

@@ -58,24 +58,24 @@ async function RelatedProducts({
   locale: string;
 }) {
   const t = await getTranslations("catalog");
-  try {
-    const related = await getRelatedProducts(slug);
-    if (related.length === 0) return null;
-    return (
-      <section aria-labelledby="related-products" className="mt-16">
-        <h2 id="related-products" className="text-2xl text-primary-deep">
-          {t("related")}
-        </h2>
-        <div className="mt-6">
-          <ProductGrid products={related} locale={locale} />
-        </div>
-      </section>
-    );
-  } catch {
-    // GAP-P04 closed: the rail is optional merchandising — if the backend
-    // is having a moment, it degrades to silence while the PDP stays loud.
-    return null;
-  }
+  // GAP-P04: the rail is optional merchandising — if the backend is having a
+  // moment it degrades to silence while the PDP stays loud. Only the fetch is
+  // guarded. This component RETURNS the element instead of rendering it, so
+  // React renders it after this function has returned and the try/catch can no
+  // longer observe a render fault; wrapping the JSX caught nothing while
+  // implying it did. A render fault belongs to an error boundary, not here.
+  const related = await getRelatedProducts(slug).catch(() => null);
+  if (!related || related.length === 0) return null;
+  return (
+    <section aria-labelledby="related-products" className="mt-16">
+      <h2 id="related-products" className="text-2xl text-primary-deep">
+        {t("related")}
+      </h2>
+      <div className="mt-6">
+        <ProductGrid products={related} locale={locale} />
+      </div>
+    </section>
+  );
 }
 
 export default async function ProductPage({

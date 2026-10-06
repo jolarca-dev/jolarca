@@ -137,9 +137,13 @@ export function captureRequestId(headers: Headers): void {
 /**
  * Register the signed-in user. Only a SHA-256 prefix (12 hex chars) is
  * ever stored — logs can correlate a user without identifying them.
+ *
+ * Returns the hashing promise so callers that must observe the applied ID
+ * (e.g. tests, or a synchronous follow-up log) can `await` it instead of
+ * racing the async digest; production callers may fire-and-forget.
  */
-export function setUserId(rawId: string): void {
-  void (async () => {
+export function setUserId(rawId: string): Promise<void> {
+  return (async () => {
     try {
       const digest = await crypto.subtle.digest(
         "SHA-256",
