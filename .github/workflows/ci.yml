@@ -46,14 +46,61 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gdal-bin libgdal-dev
       - name: Install pinned deps
         run: pip install --require-hashes -r requirements/dev.txt
+      # Dependabot group semantics are parsed by nothing else in this repo, so a
+      # mis-shaped `groups:` set was invisible to every gate and only surfaced days
+      # later as a missing or unmergeable PR (QODER.md §8 G20). Runs here rather than
+      # as a new job on purpose: branch protection gates a fixed list of *named*
+      # contexts, so a new job could fail without blocking anything (§8 G21/G22). It
+      # also needs PyYAML, which the pinned dev requirements above install provides.
+      # --self-test runs first so a neutered checker cannot keep the step green.
+      - name: Dependabot group config check
+        run: |
+          python ../scripts/check_dependabot_groups.py --self-test
+          python ../scripts/check_dependabot_groups.py
+      # Documentation claims were the one class of assertion with no gate at all:
+      # every code invariant here is machine-checked, but the docs describing those
+      # controls were checked by nothing, so they drifted freely and each drift
+      # became a new §8 register entry. A 2026-10-05 audit found six such claims that
+      # were already registered, cited and prioritised — and still asserted as current
+      # fact in CONTRIBUTING.md and README.md. This step fails the build when a
+      # document asserts a control that configuration does not implement, so the next
+      # one breaks a build instead of being rediscovered by hand weeks later.
+      # --self-test runs first because an always-green gate is worse than none (G3).
+      - name: Doc-claims check (docs must match configuration)
+        run: |
+          python ../scripts/check_doc_claims.py --self-test
+          python ../scripts/check_doc_claims.py
       - name: Lint (ruff)
         run: ruff check .
+      # `ruff check` does not verify formatting — they are separate tools (see
+      # .pre-commit-config.yaml, which lists them as two hooks). Before this step
+      # Python formatting was enforced only by the local pre-commit hook, while the
+      # frontend had a real CI gate (npm run format:check). Parity restored.
+      - name: Format check (ruff format)
+        run: ruff format --check .
+
+      # Repo tooling in scripts/ (the gate scripts themselves). Run from the REPO
+      # ROOT, never as `ruff check ../scripts` from backend/: measured that ruff
+      # resolves backend/pyproject.toml in that form and root ruff.toml from the
+      # root, so the working directory silently picks the rule set (backend
+      # line-length 100 vs root 88) and a locally-clean line fails CI.
+      # QODER.md §8 G25.
+      - name: Lint (ruff) - scripts/ tooling
+        working-directory: ${{ github.workspace }}
+        run: |
+          ruff check scripts
+          ruff format --check scripts
       - name: Typecheck (mypy)
         run: mypy project apps
-      - name: Unit + security tests
+      - name: Unit + security + contract tests
         run: |
-          pytest tests/unit tests/security --cov=. --cov-report=xml --cov-fail-under=20
-          # TODO: raise threshold toward 80% as contract/integration tests land
+          pytest tests/unit tests/security tests/contract --cov=. --cov-report=xml --cov-fail-under=63
+          # Contract tests joined CI on 2026-10-03 (gap G7): they assert the PCI
+          # SAQ-A Stripe boundary and PII non-leakage, so until now that evidence
+          # was written but never produced. This floor is ADR-0021's ratchet applied:
+          # CI's own backend job reported "Total coverage: 68.56%" at run 37476183729,
+          # so the flag is measured - 5 = 63, taken from the figure CI reports and not
+          # from a local run. Ratchet again once CI reports 10+ points above this value.
       - name: Migrate DB for OpenAPI check
         run: python manage.py migrate --noinput
       - name: OpenAPI drift check
@@ -147,7 +194,7 @@ jobs:
             (echo "::error::Generated API types stale — run 'npm run generate:api' and commit" && exit 1)
 
   frontend-build:
-    needs: [frontend-typecheck, frontend-lint, frontend-unit]
+    needs: [frontend-typecheck, frontend-unit]  # deliberately NOT frontend-lint: a style failure must not suppress the only check that boots the shipped bundle (§8 G21); typecheck and unit stay here because both are required contexts, so their failure already blocks the merge
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -261,3 +308,5 @@ jobs:
       - uses: actions/checkout@v7
       - name: check_no_secrets.sh
         run: bash scripts/check_no_secrets.sh
+      - name: check_secrets_dir.sh
+        run: bash scripts/check_secrets_dir.sh

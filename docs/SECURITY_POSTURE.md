@@ -64,13 +64,19 @@ actionable (ADR-0010).
 
 ## 4. Incident Response
 
+**Procedure of record: [INCIDENT_RESPONSE.md](INCIDENT_RESPONSE.md)** — severity levels,
+response clocks, communication templates and the post-mortem template. The five phases
+below are the *evidence* view: which control, script or switch each phase uses in this
+repository, named in the NIST-style phase vocabulary an auditor expects. They are not a
+second procedure, and where a clock or a step differs, INCIDENT_RESPONSE.md wins.
+
 1. **Detection** — monitoring.sh health/threshold alerts (webhook + email),
    Stripe webhook failure runbook, log correlation via x-request-id, GDPR
    kill switch (`GDPR_PROCESSING_HALTED`) for suspected breach containment.
 2. **Containment** — flip the processing halt switch; revoke sessions by
    rotating `DJANGO_SECRET_KEY`; edge-block offending IPs; disable the
    affected service via compose.
-3. **Eradication** — patch/rollback (`scripts/deploy.sh --rollback`), rotate
+3. **Eradication** — patch/rollback (`scripts/deploy.sh` with `--rollback`), rotate
    credentials/keys (Fernet MultiFernet rotation supported), re-run secret
    scan.
 4. **Recovery** — restore from verified backups (7/4/12 rotation; monthly
