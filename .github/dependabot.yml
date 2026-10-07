@@ -29,11 +29,23 @@ updates:
       interval: weekly
     open-pull-requests-limit: 10
     labels: [dependencies, security-review]
-    # Same policy as pip. Excluded from grouping: `dompurify` (it is the XSS
+    # Same policy as pip. Excluded from the catch-all: `dompurify` (it is the XSS
     # sanitiser — a security control, so it lands alone and promptly) and the
-    # `@stripe/*` pair (Stripe Elements is what keeps the merchant out of CHD
-    # scope under PCI DSS SAQ-A; a silent regression there is a scope change,
-    # not a chore).
+    # `@stripe/*` pair. Excluded from the catch-all is NOT the same as ungrouped:
+    # `@stripe/*` is its own family now (see `stripe-js-*` below), because the two
+    # packages are peer-coupled in BOTH directions — `@stripe/react-stripe-js@6.12.0`
+    # peers `@stripe/stripe-js >=9.16.0 <10.0.0`, and `7.0.0` peers `>=10.0.0
+    # <11.0.0` — so a single-package PR for either member's major cannot resolve at
+    # all. Measured on #139: Stripe.js 10.0.0 alone died in `npm ci` with an
+    # `ERESOLVE` peer conflict, and the two discrete PRs also edited ADJACENT lines
+    # of `frontend/package.json`, so a base move made the pair `DIRTY` on each other.
+    # Grouping them keeps the PCI DSS SAQ-A review property that matters — Stripe
+    # Elements is what keeps the merchant out of CHD scope, so its changes must be a
+    # named, single-purpose PR and must never ride `weekly-minor-patch` — while
+    # making that PR buildable. Splitting it major/patch like the families below is
+    # what preserves promptness: a Stripe.js security patch must not wait on a
+    # wrapper major (QODER.md §8 G20). Note the pip `stripe` SDK is a different
+    # package with no such coupling and stays discrete above.
     #
     # Two families cannot be bumped apart. Verified from each branch's own files with a
     # local `npm ci --dry-run`:
@@ -127,6 +139,23 @@ updates:
           - eslint
           - eslint-config-next
           - "@eslint/*"
+        update-types:
+          - minor
+          - patch
+      # The payment-boundary pair. Both routes declare BOTH names: declaring one
+      # silently files its partner alone, which is the #139 failure.
+      stripe-js-major:
+        applies-to: version-updates
+        patterns:
+          - "@stripe/stripe-js"
+          - "@stripe/react-stripe-js"
+        update-types:
+          - major
+      stripe-js-patch:
+        applies-to: version-updates
+        patterns:
+          - "@stripe/stripe-js"
+          - "@stripe/react-stripe-js"
         update-types:
           - minor
           - patch

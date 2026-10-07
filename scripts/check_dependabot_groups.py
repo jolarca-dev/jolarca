@@ -15,13 +15,15 @@ What it verifies
 2. no ambiguity — every (package, update-type) pair resolves to AT MOST ONE
                   group, so matching never depends on declaration order
 3. policy       — the repo's deliberate exceptions actually hold:
-                  `dompurify` / `@stripe/*` / `django` / `stripe` match NO group
-                  (they must land alone and promptly); a family's members agree on
-                  the group handling a given update-type and that group declares
-                  every pattern of the route (a lone `vitest` major is unsatisfiable
-                  against `@vitest/coverage-v8` — verified ERESOLVE); AND a family's
-                  minor/patch route is a DIFFERENT group from its major route, so a
-                  security patch can never wait on a major release.
+                  `dompurify` / `django` / `stripe` match NO group (they must land
+                  alone and promptly); a family's members agree on the group handling
+                  a given update-type and that group declares every pattern of the
+                  route (a lone `vitest` major is unsatisfiable against
+                  `@vitest/coverage-v8`, and a lone `@stripe/stripe-js` major against
+                  `@stripe/react-stripe-js` — both verified ERESOLVE, the second being
+                  the #139 case that made `@stripe/*` a family instead of a discrete
+                  pair); AND a family's minor/patch route is a DIFFERENT group from its
+                  major route, so a security patch can never wait on a major release.
 4. major ceiling — a name whose major is blocked by an upstream constraint must be
                   `ignore:`d and must appear in NO major group. Grouped-and-ignored,
                   grouped-only, and neither (an unsatisfiable single-package major PR
@@ -68,8 +70,16 @@ VERSION_UPDATE = "version-updates"
 MAX_GROUP_NAME_LEN = 75
 
 # Package names that must never be grouped: they land as single PRs so a
-# security control or payment-boundary bump is always reviewed on its own.
-MUST_STAY_DISCRETE = ("dompurify", "@stripe/stripe-js", "@stripe/react-stripe-js")
+# security control bump is always reviewed on its own.
+#
+# `@stripe/stripe-js` and `@stripe/react-stripe-js` were listed here until
+# QODER.md §8 G39 falsified it. Keeping a peer-coupled pair "discrete for review"
+# is not a review control, it is an unsatisfiable PR: at a major boundary neither
+# half can go green alone, so the policy demanded an arrangement dependabot could
+# never deliver. They are a family below now — still one named PR per route, still
+# never the catch-all, so the payment boundary keeps the review property without
+# losing the buildable one. Do not move them back.
+MUST_STAY_DISCRETE = ("dompurify",)
 MUST_STAY_DISCRETE_PIP = ("django", "stripe")
 
 # Coupled families, described PER UPDATE-TYPE, because the two routes legitimately have
@@ -98,6 +108,22 @@ FAMILIES: dict[str, dict[str, dict[str, tuple[str, ...]]]] = {
         "patch": {
             "patterns": ("next", "eslint", "eslint-config-next", "@eslint/*"),
             "members": ("next", "eslint", "eslint-config-next", "@eslint/js"),
+        },
+    },
+    # The payment boundary. Coupling runs BOTH ways, which is why neither member may
+    # be raised alone: `@stripe/react-stripe-js@6.12.0` peers
+    # `@stripe/stripe-js >=9.16.0 <10.0.0`, and `7.0.0` peers `>=10.0.0 <11.0.0`.
+    # Measured on #139, where Stripe.js 10.0.0 filed by itself could not `npm ci`.
+    # Grouped rather than ungrouped is also what stops two stripe PRs from editing
+    # adjacent lines of `frontend/package.json` and turning each other `DIRTY`.
+    "stripe-js": {
+        "major": {
+            "patterns": ("@stripe/stripe-js", "@stripe/react-stripe-js"),
+            "members": ("@stripe/stripe-js", "@stripe/react-stripe-js"),
+        },
+        "patch": {
+            "patterns": ("@stripe/stripe-js", "@stripe/react-stripe-js"),
+            "members": ("@stripe/stripe-js", "@stripe/react-stripe-js"),
         },
     },
 }
@@ -437,6 +463,47 @@ def self_test() -> int:
         {"dependency-name": "eslint", "update-types": [MAJOR_IGNORE_TYPE]},
         {"dependency-name": "@eslint/*", "update-types": [MAJOR_IGNORE_TYPE]},
     ]
+    # The arrangement .github/dependabot.yml now uses, inlined so the probes below do
+    # not depend on the real file being present. Used as both a control (it must stay
+    # silent) and the base for the G39 mutation: narrowing ONE stripe route to a single
+    # member is exactly the #139 shape, and it has to be caught, not just disfavoured.
+    coupled = {
+        "weekly-minor-patch": {
+            "patterns": ["*"],
+            "exclude-patterns": [
+                "dompurify",
+                "@stripe/*",
+                "vitest",
+                "@vitest/*",
+                "next",
+                "eslint",
+                "eslint-config-next",
+                "@eslint/*",
+            ],
+            "update-types": ["minor", "patch"],
+        },
+        "vitest-major": {"patterns": ["vitest", "@vitest/*"], "update-types": ["major"]},
+        "vitest-patch": {
+            "patterns": ["vitest", "@vitest/*"],
+            "update-types": ["minor", "patch"],
+        },
+        "next-toolchain-major": {
+            "patterns": ["next", "eslint-config-next"],
+            "update-types": ["major"],
+        },
+        "next-toolchain-patch": {
+            "patterns": ["next", "eslint", "eslint-config-next", "@eslint/*"],
+            "update-types": ["minor", "patch"],
+        },
+        "stripe-js-major": {
+            "patterns": ["@stripe/stripe-js", "@stripe/react-stripe-js"],
+            "update-types": ["major"],
+        },
+        "stripe-js-patch": {
+            "patterns": ["@stripe/stripe-js", "@stripe/react-stripe-js"],
+            "update-types": ["minor", "patch"],
+        },
+    }
 
     cases: list[tuple[str, bool, bool]] = []
     problems: list[str] = []
@@ -472,6 +539,23 @@ def self_test() -> int:
     problems = []
     check_major_ceiling(ceiling_groups, ceiling_ignores, problems)
     cases.append(("control: correct arrangement stays silent", bool(problems), False))
+
+    # G39: a route that declares only one half of the peer-coupled payment pair files
+    # the other half alone, which cannot resolve. Narrow the major route and the member
+    # disagreement must surface — anchored on the family's own finding, because a
+    # finding about some other family cannot be credited for passing this probe.
+    problems = []
+    narrowed = {
+        **coupled,
+        "stripe-js-major": {"patterns": ["@stripe/stripe-js"], "update-types": ["major"]},
+    }
+    check_families(narrowed, ceiling_ignores, problems)
+    detected = any("stripe-js: members disagree" in p for p in problems)
+    cases.append(("stripe major route names only one member", detected, True))
+
+    problems = []
+    check_families(coupled, ceiling_ignores, problems)
+    cases.append(("control: coupled stripe pair routes as one family", bool(problems), False))
 
     ok = True
     for label, detected, want in cases:
