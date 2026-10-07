@@ -33,6 +33,8 @@ urlpatterns = [
     # restricted, never on the public ingress).
     path("internal/v1/", include("apps.payments_app.urls_internal")),
     path("api/v1/shipping/webhooks/", include("apps.shipping_app.urls")),
+    # GDPR compliance: consent ledger (Art. 7), export (Art. 20), erasure (Art. 17).
+    path("api/v1/compliance/", include("apps.compliance_app.urls")),
     # OpenAPI contract
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
