@@ -58,6 +58,22 @@ MISSING = "MISSING"
 CANNOT = "CANNOT"
 
 
+def dependency_missing_problem(exc: BaseException) -> str:
+    """The message for a python that cannot import PyYAML, named instead of guessed at.
+
+    Measured precondition: the `dependency-audit` job of .github/workflows/security.yml installs
+    only `pip install pip-audit`, while PyYAML reaches CI through the pinned `dev.txt` in the
+    `backend` job. So an enabled step can fail for want of an import -- which is a configuration
+    fact about the job, not a verdict about any label, and must not read as a pass.
+    """
+    return (
+        f"{PREFIX}: this step's interpreter has no PyYAML ({type(exc).__name__}: {exc}) -- "
+        "the dependency-audit job installs only pip-audit; install the pinned requirements here "
+        "or move the step to the backend job (which runs the sibling checkers from dev.txt). "
+        "CANNOT VERIFY, not a pass."
+    )
+
+
 def parse_config(path: Path = DEP_FILE) -> object:
     """Parsed YAML. Raises so the caller turns any failure into exit 2, never into a pass."""
     import yaml
@@ -214,6 +230,9 @@ def run() -> int:
         return 2
     try:
         cfg = parse_config()
+    except ModuleNotFoundError as exc:  # the job's python may not carry PyYAML; see the helper
+        print(f"::error::{dependency_missing_problem(exc)}")
+        return 2
     except Exception as exc:  # a config this gate cannot read is not a config that passed
         print(
             f"::error::{PREFIX}: .github/dependabot.yml did not parse ({type(exc).__name__}: {exc})"
@@ -333,6 +352,11 @@ def self_test() -> int:
 
     # --- mode: off CI must skip, in CI must not, and force must override.
     add("off-CI mode is skip", platform_mode({}) == "skip", True)
+    add(
+        "a missing PyYAML names itself as CANNOT",
+        "no PyYAML" in dependency_missing_problem(ModuleNotFoundError("No module named 'yaml'")),
+        True,
+    )
     add("CI mode is not skip", platform_mode({"GITHUB_ACTIONS": "true"}) == "skip", False)
     add("force overrides the skip", platform_mode({"DEP_LABELS_FORCE": "1"}) == "skip", False)
     add(
