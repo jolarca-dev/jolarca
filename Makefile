@@ -29,7 +29,8 @@ LOAD_ENV := set -a; if [ -f .env ]; then . ./.env; fi; set +a;
 
 .PHONY: help shell bootstrap sysdeps dev-up dev-down logs migrate makemigrations seed \
         test test-contract test-integration lint lint-py lint-fe typecheck check lock \
-        api-schema check-secrets check-toolchain check-deps-groups check-docs check-advisories verify wait
+        api-schema check-secrets check-toolchain check-deps-groups check-docs check-advisories \
+        check-labels verify wait
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  %-18s %s\n", $$1, $$2}'
@@ -165,6 +166,21 @@ check-advisories: ## Fail when an advisory is silenced without an incident recor
 	$(PY) scripts/check_advisory_register.py --self-test
 	$(PY) scripts/check_advisory_register.py
 
+# §8 G40: .github/dependabot.yml has asked for labels since the first commit, and of 124
+# dependabot PRs not one ever carried `security-review` -- GitHub drops a label that does not
+# exist instead of refusing the update, so the control decayed in silence with every gate green.
+# This asserts each named label exists as a platform object. The platform half needs a token, so
+# OFF CI it prints SKIPPED and exits 0 to keep `make verify` runnable without credentials: inside
+# the `verify` loop below that reads as PASS for the STRUCTURAL half only -- the skipped half is
+# stated in the target's own output, which the loop discards, so run `make check-labels` directly
+# when the distinction matters. Enforcing it in CI is the owner's call, not a default: with
+# `enforce_admins` on, one admin and no self-bypass, a token or API failure would block the only
+# operator's merge (the G18/ADR-0018 denial-of-pipeline shape). The step exists in
+# .github/workflows/security.yml behind a repo variable and is inert until that variable is set.
+check-labels: ## Fail when dependabot names a label that does not exist on the platform
+	$(PY) scripts/check_dependabot_labels.py --self-test
+	$(PY) scripts/check_dependabot_labels.py
+
 # One reproducible evidence artifact for every gate this repo claims. Exists because
 # agent sessions verified gates by reading terminal output, while /tmp and the shell on
 # this host are shared with concurrent sessions on sibling repos - a contaminated
@@ -175,7 +191,7 @@ verify: ## Run every fast gate and write a dated evidence report to .state/
 	  echo "branch:    $$(git rev-parse --abbrev-ref HEAD) @ $$(git rev-parse --short HEAD)"; \
 	  echo "remote:    $$(git remote get-url origin)"; \
 	  echo "dirty:     $$(git status --porcelain | wc -l) path(s)"; echo; \
-	  for t in check-toolchain lint-py check-secrets check-docs check-deps-groups check-advisories test; do \
+	  for t in check-toolchain lint-py check-secrets check-docs check-deps-groups check-advisories check-labels test; do \
 	    printf '%-18s ' "$$t"; \
 	    if $(MAKE) --no-print-directory $$t >/dev/null 2>&1; then echo PASS; else echo FAIL; fi; \
 	  done; \
