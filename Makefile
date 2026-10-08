@@ -15,8 +15,25 @@ COMPOSE_TEST := docker compose -f docker-compose.test.yml
 # `source scripts/activate.sh`, run `make shell`, or let direnv load the repo's
 # .envrc — which needs the one-time host hook plus `direnv allow` per checkout.
 ROOT := $(patsubst %/,%,$(dir $(realpath $(firstword $(MAKEFILE_LIST)))))
-PY := $(ROOT)/.venv/bin/python
-PIP := $(ROOT)/.venv/bin/pip
+# Interpreter resolution, and two traps this block used to spring.
+# (1) A `:=` assignment, like any makefile assignment, **beats a variable inherited
+#     from the environment** — only `-e` or a command-line assignment outranks it. So
+#     `PY=/path make …` silently kept using the default and only `make PY=/path …`
+#     worked, which is the kind of detail that costs a session.
+# (2) ROOT is this Makefile's own directory. A **linked worktree** has no `.venv` of its
+#     own (`.gitignore` matches `.venv/` at any depth), so every gate died there with
+#     exit 127 — incident `JOL-PROC-20261008-01`. Worktree isolation is the house way to
+#     cut a PR, so this was not an exotic path, and nothing caught it because the failure
+#     is the shell's, not a gate's: a gate that cannot run reports a number, not a verdict.
+# Resolution order: an explicit PY/PIP (either surface) wins; else this checkout's own
+# venv; else the venv of the checkout that owns the shared `.git` directory, so a linked
+# worktree reuses the authoritative interpreter. `scripts/check_toolchain.py` still
+# compares the interpreter it is handed against the lock pins and refuses a stray `.venv`,
+# so pointing PY at a decoy fails loudly rather than quietly.
+GITCOMMON := $(shell git -C "$(dir $(realpath $(firstword $(MAKEFILE_LIST))))" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+VENVROOT := $(if $(wildcard $(ROOT)/.venv/bin/python),$(ROOT),$(if $(GITCOMMON),$(patsubst %/,%,$(dir $(GITCOMMON))),$(ROOT)))
+PY := $(if $(PY),$(PY),$(VENVROOT)/.venv/bin/python)
+PIP := $(if $(PIP),$(PIP),$(VENVROOT)/.venv/bin/pip)
 
 # Host-side Django targets need .env (DATABASE_URL, DJANGO_SETTINGS_MODULE,
 # POSTGRES_*); without it Django silently falls back to 127.0.0.1:5432 with no
@@ -43,9 +60,9 @@ shell: ## Interactive shell with the pinned .venv active (source scripts/activat
 	@. ./scripts/activate.sh && exec bash -i
 
 bootstrap: ## Create venv, install tooling + dev deps
-	python3 -m venv .venv
-	$(PIP) install --upgrade pip pip-tools
-	$(PIP) install -r backend/requirements/dev.txt
+	python3 -m venv "$(ROOT)/.venv"
+	"$(ROOT)/.venv/bin/pip" install --upgrade pip pip-tools
+	"$(ROOT)/.venv/bin/pip" install -r backend/requirements/dev.txt
 	@echo "Now: source scripts/activate.sh  (or: make shell)  ·  cp .env.example .env && make dev-up"
 
 sysdeps: ## OS packages needed on the HOST (GDAL for PostGIS models). Needs sudo.
