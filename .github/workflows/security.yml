@@ -143,6 +143,41 @@ jobs:
         run: |
           python scripts/check_advisory_register.py --self-test
           python scripts/check_advisory_register.py
+      # §8 G40: every ecosystem in .github/dependabot.yml requests labels, and of 124 dependabot
+      # pull requests not one ever carried `security-review` (measured 2026-10-07) -- GitHub drops a
+      # label that does not exist instead of refusing the update, so the control decayed silently.
+      # This asserts each named label exists as a platform object.
+      #
+      # DELIBERATELY NOT ENABLED. Enforcing it inside a required context is the owner's call: with
+      # `enforce_admins` on, one admin and no self-bypass, a token/permission/API failure would
+      # block the only operator's merge -- the G18/ADR-0018 denial-of-pipeline shape this repository
+      # has already recorded twice. `vars.DEPENDABOT_LABEL_ASSERT` is unset (measured: the repo has
+      # no variables), so the step is inert while the code and the wiring both exist. One platform
+      # action switches it on, with no edit to this file:
+      #   gh api -X PUT repos/jolarca-dev/jolarca/actions/variables \
+      #     -f name=DEPENDABOT_LABEL_ASSERT -f value=true
+      # That is necessary but NOT sufficient, measured rather than assumed: this job installs only
+      # `pip install pip-audit`, while PyYAML (pinned 6.0.3 across base/dev/prod) reaches CI through
+      # the backend job's `pip install --require-hashes -r requirements/dev.txt`. So the import fails
+      # here; the checker reports that as its own CANNOT message and exits 2 -- correct behaviour,
+      # still a red required job. Either give this step an interpreter that has PyYAML, or move it to
+      # the backend job, which already runs check_doc_claims.py and check_dependabot_groups.py from
+      # that pinned environment.
+      # Two more conditions this file cannot prove from here: (1) the job token must be allowed to read
+      # labels. Workflow `permissions:` declares contents:read + security-events:write; if the GET
+      # returns 403 the checker exits 2 and this job goes red, which is the fail-closed direction,
+      # and the remedy is adding `metadata: read` to this job. (2) Every label the config names must
+      # already exist -- measured 2026-10-07 via the same endpoint, `dependencies`, `security-review`
+      # and `ci` each return HTTP 200, so the assertion starts green rather than reddening the merge.
+      - name: Dependabot label existence (§8 G40)
+        if: ${{ vars.DEPENDABOT_LABEL_ASSERT == 'true' }}
+        env:
+          # gh refuses without a token; it is not picked up implicitly the way actions/* helpers
+          # handle it. Same mapping the §8 G35 step above uses.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/check_dependabot_labels.py --self-test
+          python scripts/check_dependabot_labels.py
 
   docker-scan:
     runs-on: ubuntu-24.04
