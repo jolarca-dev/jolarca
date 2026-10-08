@@ -22,8 +22,8 @@
     "jsdom": "^26.1.0"
   },
   "dependencies": {
-    "@stripe/react-stripe-js": "^6.9.0",
-    "@stripe/stripe-js": "^9.13.0",
+    "@stripe/react-stripe-js": "^7.0.0",
+    "@stripe/stripe-js": "^10.0.0",
     "@tanstack/react-query": "^5.102.8",
     "@tanstack/react-table": "^8.21.3",
     "isomorphic-dompurify": "^4.2.0",
@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
-    "@eslint/eslintrc": "^3.3.6",
+    "@eslint/eslintrc": "^3.3.7",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.1.0",
     "@testing-library/dom": "^10.4.1",

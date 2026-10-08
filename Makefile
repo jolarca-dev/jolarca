@@ -129,8 +129,8 @@ check-secrets: ## Scan what git carries for staged secrets
 # Dependabot group semantics are invisible to every other tool here: no job parsed
 # .github/dependabot.yml, so a mis-shaped `groups:` set was accepted silently and
 # only surfaced days later as a missing or unmergeable PR (QODER.md §8 G20).
-# --self-test runs first on purpose: it injects six violations plus one control
-# case and requires each to behave, so a neutered checker cannot keep this target
+# --self-test runs first on purpose: it injects seven violations plus two control
+# cases and requires each to behave, so a neutered checker cannot keep this target
 # green — the always-green failure mode recorded as gap G3. (The comment here used
 # to claim "three violations" and "no CI job does this"; both were stale, and the
 # backend job does invoke it — which is exactly what check_doc_claims.py now
