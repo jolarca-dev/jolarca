@@ -32,14 +32,23 @@ import {
   hasErrors,
 } from "@/lib/validation";
 
-// vitest-axe's own extend-expect entry does not bind under Vitest 4's
-// module registry; extend explicitly. The module augmentation below gives
-// the matcher its typing.
+// vitest-axe@0.1.0 ships no `declare module "vitest"` augmentation of its own
+// (verified in its dist/*.d.ts), so extend explicitly and type the matcher here.
+// The type parameter list must mirror vitest's own declaration or tsc rejects the
+// merge with TS2428: vitest 5 widened `Assertion<T>` to
+// `Assertion<R extends void | Promise<void> = void, T = unknown>`, and every
+// built-in matcher returns R (`toHaveBeenCalledOnce: () => R`), so this one does
+// too rather than the old T.
 expect.extend(axeMatchers);
 
 declare module "vitest" {
-  interface Assertion<T> {
-    toHaveNoViolations(): T;
+  // TS2428 requires a merged declaration to repeat vitest's type parameters
+  // verbatim, including the NAME `T` — renaming it to `_T` reintroduces the error
+  // (measured) — so this parameter is unavoidably unused. eslint gives no
+  // ignore pattern for it in eslint.config.mjs, hence the targeted disable.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface Assertion<R extends void | Promise<void> = void, T = unknown> {
+    toHaveNoViolations(): R;
   }
   interface AsymmetricMatchersContaining {
     toHaveNoViolations(): void;
