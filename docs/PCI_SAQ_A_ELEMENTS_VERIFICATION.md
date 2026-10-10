@@ -36,7 +36,7 @@ items 1–3 outright**, and ticking them from a degraded stack would produce a f
   ```bash
   grep -c '^NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=' .env .env.prod frontend/.env.local 2>/dev/null
   ```
-  Measured: absent from `.env` (dev) and from `frontend/.env.local`; present only in `.env.prod`.
+  Measured: absent from `.env` (dev), and `frontend/.env.local` does not exist in the tree; present only in `.env.prod`.
   Consequence, read from code: `frontend/src/lib/stripe.ts:18` yields `stripePromise = null`, so
   `PaymentStep` renders the `paymentsNotConfigured` notice and **Stripe.js is never loaded, no
   iframe exists, and item 1 cannot be observed at all**. To proceed, add a **test-mode** `pk_test_…`
