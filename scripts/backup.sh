@@ -13,6 +13,10 @@
 # =============================================================================
 set -euo pipefail
 
+# Dumps contain PII (users, consent, payment rows) — force owner-only creation
+# so rotation/offload never leave world-readable artefacts (PCI-DSS Req 3/7).
+umask 077
+
 COMPOSE_FILE="docker-compose.prod.yml"
 ENV_FILE=".env.prod"
 # Credentials come from the prod env file, not the caller's shell — cron
