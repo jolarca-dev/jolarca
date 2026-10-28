@@ -638,9 +638,9 @@ django-stubs-ext==6.1.1 \
     --hash=sha256:64aebb7ce2c327a4a2b75207d67034e879fd7edf027c93487be69da363dc79fa \
     --hash=sha256:c35263135558d4c5d12b69e1f4c98632bf59bc3ab5118f7d4882d12800e3a7dd
     # via django-stubs
-djangorestframework==3.18.1 \
-    --hash=sha256:605d79fa2ec2f02905492e5ea13d903c2d842d0b4c915a57f7bf02ab9f3c91dd \
-    --hash=sha256:f1409d698967aaf82d5d98d76b549c8fba8bd92ebd0d83d24454508f72168dc2
+djangorestframework==3.18.2 \
+    --hash=sha256:8249bad7715eb37274ce5820fc5d9fd786b7579806589565f52a71c02b35f54b \
+    --hash=sha256:a92d6a4e128a2550bd2fe2e02008a9e47fe52c180e130bb438f5ba70ee933a3f
     # via
     #   drf-spectacular
     #   jol-marketplace-backend (pyproject.toml)
