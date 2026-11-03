@@ -1,0 +1,11 @@
+# Initial local toolchain adoption; see MISE-ADOPTION.md for validation limits.
+[tools]
+python = "3.12.16"
+node = "22.23.4"
+
+[tasks.toolchain]
+description = "Print selected tool versions; this is not a compliance gate"
+run = [
+  "python --version",
+  "node --version",
+]
